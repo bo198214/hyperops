@@ -53,11 +53,22 @@ class PowerSeries:
     def inverse(a):
         #TODO
         return a
+
+    def iterate(a,t):
+        #TODO
+        #only for f(0)=
+        return a
+
+    def poly(a,n,x='init'):
+        if x == 'init':
+            return lambda x: sum(a(k)*x**k for k in range(n))
+        else:
+            return sum(a(k)*x**k for k in range(n))
     
     #static methods
     def Exp(self):
         def ret(n):
             return 1/factorial(n)
         #efficiency
-        return compose(self,PowerSeries(ret))
-        
+        #return compose(self,PowerSeries(ret))
+        return PowerSeries(ret)
