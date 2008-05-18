@@ -42,7 +42,7 @@ class PowerSeriesI(SageObject):
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: one/p
         [1, -2, 1, 0, 5, -14, 13, -4, 25, -90, 121, -72, 141, -550, 965, -844, 993, ...]
-        sage: one/p/p*p*p
+        sage: p**(-1)/p*p*p
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: p**2
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -56,6 +56,11 @@ class PowerSeriesI(SageObject):
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
         sage: dexp.iterate(2)
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
+        sage: dexp.iterate(-1)
+        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
+        sage: dexp.iterate(-1).compose(dexp)
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
         sage: hdexp = dexp.iterate(1/2)
         sage: hdexp
         [0, 1, 1/4, 1/48, 0, 1/3840, -7/92160, 1/645120, 53/3440640, -281/30965760, ...]
@@ -155,8 +160,8 @@ class PowerSeriesI(SageObject):
 
     def __pow__(a,n):
         #only for integer n 
-        if not isinstance(n,Integer):
-            raise TypeError
+        if not isinstance(n,Integer) and not isinstance(n,int):
+            raise TypeError, type(n)
         if not a._powMemo.has_key(n):
             if n >= 0:
                 res = PowerSeriesI([1])
@@ -230,9 +235,11 @@ class PowerSeriesI(SageObject):
         return PowerSeriesI(ret)
 
     def inverse(a):
-        #TODO
-        #only for a(0)=0
-        return a
+        if a(0) != 0:
+            print "0th coefficient must be 0"
+            #TODO which is the correct exception to raise?
+            raise ZeroDivisionError
+        return a.iterate(-1)
 
     def iterate(a,t):
         if a(0) != 0:
@@ -302,16 +309,20 @@ class PowerSeriesI(SageObject):
         else:
             return sum(a(k)*x**k for k in range(n))
     
+    def diff(a,m=1): return a.derivative(a,m)
+
     def derivative(a,m=1):
         return PowerSeriesI(lambda n: a(n+m)*prod(k for k in range(n+1,n+m+1)))
 
     def integral(a,m=1):
-        return PowerSeriesI(lambda n: a(n-1)/n)
+        def f(n):
+            if n < m:
+               return 0
+            return a(n-m)/prod(k for k in range(n-m+1,n+1))
+        return PowerSeriesI(f)
 
     #static methods
     def Exp(self):
-        #efficiency
-        #return compose(self,PowerSeriesI(ret))
         return PowerSeriesI(lambda n: 1/factorial(n))
 
     def DecExp(self):
