@@ -4,7 +4,10 @@ from sage.rings.arith import binomial
 
 class PowerSeriesI(SageObject):
     """
-    Cached infinite power series
+    Cached infinite power series:
+
+    A powerseries p is basically seen as a sequence of coefficients
+    retrieved by p(n).
 
     EXAMPLES:
         sage: from hyperops.powerseries import PowerSeriesI
@@ -18,7 +21,7 @@ class PowerSeriesI(SageObject):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PowerSeriesI().One()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PowerSeriesI().Identity()
+        sage: PowerSeriesI().Id()
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: #finite powerseries                                                             
         sage: p = PowerSeriesI([1,2,3,4])
@@ -42,36 +45,36 @@ class PowerSeriesI(SageObject):
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: one/p
         [1, -2, 1, 0, 5, -14, 13, -4, 25, -90, 121, -72, 141, -550, 965, -844, 993, ...]
-        sage: p**(-1)/p*p*p
+        sage: p.rcp()/p*p*p
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: p**2
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: #composition only works for coefficient 0 being 0 in the second operand         
         sage: dexp = expps - one
-        sage: expps.compose(dexp)
+        sage: expps.o(dexp)
         [1, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
 
         sage: #we come into interesting regions ...                                           
-        sage: dexp.compose(dexp)
+        sage: dexp.o(dexp)
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
-        sage: dexp.iterate(2)
+        sage: dexp.it(2)
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
-        sage: dexp.iterate(-1)
+        sage: dexp.eit(-1)
         [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
-        sage: dexp.iterate(-1).compose(dexp)
+        sage: dexp.eit(-1).o(dexp)
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
-        sage: hdexp = dexp.iterate(1/2)
+        sage: hdexp = dexp.eit(1/2)
         sage: hdexp
         [0, 1, 1/4, 1/48, 0, 1/3840, -7/92160, 1/645120, 53/3440640, -281/30965760, ...]
         sage: #verifying that shoudl be Zero                                                  
-        sage: hdexp.iterate(2) - dexp
+        sage: hdexp.eit(2) - dexp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: #symbolic (parabolic) iteration                                                 
-        sage: dexp.iterate(x)
+        sage: dexp.eit(x)
         [0, 1, x/2, 5*(x - 1)*x/12 - (x - 2)*x/6, ...]
-        sage: q = dexp.iterate(1/x).iterate(x)
+        sage: q = dexp.eit(1/x).eit(x)
         sage: q(3)
         (5*(1/x - 1)/(6*x) - (1/x - 2)/(3*x) + 1/(2*x^2))*(x - 1)*x/2 - (5*(1/x - 1)/(12*x) - (1/x - 2)/(6*x))*(x - 2)*x
         sage: #simiplify and compare                                                          
@@ -94,7 +97,7 @@ class PowerSeriesI(SageObject):
         sage: dbsrt = PowerSeriesI(coeff)
         
         sage: #and now starting hyperbolic iteration                                          
-        sage: dbsrt2 = dbsrt.iterate(x).iterate(1/x)
+        sage: dbsrt2 = dbsrt.eit(x).eit(1/x)
        
         sage: #Sage is not able to simplify                                                   
         sage: simplify(dbsrt2(3))
@@ -108,7 +111,7 @@ class PowerSeriesI(SageObject):
     def __init__(self,p=[]):
         self._memo = {}
         self._powMemo = {}
-        self._natitMemo = {}
+        self._itMemo = {}
         if isinstance(p,list):
             def f(n):
                 if n<len(p):
@@ -126,16 +129,28 @@ class PowerSeriesI(SageObject):
         return self._memo[n]
         
     def __add__(a,b):
+        """
+        Addition:
+        """
         def ret(n):
             return a(n)+b(n)
         return PowerSeriesI(ret)
 
     def __sub__(a,b):
+        """
+        Subtraction:
+        """
         def ret(n):
             return a(n)-b(n)
         return PowerSeriesI(ret)
 
     def __mul__(a,b):
+        """
+        Multiplication:
+        If b is a powerseries then powerseries multiplication
+        if b is a scalar then just multiply each coefficient by that scalar
+        in that case: a*b=a*PowerSeriesI([b])
+        """
         scalar = True
         try:
             c=a(0)*b
@@ -156,30 +171,53 @@ class PowerSeriesI(SageObject):
         return PowerSeriesI(ret)
 
     def __div__(a,b):
-        return a*b.reciprocal()
+        """
+        Division: a/b*b=a, a*b/b=a
+        """
+        return a*b.rcp()
 
     def __pow__(a,n):
-        #only for integer n 
-        if not isinstance(n,Integer) and not isinstance(n,int):
+        """
+        Power for natural exponent.
+        """
+        if (not isinstance(n,Integer) and not isinstance(n,int)) or n<0:
             raise TypeError, type(n)
         if not a._powMemo.has_key(n):
-            if n >= 0:
-                res = PowerSeriesI([1])
-                for k in range(n):
-                    res = res * a
-            else:
-                res = a.reciprocal()**(-n)
+            res = PowerSeriesI([1])
+            for k in range(n):
+                res = res * a
             a._powMemo[n] = res
         return a._powMemo[n]
+
+    def epow(a,t):
+        """
+        Power for arbitrary exponent, including -1 for rcp.
+        """
+        if a(0) == 0:
+            print "0th coefficient must be non-zero"
+            #TODO which is the correct exception to raise?
+            raise ZeroDivisionError
+        def daf(n):
+            if n==0:
+                return 0
+            return a(n)
+        da = PowerSeriesI(daf)
+
+        def f(n):
+            return sum(binomial(t,k) * a(0)**(t-k) * (da**k)(n) for k in range(n+1))
+        return PowerSeriesI(f)
     
     def __xor__(a,t):
+        #Not recognized as it seems to be mapped to ** in sage
         print "^"
 
-    def __and_(a,t):
-        print "&"
+    def __and__(a,n):
+        #print "&"
+        return a.it(n)
 
-    def __or__(a,t):
-        print "|"
+    def __or__(a,b):
+        #print "|"
+        return a.compose(b)
 
     def _repr_(a):
 #         res = ""
@@ -212,7 +250,11 @@ class PowerSeriesI(SageObject):
         return res
 
                     
-    def reciprocal(a):
+    def rcp(a):
+        """
+        Reciprocal: f.rcp()*f == One
+        It is differently implemented from f.epow(-1)
+        """
         if a(0) == 0:
             print "0th coefficient must be invertible"
             #TODO which is the correct exception to raise?
@@ -225,7 +267,10 @@ class PowerSeriesI(SageObject):
         f.f = g
         return f
 
-    def compose(a,b):
+    def o(a,b):
+        """
+        Composition: f.o(g).poly(m*n,x) == f.poly(m,g.poly(n,x)) 
+        """
         if b(0) != 0:
             print "0th coefficient of b must be 0"
             #TODO which is the correct exception to raise?
@@ -234,14 +279,17 @@ class PowerSeriesI(SageObject):
             return sum(a(k)*((b**k)(n)) for k in range(n+1))
         return PowerSeriesI(ret)
 
-    def inverse(a):
+    def inv(a):
+        """
+        Inverse: f.inv().o(f)=Id
+        """
         if a(0) != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
-        return a.iterate(-1)
+        return a.eit(-1)
 
-    def iterate(a,t):
+    def eit(a,t):
         if a(0) != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
@@ -290,28 +338,33 @@ class PowerSeriesI(SageObject):
             if n == 1: return 1
             def c(m):
                 return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-            res = sum(c(m)*a.natit(m)(n) for m in range(n))
+            res = sum(c(m)*a.it(m)(n) for m in range(n))
             return res
         return PowerSeriesI(f)
         
-    def natit(a,n):
+    def it(a,n):
         # assert n natural number
-        if not a._natitMemo.has_key(n):
-            res = a.Identity()
+        if not a._itMemo.has_key(n):
+            res = a.Id()
             for k in range(n):
-                res = res.compose(a)
-            a._natitMemo[n] = res
-        return a._natitMemo[n]
+                res = res.o(a)
+            a._itMemo[n] = res
+        return a._itMemo[n]
 
     def poly(a,n,x='init'):
+        """
+        Returns the associated polynomial for the first n coefficients.
+        f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
+        With second argument you get the polynomial as expression in that
+        variable.
+        Without second argument you the get polynomial as function.
+        """
         if x == 'init':
             return lambda x: sum(a(k)*x**k for k in range(n))
         else:
             return sum(a(k)*x**k for k in range(n))
     
-    def diff(a,m=1): return a.derivative(a,m)
-
-    def derivative(a,m=1):
+    def diff(a,m=1): 
         return PowerSeriesI(lambda n: a(n+m)*prod(k for k in range(n+1,n+m+1)))
 
     def integral(a,m=1):
@@ -331,7 +384,7 @@ class PowerSeriesI(SageObject):
             else: return 1/factorial(n)
         return PowerSeriesI(f)
 
-    def Identity(self):
+    def Id(self):
         return PowerSeriesI([0,1])
     
     def One(self):
