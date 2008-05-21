@@ -6,8 +6,8 @@ class PowerSeriesI(SageObject):
     """
     Cached infinite power series:
 
-    A powerseries p is basically seen as a sequence of coefficients
-    retrieved by p(n).
+    A powerseries p is basically seen as an infinite sequence of coefficients
+    The n-th coefficient is retrieved by p[n].
 
     EXAMPLES:
         sage: from hyperops.powerseries import PowerSeriesI
@@ -33,7 +33,7 @@ class PowerSeriesI(SageObject):
         sage: id = PowerSeriesI([0,1])
 
         sage: #power series are just functions that map the index to the coefficient          
-        sage: expps(30)
+        sage: expps[30]
         1/265252859812191058636308480000000
 
         sage: #power series operations                                                        
@@ -75,12 +75,12 @@ class PowerSeriesI(SageObject):
         sage: dexp.eit(x)
         [0, 1, x/2, 5*(x - 1)*x/12 - (x - 2)*x/6, ...]
         sage: q = dexp.eit(1/x).eit(x)
-        sage: q(3)
+        sage: q[3]
         (5*(1/x - 1)/(6*x) - (1/x - 2)/(3*x) + 1/(2*x^2))*(x - 1)*x/2 - (5*(1/x - 1)/(12*x) - (1/x - 2)/(6*x))*(x - 2)*x
         sage: #simiplify and compare                                                          
-        sage: expand(q(3))
+        sage: expand(q[3])
         1/6
-        sage: dexp(3)
+        sage: dexp[3]
         1/6
 
         sage: #you can initialize power series with arbitrary functions on natural numbers    
@@ -100,11 +100,11 @@ class PowerSeriesI(SageObject):
         sage: dbsrt2 = dbsrt.eit(x).eit(1/x)
        
         sage: #Sage is not able to simplify                                                   
-        sage: simplify(dbsrt2(3))
+        sage: simplify(dbsrt2[3])
         ...
 
         sage: #but numerically we can verify equality                                         
-        sage: RR(dbsrt2(3)(x=0.73)-dbsrt(3))
+        sage: RR(dbsrt2[3](x=0.73)-dbsrt[3])
         -8.67361737988404e-19
     """
 
@@ -123,7 +123,7 @@ class PowerSeriesI(SageObject):
             self.f = p
 
 
-    def __call__(self,n):
+    def __getitem__(self,n):
         if not self._memo.has_key(n):
             #self._memo[n] = simplify(expand(self.f(n)))
             self._memo[n] = self.f(n)
@@ -134,7 +134,7 @@ class PowerSeriesI(SageObject):
         Addition:
         """
         def ret(n):
-            return a(n)+b(n)
+            return a[n]+b[n]
         return PowerSeriesI(ret)
 
     def __sub__(a,b):
@@ -142,7 +142,7 @@ class PowerSeriesI(SageObject):
         Subtraction:
         """
         def ret(n):
-            return a(n)-b(n)
+            return a[n]-b[n]
         return PowerSeriesI(ret)
 
     def __mul__(a,b):
@@ -154,21 +154,21 @@ class PowerSeriesI(SageObject):
         """
         scalar = True
         try:
-            c=a(0)*b
+            c=a[0]*b
         except TypeError:
             scalar = False
 
         #multiplication by scalar
-        if scalar: return PowerSeriesI(lambda n: a(n)*b)
+        if scalar: return PowerSeriesI(lambda n: a[n]*b)
 
         #multiplication of two powerseries
         #maybe necessary to avoid evaluation of a(n) or b(n)
-        if a(0) == 0 and b(0) == 0:
+        if a[0] == 0 and b[0] == 0:
             def ret(n):
-                return sum(a(k)*b(n-k) for k in range(1,n))
+                return sum(a[k]*b[n-k] for k in range(1,n))
         else:
             def ret(n):
-                return sum(a(k)*b(n-k) for k in range(n+1))
+                return sum(a[k]*b[n-k] for k in range(n+1))
         return PowerSeriesI(ret)
 
     def __div__(a,b):
@@ -194,18 +194,18 @@ class PowerSeriesI(SageObject):
         """
         Power for arbitrary exponent, including -1 for rcp.
         """
-        if a(0) == 0:
+        if a[0] == 0:
             print "0th coefficient must be non-zero"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
         def daf(n):
             if n==0:
                 return 0
-            return a(n)
+            return a[n]
         da = PowerSeriesI(daf)
 
         def f(n):
-            return sum(binomial(t,k) * a(0)**(t-k) * (da**k)(n) for k in range(n+1))
+            return sum(binomial(t,k) * a[0]**(t-k) * (da**k)[n] for k in range(n+1))
         return PowerSeriesI(f)
     
     def __xor__(a,t):
@@ -241,8 +241,8 @@ class PowerSeriesI(SageObject):
 #         res += "O(x^" + repr(n) + ")"
         res = "["
         for n in range(80):
-            coeff = a(n)
-            s = repr(a(n)) + ", "
+            coeff = a[n]
+            s = repr(a[n]) + ", "
             if len(res)+len(s) > 76: break
             else: res += s
 
@@ -256,15 +256,15 @@ class PowerSeriesI(SageObject):
         Reciprocal: f.rcp()*f == One
         It is differently implemented from f.epow(-1)
         """
-        if a(0) == 0:
+        if a[0] == 0:
             print "0th coefficient must be invertible"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
         f = PowerSeriesI()
         def g(n):
             if n == 0:
-                return 1/a(0)
-            return -sum(f(m)*a(n-m) for m in range(n))
+                return 1/a[0]
+            return -sum(f[m]*a[n-m] for m in range(n))
         f.f = g
         return f
 
@@ -272,38 +272,38 @@ class PowerSeriesI(SageObject):
         """
         Composition: f.o(g).poly(m*n,x) == f.poly(m,g.poly(n,x)) 
         """
-        if b(0) != 0:
+        if b[0] != 0:
             print "0th coefficient of b must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
         def ret(n):
-            return sum(a(k)*((b**k)(n)) for k in range(n+1))
+            return sum(a[k]*((b**k)[n]) for k in range(n+1))
         return PowerSeriesI(ret)
 
     def inv(a):
         """
         Inverse: f.inv().o(f)=Id
         """
-        if a(0) != 0:
+        if a[0] != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
         return a.eit(-1)
 
     def eit(a,t):
-        if a(0) != 0:
+        if a[0] != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
-        if a(1) == 1: return a.parit(t)
+        if a[1] == 1: return a.parit(t)
         else: return a.hypit(t)
 
     def hypit(a,t):
-        if a(0) != 0:
+        if a[0] != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
-        if a(1) == 0:
+        if a[1] == 0:
             print "1st coefficient must be nonzero"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
@@ -315,21 +315,21 @@ class PowerSeriesI(SageObject):
                 return 0
             if n == 1:
                 #print ")"
-                return a(1)**t
-            res = a(n)*(f(1)**n)-f(1)*a(n)
-            res += sum(a(m)*(f**m)(n) - f(m)*(a**m)(n) for m in range(2,n))
-            res /= a(1)**n - a(1)
+                return a[1]**t
+            res = a[n]*(f[1]**n)-f[1]*a[n]
+            res += sum(a[m]*(f**m)[n] - f[m]*(a**m)[n] for m in range(2,n))
+            res /= a[1]**n - a[1]
             #print ")"
             return res
         f.f = g
         return f
 
     def parit(a,t):
-        if a(0) != 0:
+        if a[0] != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
-        if a(1) != 1:
+        if a[1] != 1:
             print "1st coefficient must be 1"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
@@ -339,7 +339,7 @@ class PowerSeriesI(SageObject):
             if n == 1: return 1
             def c(m):
                 return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-            res = sum(c(m)*a.it(m)(n) for m in range(n))
+            res = sum(c(m)*a.it(m)[n] for m in range(n))
             return res
         return PowerSeriesI(f)
         
@@ -363,16 +363,16 @@ class PowerSeriesI(SageObject):
         if x == '_x':
             return lambda x: sum(a(k)*x**k for k in range(n))
         else:
-            return sum(a(k)*x**k for k in range(n))
+            return sum(a[k]*x**k for k in range(n))
     
     def diff(a,m=1): 
-        return PowerSeriesI(lambda n: a(n+m)*prod(k for k in range(n+1,n+m+1)))
+        return PowerSeriesI(lambda n: a[n+m]*prod(k for k in range(n+1,n+m+1)))
 
     def integral(a,m=1):
         def f(n):
             if n < m:
                return 0
-            return a(n-m)/prod(k for k in range(n-m+1,n+1))
+            return a[n-m]/prod(k for k in range(n-m+1,n+1))
         return PowerSeriesI(f)
 
     def ilog(a):
@@ -390,7 +390,7 @@ class PowerSeriesI(SageObject):
         _t = var('_t')
         g = a.eit(_t)
         def f(n):
-           return diff(g(n),_t)(_t=0)
+           return diff(g[n],_t)(_t=0)
         return PowerSeriesI(f)
 
     #static methods
