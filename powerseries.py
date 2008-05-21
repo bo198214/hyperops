@@ -125,6 +125,7 @@ class PowerSeriesI(SageObject):
 
     def __call__(self,n):
         if not self._memo.has_key(n):
+            #self._memo[n] = simplify(expand(self.f(n)))
             self._memo[n] = self.f(n)
         return self._memo[n]
         
@@ -351,7 +352,7 @@ class PowerSeriesI(SageObject):
             a._itMemo[n] = res
         return a._itMemo[n]
 
-    def poly(a,n,x='init'):
+    def poly(a,n,x='_x'):
         """
         Returns the associated polynomial for the first n coefficients.
         f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
@@ -359,7 +360,7 @@ class PowerSeriesI(SageObject):
         variable.
         Without second argument you the get polynomial as function.
         """
-        if x == 'init':
+        if x == '_x':
             return lambda x: sum(a(k)*x**k for k in range(n))
         else:
             return sum(a(k)*x**k for k in range(n))
@@ -372,6 +373,24 @@ class PowerSeriesI(SageObject):
             if n < m:
                return 0
             return a(n-m)/prod(k for k in range(n-m+1,n+1))
+        return PowerSeriesI(f)
+
+    def ilog(a):
+        """
+        Iterative logarithm:
+        ilog(f o g) == ilog(f) + ilog(g)
+        defined by: diff(f.it(t),t)(t=0)
+        can be used to define the regular Abel function abel(f) by
+        abel(f)' = 1/logit(f)
+
+        Refs:
+        Eri Jabotinsky, Analytic iteration (1963), p 464
+        Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
+        """
+        _t = var('_t')
+        g = a.eit(_t)
+        def f(n):
+           return diff(g(n),_t)(_t=0)
         return PowerSeriesI(f)
 
     #static methods
