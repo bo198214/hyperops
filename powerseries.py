@@ -1,6 +1,7 @@
 from sage.structure.sage_object import SageObject
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
+from sage.rings.integer import Integer
 
 class PowerSeriesI(SageObject):
     """
@@ -57,24 +58,24 @@ class PowerSeriesI(SageObject):
         sage: #we come into interesting regions ...                                           
         sage: dexp.o(dexp)
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
-        sage: dexp.it(2)
+        sage: dexp.nit(2)
         [0, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
-        sage: dexp.eit(-1)
+        sage: dexp.it(-1)
         [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
-        sage: dexp.eit(-1).o(dexp)
+        sage: dexp.it(-1).o(dexp)
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
-        sage: hdexp = dexp.eit(1/2)
+        sage: hdexp = dexp.it(1/2)
         sage: hdexp
         [0, 1, 1/4, 1/48, 0, 1/3840, -7/92160, 1/645120, 53/3440640, -281/30965760, ...]
         sage: #verifying that shoudl be Zero                                                  
-        sage: hdexp.eit(2) - dexp
+        sage: hdexp.it(2) - dexp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: #symbolic (parabolic) iteration                                                 
-        sage: dexp.eit(x)
+        sage: dexp.it(x)
         [0, 1, x/2, 5*(x - 1)*x/12 - (x - 2)*x/6, ...]
-        sage: q = dexp.eit(1/x).eit(x)
+        sage: q = dexp.it(1/x).it(x)
         sage: q[3]
         (5*(1/x - 1)/(6*x) - (1/x - 2)/(3*x) + 1/(2*x^2))*(x - 1)*x/2 - (5*(1/x - 1)/(12*x) - (1/x - 2)/(6*x))*(x - 2)*x
         sage: #simiplify and compare                                                          
@@ -97,7 +98,7 @@ class PowerSeriesI(SageObject):
         sage: dbsrt = PowerSeriesI(coeff)
         
         sage: #and now starting hyperbolic iteration                                          
-        sage: dbsrt2 = dbsrt.eit(x).eit(1/x)
+        sage: dbsrt2 = dbsrt.it(x).it(1/x)
        
         sage: #Sage is not able to simplify                                                   
         sage: simplify(dbsrt2[3])
@@ -177,7 +178,10 @@ class PowerSeriesI(SageObject):
         """
         return a*b.rcp()
 
-    def __pow__(a,n):
+    def __pow__(a,t):
+        return a.pow(t)
+
+    def npow(a,n):
         """
         Power for natural exponent.
         """
@@ -190,7 +194,7 @@ class PowerSeriesI(SageObject):
             a._powMemo[n] = res
         return a._powMemo[n]
 
-    def epow(a,t):
+    def pow(a,t):
         """
         Power for arbitrary exponent, including -1 for rcp.
         """
@@ -205,16 +209,16 @@ class PowerSeriesI(SageObject):
         da = PowerSeriesI(daf)
 
         def f(n):
-            return sum(binomial(t,k) * a[0]**(t-k) * (da**k)[n] for k in range(n+1))
+            return sum(binomial(t,k) * a[0]**(t-k) * da.npow(k)[n] for k in range(n+1))
         return PowerSeriesI(f)
     
     def __xor__(a,t):
         #Not recognized as it seems to be mapped to ** in sage
         print "^"
 
-    def __and__(a,n):
+    def __and__(a,t):
         #print "&"
-        return a.it(n)
+        return a.it(t)
 
     def __or__(a,b):
         #print "|"
@@ -254,7 +258,7 @@ class PowerSeriesI(SageObject):
     def rcp(a):
         """
         Reciprocal: f.rcp()*f == One
-        It is differently implemented from f.epow(-1)
+        It is differently implemented from f.pow(-1)
         """
         if a[0] == 0:
             print "0th coefficient must be invertible"
@@ -277,7 +281,7 @@ class PowerSeriesI(SageObject):
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
         def ret(n):
-            return sum(a[k]*((b**k)[n]) for k in range(n+1))
+            return sum(a[k]*(b.npow(k)[n]) for k in range(n+1))
         return PowerSeriesI(ret)
 
     def inv(a):
@@ -288,9 +292,9 @@ class PowerSeriesI(SageObject):
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
             raise ZeroDivisionError
-        return a.eit(-1)
+        return a.it(-1)
 
-    def eit(a,t):
+    def it(a,t):
         if a[0] != 0:
             print "0th coefficient must be 0"
             #TODO which is the correct exception to raise?
@@ -317,7 +321,7 @@ class PowerSeriesI(SageObject):
                 #print ")"
                 return a[1]**t
             res = a[n]*(f[1]**n)-f[1]*a[n]
-            res += sum(a[m]*(f**m)[n] - f[m]*(a**m)[n] for m in range(2,n))
+            res += sum(a[m]*f.npow(m)[n] - f[m]*a.npow(m)[n] for m in range(2,n))
             res /= a[1]**n - a[1]
             #print ")"
             return res
@@ -339,11 +343,11 @@ class PowerSeriesI(SageObject):
             if n == 1: return 1
             def c(m):
                 return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-            res = sum(c(m)*a.it(m)[n] for m in range(n))
+            res = sum(c(m)*a.nit(m)[n] for m in range(n))
             return res
         return PowerSeriesI(f)
         
-    def it(a,n):
+    def nit(a,n):
         # assert n natural number
         if not a._itMemo.has_key(n):
             res = a.Id()
@@ -388,7 +392,7 @@ class PowerSeriesI(SageObject):
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
         """
         _t = var('_t')
-        g = a.eit(_t)
+        g = a.it(_t)
         def f(n):
            return diff(g[n],_t)(_t=0)
         return PowerSeriesI(f)
