@@ -1,3 +1,7 @@
+"""
+Author: Henryk Trappmann
+"""
+
 from sage.structure.sage_object import SageObject
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
