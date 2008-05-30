@@ -1,4 +1,6 @@
 """
+Infinite/Lazy Powerseries
+
 Author: Henryk Trappmann
 """
 
@@ -6,6 +8,9 @@ from sage.structure.sage_object import SageObject
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
 from sage.rings.integer import Integer
+from sage.calculus.calculus import SymbolicExpression 
+from sage.calculus.calculus import SymbolicVariable
+from sage.calculus.functional import diff
 
 class PowerSeriesI(SageObject):
     """
@@ -15,7 +20,7 @@ class PowerSeriesI(SageObject):
     The n-th coefficient is retrieved by p[n].
 
     EXAMPLES:
-        sage: from hyperops.powerseries import PowerSeriesI
+        sage: from powerseries import PowerSeriesI
         sage: #Predefined PowerSeries                                                         
         sage: expps = PowerSeriesI().Exp()
         sage: expps.poly(10,x)
@@ -93,27 +98,46 @@ class PowerSeriesI(SageObject):
         sage: bsrt = PowerSeriesI(lambda n: diff(sqrt(2)^x,x,n)(x=0)/factorial(n))
 
         sage: #making the first coefficient 0 to get the decremented exponential   
-        sage: def coeff(n):
-        sage:     if n == 0:
-        sage:         return 0
-        sage:     else:
-        sage:         return bsrt(n)
-      
+        sage: coeff = lambda n:  (0,bsrt[n])[n>0]
         sage: dbsrt = PowerSeriesI(coeff)
         
         sage: #and now starting hyperbolic iteration                                          
         sage: dbsrt2 = dbsrt.it(x).it(1/x)
-       
         sage: #Sage is not able to simplify                                                   
         sage: simplify(dbsrt2[3])
-        ...
-
+        (log(2)^3*(log(2)^(x + 2)*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(4*(log(2)^2/4 - log(2)/2)*2^x) - log(2)^3*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(8*(log(2)^2/4 - log(2)/2)) - log(2)^(x + 3)*2^(-x - 4)/3 + log(2)^(3*x + 3)*2^(-3*x - 4)/3)/(8*(log(2)^3/8 - log(2)/2)) - log(2)*(log(2)^(x + 2)*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(4*(log(2)^2/4 - log(2)/2)*2^x) - log(2)^3*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(8*(log(2)^2/4 - log(2)/2)) - log(2)^(x + 3)*2^(-x - 4)/3 + log(2)^(3*x + 3)*2^(-3*x - 4)/3)/(2*(log(2)^3/8 - log(2)/2)) - 2*log(2)^x*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))*(log(2)^2*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(4*(log(2)^2/4 - log(2)/2)) - log(2)*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(2*(log(2)^2/4 - log(2)/2)))/((log(2)^2/4 - log(2)/2)*2^x*(log(2)^(2*x)/2^(2*x) - log(2)^x/2^x)) + log(2)*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))*(log(2)^2*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(4*(log(2)^2/4 - log(2)/2)) - log(2)*(log(2)^(2*x + 2)*2^(-2*x - 3) - log(2)^(x + 2)*2^(-x - 3))/(2*(log(2)^2/4 - log(2)/2)))/((log(2)^2/4 - log(2)/2)*(log(2)^(2*x)/2^(2*x) - log(2)^x/2^x)))/(log(2)^(3*x)/2^(3*x) - log(2)^x/2^x)
         sage: #but numerically we can verify equality                                         
         sage: RR(dbsrt2[3](x=0.73)-dbsrt[3])
         -8.67361737988404e-19
     """
 
-    def __init__(self,p=[]):
+    def __init__(self,p=[],var='_undef',at=0):
+        """
+        Initialization by finite sequence of coefficients:
+        Examples:
+        sage: from powerseries import PowerSeriesI
+        sage: PowerSeriesI([1,2,3])
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PowerSeriesI()
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        
+        Initialization by coefficient function:
+        Example:
+        sage: PowerSeriesI(lambda n: 1/factorial(n))
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+
+        Initialization by expresion:
+        Examples:
+        sage: PowerSeriesI(1+2*x+3*x^2,x)
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PowerSeriesI(exp(x),x)
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+        sage: PowerSeriesI(ln(x),x,1)
+        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
+
+        Note: This is much slower than directly providing the coefficient function. 
+        
+        """
         self._memo = {}
         self._powMemo = {}
         self._itMemo = {}
@@ -124,9 +148,17 @@ class PowerSeriesI(SageObject):
                 else:
                     return 0
             self.f = f
-        else:
+            return
+        if isinstance(p,SymbolicExpression):
+            assert not var == '_undef'
+            expr=p
+            assert isinstance(var,SymbolicVariable)
+            def f(n):
+                return diff(expr,var,n).substitute({var:at})/factorial(n)
+            self.f = f
+            return
+        if type(p) is type(lambda n: 0):
             self.f = p
-
 
     def __getitem__(self,n):
         if not self._memo.has_key(n):
