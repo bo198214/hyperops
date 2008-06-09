@@ -13,7 +13,7 @@ Description:
 """
 
 from sage.all import *
-from special.matrix import Carleman_matrix
+from special_matrices import Carleman_matrix
 
 def series_inverse(expr, y, x, x0=0, n=5):
     """

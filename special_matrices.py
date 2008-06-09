@@ -12,7 +12,7 @@ Description:
 """
 
 from sage.all import *
-from hyper.polynomial import get_coeff_list
+from polynomial import get_coeff_list
 
 def Carleman_matrix(expr, x, x0=0, n_row=5, n_col=0, limit=False):
     """

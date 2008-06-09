@@ -13,7 +13,7 @@ Description:
 """
 
 from sage.all import *
-from hyper.polynomial import get_coeff_list
+from polynomial import get_coeff_list
 
 def is_parabolic(expr, x, x0):
     """

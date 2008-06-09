@@ -36,7 +36,7 @@ Description:
 """
 
 from sage.all import *
-from hyper.special.matrix import Abel_matrix
+from special_matrices import Abel_matrix
 
 def natural_Abel_function(expr, x, x0=0, n=5, rhs=[], ring=None):
     """

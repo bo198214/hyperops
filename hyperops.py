@@ -13,7 +13,7 @@ Description:
 """
 
 from sage.all import *
-from special.function import LambertW
+from special_functions import LambertW
 
 def hyper_HC_simple(b, h, rank=3):
     """
