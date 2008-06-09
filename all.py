@@ -5,7 +5,7 @@ Contributor: Jay D. Fox
 Date: 2008-04-25
 Description:
 
-    hyper/all.py 
+    hyperops/all.py 
     
     This is traditionally where Sage would put things to be
     included in the global namespace when you load the library.

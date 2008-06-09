@@ -5,7 +5,7 @@ Contributor: Jay D. Fox
 Date: 2008-04-25
 Description:
 
-    hyper/parabolic.py contains functions to perform
+    hyperops/parabolic.py contains functions to perform
     regular iteration on functions with parabolic
     fixed points, also known as "parabolic iteration"
     

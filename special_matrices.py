@@ -4,7 +4,7 @@ Creator: Andrew Robbins
 Date: 2008-04-22
 Description:
 
-    hyper/special/matrix.py contains functions used throughout
+    hyperops/special/matrix.py contains functions used throughout
     various methods of iteration. These functions include the
     Bell matrix, Carleman matrix, and functions for taking the
     exp, log, and non-integer power of such matrices.

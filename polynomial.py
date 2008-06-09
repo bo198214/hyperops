@@ -5,7 +5,7 @@ Creator: Andrew Robbins
 Date: 2008-04-22
 Description:
 
-    hyper/polynomial.py contains basic polynomials.
+    hyperops/polynomial.py contains basic polynomials.
     a_poly(x) makes an arbitrary polynomial function, 
     and h_poly(x) and p_poly(x) make hyperbolic and parabolic 
     functions, respectively.

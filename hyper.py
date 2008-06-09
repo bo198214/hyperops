@@ -5,7 +5,7 @@ Contributor: Jay D. Fox
 Date: 2008-04-25
 Description:
 
-    hyper/hyper.py contains functions that implement the common forms
+    hyperops/hyper.py contains functions that implement the common forms
     of hyper operations, including right/mother (implemented now),
     left, balanced, mixed, grandmother (includes zeration), daughter, 
     associative, exponential, and others.

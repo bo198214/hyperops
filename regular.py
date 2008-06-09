@@ -5,7 +5,7 @@ Contributor: Jay D. Fox
 Date: 2008-04-25
 Description:
 
-    hyper/parabolic.py 
+    hyperops/parabolic.py 
     
 """
 
