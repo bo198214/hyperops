@@ -241,9 +241,7 @@ class PowerSeriesI(SageObject):
         Power for arbitrary exponent, including -1 for rcp.
         """
         if a[0] == 0:
-            print "0th coefficient must be non-zero"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient must be non-zero"
         def daf(n):
             if n==0:
                 return 0
@@ -303,9 +301,7 @@ class PowerSeriesI(SageObject):
         It is differently implemented from f.pow(-1)
         """
         if a[0] == 0:
-            print "0th coefficient must be invertible"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient must be invertible"
         f = PowerSeriesI()
         def g(n):
             if n == 0:
@@ -319,9 +315,7 @@ class PowerSeriesI(SageObject):
         Composition: f.o(g).poly(m*n,x) == f.poly(m,g.poly(n,x)) 
         """
         if b[0] != 0:
-            print "0th coefficient of b must be 0"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient of b must be 0"
         def ret(n):
             return sum(a[k]*(b.npow(k)[n]) for k in range(n+1))
         return PowerSeriesI(ret)
@@ -331,28 +325,20 @@ class PowerSeriesI(SageObject):
         Inverse: f.inv().o(f)=Id
         """
         if a[0] != 0:
-            print "0th coefficient must be 0"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient of b must be 0"
         return a.it(-1)
 
     def it(a,t):
         if a[0] != 0:
-            print "0th coefficient must be 0"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient of b must be 0"
         if a[1] == 1: return a.parit(t)
         else: return a.hypit(t)
 
     def hypit(a,t):
         if a[0] != 0:
-            print "0th coefficient must be 0"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient of b must be 0"
         if a[1] == 0:
-            print "1st coefficient must be nonzero"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "1st coefficient must be nonzero"
         f = PowerSeriesI()
         def g(n):
             #print "(" + repr(n)
@@ -372,13 +358,9 @@ class PowerSeriesI(SageObject):
 
     def parit(a,t):
         if a[0] != 0:
-            print "0th coefficient must be 0"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "0th coefficient must be 0"
         if a[1] != 1:
-            print "1st coefficient must be 1"
-            #TODO which is the correct exception to raise?
-            raise ZeroDivisionError
+            raise ValueError, "1st coefficient must be 1"
             
         def f(n):
             if n == 0: return 0

@@ -5,7 +5,7 @@ Creator: Andrew Robbins
 Date: 2008-04-22
 Description:
 
-    hyper/polynomial.py contains basic polynomials.
+    hyperops/polynomial.py contains basic polynomials.
     a_poly(x) makes an arbitrary polynomial function, 
     and h_poly(x) and p_poly(x) make hyperbolic and parabolic 
     functions, respectively.
@@ -13,7 +13,7 @@ Description:
 """
 
 from sage.all import *
-from special.matrix import Carleman_matrix
+from special_matrices import Carleman_matrix
 
 def series_inverse(expr, y, x, x0=0, n=5):
     """

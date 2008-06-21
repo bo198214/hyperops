@@ -1,0 +1,17 @@
+
+=== HyperOps : A Sage package for hyper operations and iteration. ===
+
+HyperOps provides functions for dealing with infinite power series, 
+but also tries to be compatible with Sage's built-in power series,
+and functions for continuous iteration, finding fixed points, and
+generalized hyper operations (right, left, mixed, balanced, etc.).
+
+=== Installation ===
+
+To make a Sage package for others to install, type "make spkg".
+To install this Sage package, type "sage -i hyperops-###.spkg".
+To install directly, just type "make install".
+
+=== Overview ===
+
+TODO.

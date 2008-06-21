@@ -5,7 +5,7 @@ Contributor: Jay D. Fox
 Date: 2008-04-25
 Description:
 
-    hyper/natural.py contains functions for use with
+    hyperops/natural.py contains functions for use with
     natural iteration. In other words, iteration f<t>(x)
     by using power series in t or the inverse power series.
     
@@ -36,7 +36,7 @@ Description:
 """
 
 from sage.all import *
-from hyper.special.matrix import Abel_matrix
+from special_matrices import Abel_matrix
 
 def natural_Abel_function(expr, x, x0=0, n=5, rhs=[], ring=None):
     """

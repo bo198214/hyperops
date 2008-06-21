@@ -6,7 +6,7 @@ Contributor: Wikipedia
 Date: 2008-04-25
 Description:
 
-    hyper/special/funcion.py contains definitions of special 
+    hyperops/special/funcion.py contains definitions of special 
     functions, especially those that are required by or useful
     for use with tetration. Some of these special functions
     include: x^x, x^(1/x), the infinitely iterated exponential, 

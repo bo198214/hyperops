@@ -9,7 +9,7 @@ Description:
 """
 
 from sage.all import *
-from hyper.special.matrix import Bell_matrix, Carleman_matrix
+from special_matrices import Bell_matrix, Carleman_matrix
 
 def safe_factor(x):
     if x == 0:
