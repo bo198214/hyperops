@@ -8,9 +8,10 @@ from sage.structure.sage_object import SageObject
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
 from sage.rings.integer import Integer
-from sage.calculus.calculus import SymbolicExpression 
-from sage.calculus.calculus import SymbolicVariable
+from sage.calculus.calculus import SymbolicExpression, SymbolicVariable, var, log
 from sage.calculus.functional import diff
+from sage.rings.rational_field import QQ
+from sage.misc.misc_c import prod
 
 class PowerSeriesI(SageObject):
     """
@@ -159,7 +160,7 @@ class PowerSeriesI(SageObject):
                 #    return expr({v:at})-at
                 #return simplify(diff(expr,v,n).substitute({v:at})/factorial(n))
                 _x = var('_x')
-                return (expr({v:_x+at})-at).taylor(_x,0,n).coeff(_x,n)
+                return expr({v:_x+at}).taylor(_x,0,n).coeff(_x,n)
             self.f = f
             return
         if type(p) is type(lambda n: 0):
@@ -236,6 +237,28 @@ class PowerSeriesI(SageObject):
             a._powMemo[n] = res
         return a._powMemo[n]
 
+    def nit(a,n):
+        # assert n natural number
+        if not a._itMemo.has_key(n):
+            res = a.Id()
+            for k in range(n):
+                res = res.o(a)
+            a._itMemo[n] = res
+        return a._itMemo[n]
+
+    def poly(a,n,x='_x'):
+        """
+        Returns the associated polynomial for the first n coefficients.
+        f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
+        With second argument you get the polynomial as expression in that
+        variable.
+        Without second argument you the get polynomial as function.
+        """
+        if x == '_x':
+            return lambda x: sum(a[k]*x**k for k in range(n))
+        else:
+            return sum(a[k]*x**k for k in range(n))
+
     def pow(a,t):
         """
         Power for arbitrary exponent, including -1 for rcp.
@@ -306,7 +329,7 @@ class PowerSeriesI(SageObject):
         def g(n):
             if n == 0:
                 return 1/a[0]
-            return -sum(f[m]*a[n-m] for m in range(n))
+            return -sum(f[m]*a[n-m] for m in range(n))/a[0]
         f.f = g
         return f
 
@@ -370,36 +393,52 @@ class PowerSeriesI(SageObject):
             res = sum(c(m)*a.nit(m)[n] for m in range(n))
             return res
         return PowerSeriesI(f)
+
+    def schroeder_hyp(a):
+        """
+        Returns the Schroeder powerseries s with s[1]=1
+        for a powerseries a with a[0]=0 and a[1]^n!=a[1] for all n
+
+        The Schroeder powerseries s is determined up to a multiplicative
+        constant by the functional equation:
+        s(a(z))=a[1]*s(z)
+        """
+        if a[0] != 0:
+            raise ValueError, "0th coefficient "+a[0]+" must be 0"
+        if a[1] == 0:
+            raise ValueError, "1st coefficient "+a[1]+" must be nonequal 0"
+        if a[1] == 1:
+            raise ValueError, "1st coefficient "+a[1]+" must be nonequal 1"
+
+        q = a[1]
+        s = PowerSeriesI()
+        def f(n):
+            if n == 0:
+                return 0
+            if n == 1:
+                return 1
+            return sum(s[m]*a.npow(m)[n] for m in range(1,n))/(q - q**n)
+        s.f = f
+        return s
         
-    def nit(a,n):
-        # assert n natural number
-        if not a._itMemo.has_key(n):
-            res = a.Id()
-            for k in range(n):
-                res = res.o(a)
-            a._itMemo[n] = res
-        return a._itMemo[n]
-
-    def poly(a,n,x='_x'):
+    def abel_hyp(f):
         """
-        Returns the associated polynomial for the first n coefficients.
-        f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
-        With second argument you get the polynomial as expression in that
-        variable.
-        Without second argument you the get polynomial as function.
+        The regular Abel function of a hyperbolic powerseries f has the form
+        a(x)=log_q(x)+ps
+        where q=f[1]!=0,1 and ps is a powerseries
+        
+        This method returns ps
         """
-        if x == '_x':
-            return lambda x: sum(a[k]*x**k for k in range(n))
-        else:
-            return sum(a[k]*x**k for k in range(n))
-
+        return f.Log_inc().o( (f.schroeder_hyp() << 1) - f.One())*(1/log(f[1]))
+        
     def val(a):
         """
         Returns the first index i such that f[i] != 0
         """
         n = 0
-        while not a[n] == 0:
+        while a[n] == 0:
             n += 1
+        return n
 
     def valit(a):
         """
@@ -410,9 +449,33 @@ class PowerSeriesI(SageObject):
         if not a[1] == 1:
             return 1
         n = 2
-        while not a[n] == 0:
+        while a[n] == 0:
             n+=1
         return n
+
+    def abel_coeffs(a):
+        """
+        The Abel function a of a power series f with f[0]=0 and f[1]=1
+        generally has the form
+        F(z) + powerseries, where
+        F(z)=ji[-m]*z^{-m+1}/(-m+1)+...+ji[-2]*z^{-1}/(-1)+ji[-1]*log(z)
+        ji[-1] is called the iterative residue (Ecalle)
+        ji is the reciprocal of the Julia function
+        (also called iterative logarithm) -which is meromorphic- of f
+
+        The method returns the sequence [[ji[-m]/(-m+1),...,ji[-2]/(-1)],ji[-1]]
+
+        These coefficients can be useful to compute the Abel function, 
+        for which the powerseries is a non-converging asymptotic development.
+
+        The Abel function can then be gained by
+        lim_{n->oo} F(f&n(z))-n
+        """
+        
+        jul = a.ilog()
+        m = jul.val()
+        juli = (jul << m).rcp() 
+        return [[ juli[m+i]/(i+1) for i in range(-m,-1) ],juli[m-1], (juli<<m).integral()]
 
     def __lshift__(a,m=1):
         return PowerSeriesI(lambda n: a[n+m])
@@ -421,13 +484,19 @@ class PowerSeriesI(SageObject):
         return PowerSeriesI(lambda n: 0 if n<m else a[n-m])
 
     def diff(a,m=1): 
+        """
+        Differentiates the powerseries m times.
+        """
         return PowerSeriesI(lambda n: a[n+m]*prod(k for k in range(n+1,n+m+1)))
 
     def integral(a,m=1):
+        """
+        Integrates the powerseries m times with integration constant being 0
+        """
         def f(n):
             if n < m:
                return 0
-            return a[n-m]/prod(k for k in range(n-m+1,n+1))
+            return a[n-m]/prod(Integer(k) for k in range(n-m+1,n+1))
         return PowerSeriesI(f)
 
     def ilog(a):
@@ -436,12 +505,14 @@ class PowerSeriesI(SageObject):
         ilog(f^t) == t*ilog(f)
         defined by: diff(f.it(t),t)(t=0)
         can be used to define the regular Abel function abel(f) by
-        abel(f)' = 1/logit(f)
+        abel(f)' = 1/ilog(f)
 
         Refs:
         Eri Jabotinsky, Analytic iteration (1963), p 464
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
         """
+
+        #TODO this should be possible directly
         _t = var('_t')
         g = a.it(_t)
         def f(n):
@@ -452,6 +523,9 @@ class PowerSeriesI(SageObject):
     #static methods
     def Exp(self):
         return PowerSeriesI(lambda n: 1/factorial(n))
+
+    def Log_inc(self):
+        return PowerSeriesI(lambda n: 0 if n==0 else ((-1)**(n+1))/QQ(n))
 
     def Sin(self):
         def c(n):
@@ -480,7 +554,7 @@ class PowerSeriesI(SageObject):
         return PowerSeriesI(lambda n: 0 if n==0 else 1/factorial(n-1))
 
     
-    def DecExp(self):
+    def Dec_exp(self):
         """
         exp(x)-1
         """
@@ -540,6 +614,14 @@ class PowerSeriesI(SageObject):
         """
         sage: from hyperops.powerseries import *
         sage: P = PowerSeriesI()
+        
+        sage: p = PowerSeriesI([3,2,1])
+        sage: p.rcp()*p
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.Log_inc() - PowerSeriesI(log(x+1),x)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.Log_inc().o(P.Dec_exp())
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PowerSeriesI(cos(x),x)-P.Cos()
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PowerSeriesI(sin(x),x)-P.Sin()
@@ -548,15 +630,25 @@ class PowerSeriesI(SageObject):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PowerSeriesI(x*exp(x),x)-P.Xexp()
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PowerSeriesI(exp(x)-1,x)-P.DecExp()
+        sage: PowerSeriesI(exp(x)-1,x)-P.Dec_exp()
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: P.Sin()*P.Sin() + P.Cos()*P.Cos()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.LambertW() | P.Xexp()
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PowerSeriesI([0,1,0,2]).abel_coeffs()
+        [[-1/4, 0], 3/2, [0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, 81239/168, 0, ...]]
         
+        sage: PowerSeriesI([0,1,0,0,1,2,3]).abel_coeffs()
+        [[-1/3, 1, -1], 6, [0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, -727/162, ...]]
+
+        sage: a = var('a')
+        sage: p = PowerSeriesI(exp(a*x)-1,x)
+        sage: pah = p.abel_hyp()
+        sage: pac = p.abel_coeffs()[2]
+        sage: [(pac[k] - pah[k]).is_zero() for k in range(0,5)]
+        [True, True, True, True, True]
         """
         pass
-
 

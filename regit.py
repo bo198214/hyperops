@@ -1,4 +1,6 @@
 """
+Regular Iteration
+
 Author: Henryk Trappmann
 """
 
@@ -131,6 +133,17 @@ def fixed_point(f,x0,iprec='_default'):
         if abs(yp-y) < 2**(-prec):
             return y
         yp=y
+
+def lower_fixed_point_exp_base(b):
+    xp = b
+    x = b**b
+    err = 2**(-b.prec())
+    while x > (err+xp)*b**(-err):
+        xp = x
+        x = b**xp
+        #print err, xp, x, (err+xp)*b**(-err)
+    return x
+        
 
 def reg_schroeder(f):
     fpcache = {}
