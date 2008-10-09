@@ -80,6 +80,14 @@ class PowerSeriesRingI(SageObject):
         self._stirling_memo[n] = res
         return res
                 
+    #does not really belong to a powerseries package but there is currently no
+    #other place for it
+    def sexp(self,n,prec):
+        #sexp(z)=exp^z(1)=exp^{z+1}(0)
+        x=var('x')
+        sexp = self.exp.it_matrixpower(x+1,n,root_field=RealField(prec))[0]
+        return lambda z: sexp(x=z)
+
     def _test(self):
         """
         sage: from hyperops.powerseries import *
@@ -869,7 +877,7 @@ class PowerSeriesI(SageObject):
             N=M
         return matrix([[a.npow(n)[m] for n in range(N)] for m in range(M)])
 
-    def it_matrixpower(p,t,n):
+    def it_matrixpower(p,t,n,root_field=RR):
         """
         t times Iteration via matrix power. t is a complex number.
         This method can also iterate power series with p[0]!=0.
@@ -882,17 +890,21 @@ class PowerSeriesI(SageObject):
 
         Works currently only if the eigenvalues are all different.
         """
+        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients. But given was " + repr(n)
         CM = p.carleman_matrix(n)
-        ev = CM.charpoly().roots()
+        ev = CM.charpoly().roots(root_field)
+        assert len(ev) == n, "Carleman matrix must have exactly " + repr(n) + "eigenvalues, but has " + repr(len(ev))
     
         Char = [0]*n
         for k in range(n):
+            #here is possibility for improvement of precision
+            #to separate the fractional from the root parts
+            #expanding the product
             Char[k] = CM - ev[k][0]*identity_matrix(n)
     
         #we want to have the first row of the product of the matrices
         #thatswhy we mulitply in front with:
-        l=[0.0,1.0]+[0.0]*(n-2)
-        prod = vector(p.base_ring(),l)
+        prod = vector(p.base_ring(),[0,1]+[0]*(n-2))
         prodwo = [0]*n
         for k in range(n):
             prodwo[k]=prod #these are the first terms until k-1
@@ -932,6 +944,7 @@ class PowerSeriesI(SageObject):
         obtained from an nxn Carleman/Bell matrix.
         This method does not work for p[0]=0.
         """
+        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients."
         B=p.carleman_matrix(n)-diagonal_matrix([1]*(n))
         x=B[range(1,n),range(n-1)].solve_left(matrix([[1] + [0]*(n-2)]))
         return [-1]+x[0].list()
