@@ -294,6 +294,37 @@ def rslog_at(b,k):
     specified fixed point.
     """
 
+def _it(f,t,x,d,N):
+    it_memo = {}
+    pow_memo = {}
+
+    def fbdn(n):
+        if not it_memo.has_key(n):
+            if n==0:
+                it_memo[n] = x
+                pow_memo[n] = 1
+            else:
+                it_memo[n] = f(it_memo[n-1])
+                pow_memo[n] = d*pow_memo[n-1]
+        return it_memo[n]/pow_memo[n]
+
+    return d**t*sum([binomial(t,n)*sum([binomial(n,k)*(-1)**(n-k)*fbdn(k) for k in range(0,n+1)]) for n in range(0,N+1)])
+        
+    
+def it(f,t,x,N):
+    it_memo = {}
+
+    def nit(n):
+        if not it_memo.has_key(n):
+            if n==0:
+                it_memo[n] = x
+            else:
+                it_memo[n] = f(it_memo[n-1])
+                print it_memo[n]
+        return it_memo[n]
+
+    return sum([binomial(t,n)*sum([binomial(n,k)*(-1)**(n-k)*nit(k) for k in range(0,n+1)]) for n in range(0,N+1)])
+
 def _tests():
     w=princ_schroeder_at0(lambda x: 2*(sqrt(RR(2.0))**x-1));
     
