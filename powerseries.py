@@ -11,13 +11,14 @@ from sage.rings.integer import Integer
 from sage.calculus.calculus import SymbolicExpression, SymbolicVariable, var, log
 from sage.calculus.functional import diff
 from sage.rings.rational_field import QQ
+from sage.rings.real_mpfr import RR
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.misc.misc_c import prod
 from sage.rings.infinity import Infinity
 
 class PowerSeriesRingI(SageObject):
     def __call__(self,p=None,v=None,at=None):
-        return PowerSeriesI(p,v,at,base_ring=self._R,parent=self)
+        return PowerSeriesI(p,v,at,parent=self)
 
     def __init__(self,base_ring):
         self._stirling_memo = {}
@@ -59,6 +60,12 @@ class PowerSeriesRingI(SageObject):
         The power series at 1, that computes the fixed point of b^x
         for given b as variable of the power series.
         """
+
+    def _repr_(self):
+        return "Infinite/Lazy Power Series over " + repr(self._R)
+
+    def base_ring(self):
+        return self._R
 
     def stirling1(self,n):
         """
@@ -116,19 +123,23 @@ class PowerSeriesRingI(SageObject):
         sage: P.lambert_w | P.xexp
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P([0,1,0,2]).abel_coeffs()
-        [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, 81239/168, 0, ...]]
+        [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, ...]]
         
         sage: p = P([0,1,0,0,1,2,3])
         sage: a = p.abel_coeffs()
         sage: a
-        [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, -727/162, ...]]
+        [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
         sage: (p << 1).log()*a[0] + (a[1] | p) - a[1]
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
         sage: p = PowerSeriesRingI(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: pah = p.abel_npar()
         sage: pac = p.abel_npar2()
-        sage: [(pac[k] - pah[k]).is_zero() for k in range(0,5)]
+        sage: pah
+        [0, 1/2*a/(-a + 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
+        sage: pac
+        [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
+        sage: [pac[k] - pah[k]==0 for k in range(0,5)]
         [True, True, True, True, True]
         """
         pass
@@ -232,7 +243,7 @@ class PowerSeriesI(SageObject):
         -8.67361737988404e-19
     """
 
-    def __init__(self,p=None,v=None,at=None,base_ring=QQ,parent=None):
+    def __init__(self,p=None,v=None,at=None,base_ring=None,parent=None):
         """
         Initialization by finite sequence of coefficients:
         Examples:
@@ -240,7 +251,7 @@ class PowerSeriesI(SageObject):
         sage: PQ = PowerSeriesRingI(QQ)
         sage: PQ([1,2,3])
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PQ()
+        sage: PQ([])
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         
         Initialization by coefficient function:
@@ -261,8 +272,13 @@ class PowerSeriesI(SageObject):
         
         """
         
-        self._R = base_ring
         self._parent = parent
+        if parent == None:
+            if base_ring==None:
+                self._parent = PowerSeriesRingI(QQ)
+            else:
+                self._parent = PowerSeriesRingI(base_ring)
+
         self._val = 0 #the minimal non-zero index
         self._memo = {}
         self._max_degree = Infinity
@@ -272,10 +288,10 @@ class PowerSeriesI(SageObject):
         if isinstance(p,Integer) or isinstance(p,int):
             def f(n):
                 if n < 0:
-                    return 0
+                    return self.base_ring()(0)
                 if n > 0:
-                    return 0
-                return p
+                    return self.base_ring()(0)
+                return self.base_ring()(p)
             self.f = f
             self._max_degree = 0
             return
@@ -306,20 +322,15 @@ class PowerSeriesI(SageObject):
             if at == None:
                 at = 0
 
-            if at == 0:
-                vmat = v
-            else:
-                vmat = v-at
-
             def f(n):
                 #too slow
                 #if not at == 0 and n==0:
                 #    return expr({v:at})-at
                 #return simplify(diff(expr,v,n).substitute({v:at})/factorial(n))
-                return self._R(expr.taylor(v,at,n).coeff(vmat,n))
+                return self.base_ring()(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
 
             #coeffs always returns non-empty list, at least [0,0] is contained
-            self._val = expr.taylor(v,at,2).coeffs(vmat)[0][1]
+            self._val = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
             self.f = f
             return
 
@@ -329,8 +340,10 @@ class PowerSeriesI(SageObject):
 
             for n in range(v,2):
                 if p(n) != 0:
-                    self._val = n
+                    v = n
                     break
+
+            self._val=v
 
             if at != None:
                 self._max_degree = at
@@ -338,15 +351,15 @@ class PowerSeriesI(SageObject):
             self.f = lambda n: p(n) if n >= self._val else 0
 
     def base_ring(self):
-        return self._R
+        return self._parent.base_ring()
 
-    def __getitem__(self,n):
+    def __getitem__(self,n): # []
         if not self._memo.has_key(n):
             #self._memo[n] = simplify(expand(self.f(n)))
             self._memo[n] = self.f(n)
         return self._memo[n]
 
-    def __getslice__(self,i,j):
+    def __getslice__(self,i,j): # [i:j]
         return [self[k] for k in range(i,j)]
 
     def set_index(a, index, value):
@@ -361,7 +374,7 @@ class PowerSeriesI(SageObject):
         """
         return a._parent(lambda n: seq[n-i] if i<=n and n<j else a[n],a._val)
 
-    def __add__(a,b):
+    def __add__(a,b): # +
         """
         Addition:
         """
@@ -381,7 +394,7 @@ class PowerSeriesI(SageObject):
         """
         return a+b
 
-    def __sub__(a,b):
+    def __sub__(a,b): # -
         """
         Subtraction:
         """
@@ -403,7 +416,7 @@ class PowerSeriesI(SageObject):
         """
         return a-b
 
-    def __mul__(a,b):
+    def __mul__(a,b): # *
         """
         Multiplication:
         If b is a powerseries then powerseries multiplication
@@ -420,6 +433,8 @@ class PowerSeriesI(SageObject):
         if scalar: return a._parent(lambda n: a[n]*b)
 
         #multiplication of two powerseries
+        #this a lazy algorithm: 
+        #for initial 0 in a[k] and initial 0 in b[n-k] the corresponding b[n-k] or a[k] is not evaluated
         def f(n):
             return sum(a[k]*b[n-k] for k in range(a._val,n+1-b._val))
         return a._parent(f,a._val+b._val,a._max_degree+b._max_degree)
@@ -430,7 +445,7 @@ class PowerSeriesI(SageObject):
         """
         return a*b
 
-    def __div__(c,b):
+    def __div__(c,b): # /
         """
         Division: a/b*b=a, a*b/b=a
         """
@@ -453,7 +468,7 @@ class PowerSeriesI(SageObject):
         """
         return a/b
 
-    def __pow__(a,t):
+    def __pow__(a,t): # **
         return a.pow(t)
 
     def npow(a,n):
@@ -465,6 +480,8 @@ class PowerSeriesI(SageObject):
         if not a._powMemo.has_key(n):
             if n==0:
                 res = a._parent([1])
+            elif n==1:
+                res = a
             else:
                 res = a.npow(n-1) * a
             a._powMemo[n] = res
@@ -475,8 +492,8 @@ class PowerSeriesI(SageObject):
         Power for arbitrary exponent, including -1 which is rcp.
         """
 
-        if isinstance(t,Integer) or isinstance(n,int):
-            if n >= 0:
+        if isinstance(t,Integer) or isinstance(t,int):
+            if t >= 0:
                 return a.npow(t)
             return a.rcp().npow(-t)
         return a.pow_ni(t)
@@ -517,16 +534,21 @@ class PowerSeriesI(SageObject):
             a._itMemo[n] = res
         return a._itMemo[n]
 
-    def __xor__(a,t):
+    def __xor__(a,t): # ^
         #Not recognized as it seems to be mapped to ** in sage
-        print "^"
+        return NotImplemented
 
-    def __and__(a,t):
-        #print "&"
+    def __and__(a,t): # &
+        """
+        p&t is the same as p.it(t)
+        """
+        
         return a.it(t)
 
-    def __or__(a,b):
-        #print "|"
+    def __or__(a,b): # |
+        """
+        p|q is the same as p.o(b)
+        """
         return a.o(b)
 
     def o(a,b):
@@ -563,7 +585,7 @@ class PowerSeriesI(SageObject):
         if x == '_x':
             return lambda x: sum(a[k]*x**k for k in range(n))
         else:
-            return PolynomialRing(a._R,x)(sum(a[k]*x**k for k in range(n)))
+            return PolynomialRing(a.base_ring(),x)(sum(a[k]*x**k for k in range(n)))
 
     def _repr_(a):
 #         res = ""
@@ -614,9 +636,9 @@ class PowerSeriesI(SageObject):
         Regular iteration at fixed point 0 for f'(0)!=1 (non-parabolic).
         """
         assert a._val == 1
-        f = a._parent()
-        f._val = 1
-        def g(n):
+        b = a._parent()
+        b._val = 1
+        def f(n):
             #print "(" + repr(n)
             if n == 0:
                 #print ")"
@@ -624,13 +646,13 @@ class PowerSeriesI(SageObject):
             if n == 1:
                 #print ")"
                 return a[1]**t
-            res = a[n]*(f[1]**n)-f[1]*a[n]
-            res += sum(a[m]*f.npow(m)[n] - f[m]*a.npow(m)[n] for m in range(2,n))
+            res = a[n]*(b[1]**n)-b[1]*a[n]
+            res += sum(a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n))
             res /= a[1]**n - a[1]
             #print ")"
             return res
-        f.f = g
-        return f
+        b.f = f
+        return b
 
     def julia_npar(a):
         """
@@ -639,18 +661,15 @@ class PowerSeriesI(SageObject):
         assert a._val == 1
         assert a[1] != 0
         
-        Poly=PolynomialRing(a._R,'x')
+        Poly=PolynomialRing(a.base_ring(),'x')
         b = PowerSeriesRingI(Poly)()
         b._val = 1
 
         def f(n):
             if n == 0:
-                return Poly(0)
+                return Poly([0])
             if n == 1:
-                return Poly(x)
-            print "b[1]", type(b[1])
-            print "a[" + repr(n) + "]", type(a[n])
-            print "b[1]**n", type(b[1]**n)
+                return Poly([0,1])
             res = a[n]*(b[1]**n)-b[1]*a[n]
             res += sum(a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n))
             res /= a[1]**n - a[1]
