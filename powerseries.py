@@ -79,9 +79,6 @@ class PowerSeriesRingI(SageObject):
         self.lambert_w = PSF(lambda n: K(0) if n==0 else K((-n)**(n-1))/factorial(n))
         """ Lambert W function is the inverse of f(x)=x*e^x """
 
-        self.dec_exp = PSF(lambda n: K(0) if n==0 else K(1)/factorial(n))
-        """exp(x)-1"""
-
         def sqrt_inc(n):
             evenprod=1
             oddprod=1
@@ -93,27 +90,36 @@ class PowerSeriesRingI(SageObject):
             return K((-1)**n *oddprod)/evenprod/(1-2*n)
         self.sqrt_inc = PSF(sqrt_inc)
 
-        def f(n):
-            if n==0:
-                return K(1)
-            return sum(self.stirling1(n)[k]*K((k+1))**(k-1) for k in range(n+1))/factorial(n)
+        def lehmer_comtet(n,k): #A008296
+            return sum(binomial(l, k)*k^(l-k)*self.stirling1(n)[l] for l in range(k,n+1))
+        self.A000248 = PSF(lambda n: sum(k**(n-k)*binomial(n,k) for k in range(0,n+1)))
 
-        self.inv_selfroot_inc = PSF(f)
+        #self.selfpower_inc = PSF(lambda n: K(sum( lehmer_comtet(n,k) for k in range(0,n+1)))/factorial(n))
+        self.selfpower_inc = PSF(lambda n: K(sum( self.stirling1(n)[k]*self.A000248[k] for k in range(0,n+1)))/factorial(n))
+        """
+        Power series of x^x at 1
+        """
+        self.superroot_inc = PSF(lambda n: sum( self.stirling1(n)[k]*K(1-k)**(k-1) for k in range(0,n+1))/factorial(n))
+        """
+        Powerseries of the inverse of x^x developed at 1.
+        """
+
+        self.A003725 = PSF(lambda n: sum( (-k)**(n-k)*binomial(n, k) for k in range(n+1)))
+        """
+        Derivatives of exp(x*e^(-x)) at 0
+        """
+
+        self.selfroot_inc = PSF(lambda n: K(sum( self.stirling1(n)[k]*self.A003725[k] for k in range(n+1)))/factorial(n))
+        """
+        Development of x^(1/x) at 1
+        """
+
+        self.inv_selfroot_inc = PSF(lambda n: sum(self.stirling1(n)[k]*K((k+1))**(k-1) for k in range(n+1))/factorial(n))
         """
         The inverse of the self root x^(1/x) at 1.
         The power series at 1, that computes the fixed point of b^x
         for given b as variable of the power series.
         """
-
-        def superroot_inc(n):
-            return K(sum([ self.stirling1(n)[k]*(1-k)**(k-1) for k in range(1,n+1) ]))/factorial(n)
-
-        self.superroot_inc = PSF(superroot_inc)
-        """
-        Powerseries of the inverse of x^x developed at 1.
-        """
-
-        self.selfroot_inc = self.inc ** (self.one / self.inc )
 
     def _repr_(self):
         return "Infinite Lazy/Cached Power Series over " + repr(self._R)
@@ -179,8 +185,12 @@ class PowerSeriesRingI(SageObject):
         [1, 1/2, -1/8, 1/16, -5/128, 7/256, -21/1024, 33/2048, -429/32768, ...]
         sage: P.lambert_w
         [0, 1, -1, 3/2, -8/3, 125/24, -54/5, 16807/720, -16384/315, 531441/4480, ...]
+        sage: P.selfpower_inc
+        [1, 1, 1, 1/2, 1/3, 1/12, 3/40, -1/120, 59/2520, -71/5040, 131/10080, ...]
         sage: P.superroot_inc
-        [0, 1, -1, 3/2, -17/6, 37/6, -1759/120, 13279/360, -97283/1008, ...]
+        [1, 1, -1, 3/2, -17/6, 37/6, -1759/120, 13279/360, -97283/1008, ...]
+        sage: P.A003725
+        [1, 1, -1, -2, 9, -4, -95, 414, 49, -10088, 55521, -13870, -2024759, ...]
         sage: P.selfroot_inc
         [1, 1, -1, 1/2, 1/6, -3/4, 131/120, -9/8, 1087/1260, -271/720, -2291/10080, ...]
         sage: P.inv_selfroot_inc
@@ -210,13 +220,12 @@ class PowerSeriesRingI(SageObject):
 #         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 #         sage: P(sqrt(x+1),x)-P.sqrt_inc
 #         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(x*exp(x),x)-P.xexp
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(exp(x)-1,x)-P.exp.dec()
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
-        sage: P(x*exp(x),x)-P.xexp
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P(exp(x)-1,x)-P.dec_exp
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-
-        sage: P.log_inc | P.dec_exp
+        sage: P.log_inc | P.exp.dec()
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.sin | P.arcsin      
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -227,9 +236,11 @@ class PowerSeriesRingI(SageObject):
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.lambert_w | P.xexp
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: (P.superroot_inc - P.one) ** (P.superroot_inc - P.one)
+        sage: P.superroot_inc ** P.superroot_inc
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.selfroot_inc | (P.inv_selfroot_inc - P.one)          
+        sage: P.selfpower_inc | P.superroot_inc.dec()
+        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.selfroot_inc | P.inv_selfroot_inc.dec()           
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: P([0,1,0,2]).abel_coeffs()
@@ -488,6 +499,18 @@ class PowerSeriesI(SageObject):
         The sequence of derivatives a[n]*n! of the powerseries a
         """
         return a._parent(lambda n: a[n]*factorial(n))
+
+    def inc(a):
+        """
+        Increment: a + 1
+        """
+        return a._parent(lambda n: a[0]+1 if n==0 else a[n])
+
+    def dec(a):
+        """
+        Decrement: a-1
+        """
+        return a._parent(lambda n: a[0]-1 if n==0 else a[n])
 
     def __add__(a,b): # +
         """
