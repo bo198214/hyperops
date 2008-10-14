@@ -33,36 +33,90 @@ class PowerSeriesRingI(SageObject):
         K = self._R
 
         self.zero = PSS([])
-        self.one = PSS([1])
-        self.id = PSS([0,1])
-        self.exp = PSF(lambda n: K(1/factorial(n)))
+        self.one = PSS([K(1)])
+        self.id = PSS([K(0),K(1)])
+        self.inc = PSS([K(1),K(1)])
+        self.dec = PSS([K(-1),K(1)])
+        self.exp = PSF(lambda n: K(1)/factorial(n))
         self.log_inc = PSF(lambda n: K(0) if n==0 else K((-1)**(n+1))/n)
-        self.sin = PSF(lambda n: K(0) if n % 2 == 0 else K((-1)**(n/2)/factorial(n)))
-        self.cos = PSF(lambda n: K(0) if n % 2 == 1 else K((-1)**(n/2)/factorial(n)))
+        self.sin = PSF(lambda n: K(0) if n % 2 == 0 else K((-1)**(n/2))/factorial(n))
+        self.cos = PSF(lambda n: K(0) if n % 2 == 1 else K((-1)**(n/2))/factorial(n))
 
-        self.lambert_w = PSF(lambda n: K(0) if n==0 else K((-n)**(n-1)/factorial(n)))
-        """ Lambert W function is the inverse of f(x)=x*e^x """
+        def arcsin(n):
+            if n % 2 == 0:
+                return K(0)
+            evenprod = 1
+            oddprod = 1
+            for k in range(2,n):
+                if k % 2 == 0:
+                    evenprod *= k
+                else:
+                    oddprod *=k
+            return K(oddprod)/evenprod/n
+                            
+        self.arcsin = PSF(arcsin)
+        self.arctan = PSF(lambda n: K(0) if n % 2== 0 else K((-1)**(n/2))/n)
 
-        self.xexp = PSF(lambda n: K(0) if n==0 else K(1/factorial(n-1)))
+        self.sinh = PSF(lambda n: K(0) if n % 2 == 0 else K(1)/factorial(n))
+        self.cosh = PSF(lambda n: K(0) if n % 2 == 1 else K(1)/factorial(n))
+        def arcsinh(n):
+            if n % 2 == 0:
+                return K(0)
+            evenprod = 1
+            oddprod = 1
+            for k in range(2,n):
+                if k % 2 == 0:
+                    evenprod *= k
+                else:
+                    oddprod *= k
+            return K((-1)**(n/2)*oddprod)/evenprod/n
+        self.arcsinh = PSF(arcsinh)
+        self.arctanh = PSF(lambda n: K(0) if n % 2 == 0 else K(1)/n)
+
+        self.xexp = PSF(lambda n: K(0) if n==0 else K(1)/factorial(n-1))
         """ x*exp(x) """
 
-        self.dec_exp = PSF(lambda n: K(0) if n==0 else 1/factorial(n))
+        self.lambert_w = PSF(lambda n: K(0) if n==0 else K((-n)**(n-1))/factorial(n))
+        """ Lambert W function is the inverse of f(x)=x*e^x """
+
+        self.dec_exp = PSF(lambda n: K(0) if n==0 else K(1)/factorial(n))
         """exp(x)-1"""
 
-        
+        def sqrt_inc(n):
+            evenprod=1
+            oddprod=1
+            for k in range(2,2*n+1):
+                if k%2 == 0:
+                    evenprod *= k
+                else:
+                    oddprod *= k
+            return K((-1)**n *oddprod)/evenprod/(1-2*n)
+        self.sqrt_inc = PSF(sqrt_inc)
+
         def f(n):
             if n==0:
-                return 0
-            return sum(self.stirling1(n)[k]*(k+1)**(k-1) for k in range(n+1))/factorial(n)
+                return K(1)
+            return sum(self.stirling1(n)[k]*K((k+1))**(k-1) for k in range(n+1))/factorial(n)
 
-        self.lower_fixed_point_exp_base = self(f)
+        self.inv_selfroot_inc = PSF(f)
         """
+        The inverse of the self root x^(1/x) at 1.
         The power series at 1, that computes the fixed point of b^x
         for given b as variable of the power series.
         """
 
+        def superroot_inc(n):
+            return K(sum([ self.stirling1(n)[k]*(1-k)**(k-1) for k in range(1,n+1) ]))/factorial(n)
+
+        self.superroot_inc = PSF(superroot_inc)
+        """
+        Powerseries of the inverse of x^x developed at 1.
+        """
+
+        self.selfroot_inc = self.inc ** (self.one / self.inc )
+
     def _repr_(self):
-        return "Infinite/Lazy Power Series over " + repr(self._R)
+        return "Infinite Lazy/Cached Power Series over " + repr(self._R)
 
     def base_ring(self):
         return self._R
@@ -86,6 +140,7 @@ class PowerSeriesRingI(SageObject):
         
         self._stirling_memo[n] = res
         return res
+
                 
     #does not really belong to a powerseries package but there is currently no
     #other place for it
@@ -100,31 +155,85 @@ class PowerSeriesRingI(SageObject):
         sage: from hyperops.powerseries import *
         sage: P = PowerSeriesRingI(QQ)
         
-        sage: p = P([3,2,1])
-        sage: p.rcp()*p
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.log_inc - P(log(x+1),x)
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.log_inc | P.dec_exp
-        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P(cos(x),x)-P.cos
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P(sin(x),x)-P.sin
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P(exp(x),x)-P.exp
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.exp
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+        sage: P.log_inc
+        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
+        sage: P.sin
+        [0, 1, 0, -1/6, 0, 1/120, 0, -1/5040, 0, 1/362880, 0, -1/39916800, 0, ...]
+        sage: P.cos
+        [1, 0, -1/2, 0, 1/24, 0, -1/720, 0, 1/40320, 0, -1/3628800, 0, 1/479001600, ...]
+        sage: P.arcsin
+        [0, 1, 0, 1/6, 0, 3/40, 0, 5/112, 0, 35/1152, 0, 63/2816, 0, 231/13312, 0, ...]
+        sage: P.arctan
+        [0, 1, 0, -1/3, 0, 1/5, 0, -1/7, 0, 1/9, 0, -1/11, 0, 1/13, 0, -1/15, 0, ...]
+        sage: P.sinh
+        [0, 1, 0, 1/6, 0, 1/120, 0, 1/5040, 0, 1/362880, 0, 1/39916800, 0, ...]
+        sage: P.cosh
+        [1, 0, 1/2, 0, 1/24, 0, 1/720, 0, 1/40320, 0, 1/3628800, 0, 1/479001600, 0, ...]
+        sage: P.arcsinh
+        [0, 1, 0, -1/6, 0, 3/40, 0, -5/112, 0, 35/1152, 0, -63/2816, 0, 231/13312, ...]
+        sage: P.arctanh
+        [0, 1, 0, 1/3, 0, 1/5, 0, 1/7, 0, 1/9, 0, 1/11, 0, 1/13, 0, 1/15, 0, 1/17, ...]
+        sage: P.sqrt_inc
+        [1, 1/2, -1/8, 1/16, -5/128, 7/256, -21/1024, 33/2048, -429/32768, ...]
+        sage: P.lambert_w
+        [0, 1, -1, 3/2, -8/3, 125/24, -54/5, 16807/720, -16384/315, 531441/4480, ...]
+        sage: P.superroot_inc
+        [0, 1, -1, 3/2, -17/6, 37/6, -1759/120, 13279/360, -97283/1008, ...]
+        sage: P.selfroot_inc
+        [1, 1, -1, 1/2, 1/6, -3/4, 131/120, -9/8, 1087/1260, -271/720, -2291/10080, ...]
+        sage: P.inv_selfroot_inc
+        [1, 1, 1, 3/2, 7/3, 4, 283/40, 4681/360, 123101/5040, 118001/2520, ...]
+
+
+#         #takes too long:
+#         sage: P(exp(x),x)-P.exp
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(log(x+1),x) - P.log_inc
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(cos(x),x)-P.cos
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(sin(x),x)-P.sin
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(arcsin(x),x) - P.arcsin
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(arctan(x),x) - P.arctan
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(sinh(x),x)-P.sinh
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(cosh(x),x)-P.cosh
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(arcsinh(x),x)-P.arcsinh
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(arctanh(x),x)-P.arctanh
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         sage: P(sqrt(x+1),x)-P.sqrt_inc
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
         sage: P(x*exp(x),x)-P.xexp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P(exp(x)-1,x)-P.dec_exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
+        sage: P.log_inc | P.dec_exp
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.sin | P.arcsin      
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: p = P([3,2,1])
+        sage: p.rcp()*p
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.sin*P.sin + P.cos*P.cos
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.lambert_w | P.xexp
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: (P.superroot_inc - P.one) ** (P.superroot_inc - P.one)
+        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.selfroot_inc | (P.inv_selfroot_inc - P.one)          
+        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
         sage: P([0,1,0,2]).abel_coeffs()
         [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, ...]]
-        
         sage: p = P([0,1,0,0,1,2,3])
         sage: a = p.abel_coeffs()
         sage: a
@@ -146,7 +255,7 @@ class PowerSeriesRingI(SageObject):
 
 class PowerSeriesI(SageObject):
     """
-    Cached infinite power series:
+    Infinite cached/lazy power series:
 
     A powerseries p is basically seen as an infinite sequence of coefficients
     The n-th coefficient is retrieved by p[n].
@@ -374,6 +483,12 @@ class PowerSeriesI(SageObject):
         """
         return a._parent(lambda n: seq[n-i] if i<=n and n<j else a[n],a._val)
 
+    def derivatives(a):
+        """
+        The sequence of derivatives a[n]*n! of the powerseries a
+        """
+        return a._parent(lambda n: a[n]*factorial(n))
+
     def __add__(a,b): # +
         """
         Addition:
@@ -489,9 +604,12 @@ class PowerSeriesI(SageObject):
 
     def pow(a,t):
         """
-        Power for arbitrary exponent, including -1 which is rcp.
+        Power for exponent being an arbitrary number or powerseries, including -1 which is rcp.
         """
 
+        if isinstance(t,PowerSeriesI):
+            P = a._parent
+            return P.exp | ( a.log() * t )
         if isinstance(t,Integer) or isinstance(t,int):
             if t >= 0:
                 return a.npow(t)
@@ -510,6 +628,11 @@ class PowerSeriesI(SageObject):
             return sum(binomial(t,k) * a[0]**(t-k) * da.npow(k)[n] for k in range(n+1))
         return a._parent(f)
         
+    def sqrt(a):
+        return a.pow_ni(1/2)
+
+    def rt(a,n):
+        return a.pow_ni(1/n)
 
     def log(a):
         """
@@ -574,7 +697,7 @@ class PowerSeriesI(SageObject):
         return a.it(-1)
 
 
-    def poly(a,n,x='_x'):
+    def poly(a,n,x=None):
         """
         Returns the associated polynomial for the first n coefficients.
         f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
@@ -582,7 +705,7 @@ class PowerSeriesI(SageObject):
         variable.
         Without second argument you the get polynomial as function.
         """
-        if x == '_x':
+        if x == None:
             return lambda x: sum(a[k]*x**k for k in range(n))
         else:
             return PolynomialRing(a.base_ring(),x)(sum(a[k]*x**k for k in range(n)))
@@ -957,6 +1080,69 @@ class PowerSeriesI(SageObject):
     
         return res.list()
 
+    def it_mp(p,t,n,root_field=RR):
+        """
+        t times Iteration via matrix power. t is a complex number.
+        This method can also iterate power series with p[0]!=0.
+        It is identical with the regular iteration for the case p[0]==0.
+        However in the case p[0]!=0 it is no finite operation anymore and
+        hence requires the size n of the Carleman matrix to use.
+        This matrix which has the coefficients of p in its first row
+        is raised to the t-th power and then the coefficients 
+        of the first row are returned.
+
+        Works currently only if the eigenvalues are all different.
+        """
+        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients. But given was " + repr(n)
+        CM = p.carleman_matrix(n)
+        ev = CM.charpoly().roots(root_field)
+        assert len(ev) == n, "Carleman matrix must have exactly " + repr(n) + "eigenvalues, but has " + repr(len(ev))
+    
+        #We want to compute:
+        #sum over k: evk^t*(CM-ev1*I)*(CM-ev2*I)*. omit k * (CM-evn*I)/(evk-ev1)*.. omit k *(evk-evn)
+        Char = [0]*n
+        for k in range(n):
+            #here is possibility for improvement of precision
+            #to separate the fractional from the root parts
+            #expanding the product
+            Char[k] = CM - ev[k][0]*identity_matrix(n)
+    
+        #we want to have the first row of the product of the matrices
+        #thatswhy we mulitply in front with:
+        prod = vector(p.base_ring(),[0,1]+[0]*(n-2))
+        prodwo = [0]*n
+        for k in range(n):
+            prodwo[k]=prod #these are the first terms until k-1
+    
+            #no need to continue
+            if k == n-1:
+                break
+    
+            #and we add the terms starting with k+1
+            for i in range(k+1,n):
+                prodwo[k] = prodwo[k] * Char[i]
+    
+            prod = prod * Char[k]
+    
+        sprodwo = [0]*n
+        for k in range(n):
+            if k==0:
+                sprodwo[k] = ev[k][0] - ev[1][0]
+                start = 2
+            else:
+                sprodwo[k] = ev[k][0] - ev[0][0]
+                start = 1
+    
+            for i in range(start,n):
+                if i != k:
+                    sprodwo[k] = sprodwo[k] * (ev[k][0] - ev[i][0])
+    
+        res = ev[0][0]**t/sprodwo[0] * prodwo[0]
+        for k in range(1,n):
+            res += ev[k][0]**t/sprodwo[k]*prodwo[k]
+    
+        return res.list()
+
     def natural_abel(p,n):
         """
         Returns the first n coefficients of the natural Abel power sequence,
@@ -1034,7 +1220,7 @@ class PowerSeriesI(SageObject):
 #         _stirling_memo[n] = res
 #         return res
 #                 
-#     def lower_fixed_point_exp_base(self):
+#     def inv_selfroot_inc(self):
 #         """
 #         The power series at 1, that computes the fixed point of b^x
 #         for given b as variable of the power series.
