@@ -10,11 +10,26 @@ from sage.rings.arith import binomial
 from sage.rings.integer import Integer
 from sage.calculus.calculus import SymbolicExpression, SymbolicVariable, var, log
 from sage.calculus.functional import diff
-from sage.rings.rational_field import QQ
-from sage.rings.real_mpfr import RR
+from sage.rings.rational_field import QQ, RationalField
+from sage.rings.rational import Rational
+from sage.rings.real_mpfr import RR, RealField
+from sage.rings.complex_field import ComplexField_class
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.misc.misc_c import prod
 from sage.rings.infinity import Infinity
+
+def decidable0(K): 
+    if K == Integer or K == int:
+        return True
+    if K == Rational:
+        return True
+    if isinstance(K,RationalField):
+        return True
+    #            if isinstance(K,RealField):
+    #                return true
+    #            if isinstance(K,ComplexField_class):
+    #                return true
+    return False
 
 class PowerSeriesRingI(SageObject):
     def __call__(self,p=None,v=None,at=None):
@@ -24,24 +39,28 @@ class PowerSeriesRingI(SageObject):
         if base_ring == None:
             return
 
+        self.K = base_ring
+
+
         def PSF(f):
             return self(f)
         def PSS(seq):
             return self(seq)
 
-        self._R = base_ring
-
-        K = self._R
+        K = self.K
 
         self.zero = PSS([])
         self.one = PSS([K(1)])
-        self.id = PSS([K(0),K(1)])
+        self.id = self([K(1)],1)
         self.inc = PSS([K(1),K(1)])
         self.dec = PSS([K(-1),K(1)])
         self.exp = PSF(lambda n: K(1/factorial(n)))
-        self.log_inc = PSF(lambda n: K(0) if n==0 else K((-1)**(n+1)/Integer(n)))
-        self.sin = PSF(lambda n: K(0) if n % 2 == 0 else K((-1)**((n-1)/2)/factorial(n)))
+        self.log_inc = self(lambda n: K(0) if n==0 else K((-1)**(n+1)/Integer(n)),1)
+        self.sin = self(lambda n: K(0) if n % 2 == 0 else K((-1)**((n-1)/2)/factorial(n)),1)
         self.cos = PSF(lambda n: K(0) if n % 2 == 1 else K((-1)**(n/2)/factorial(n)))
+
+        if not decidable0(K):
+            return
 
         def arcsin(n):
             if n % 2 == 0:
@@ -55,10 +74,10 @@ class PowerSeriesRingI(SageObject):
                     oddprod *=k
             return K(oddprod/evenprod/n)
                             
-        self.arcsin = PSF(arcsin)
-        self.arctan = PSF(lambda n: K(0) if n % 2== 0 else K((-1)**(n/2)/Integer(n)))
+        self.arcsin = self(arcsin,1)
+        self.arctan = self(lambda n: K(0) if n % 2== 0 else K((-1)**(n/2)/Integer(n)),1)
 
-        self.sinh = PSF(lambda n: K(0) if n % 2 == 0 else K(1/factorial(n)))
+        self.sinh = self(lambda n: K(0) if n % 2 == 0 else K(1/factorial(n)),1)
         self.cosh = PSF(lambda n: K(0) if n % 2 == 1 else K(1/factorial(n)))
         def arcsinh(n):
             if n % 2 == 0:
@@ -71,8 +90,8 @@ class PowerSeriesRingI(SageObject):
                 else:
                     oddprod *= k
             return K((-1)**(n/2)*oddprod/evenprod/n)
-        self.arcsinh = PSF(arcsinh)
-        self.arctanh = PSF(lambda n: K(0) if n % 2 == 0 else K(1/Integer(n)))
+        self.arcsinh = self(arcsinh,1)
+        self.arctanh = self(lambda n: K(0) if n % 2 == 0 else K(1/Integer(n)),1)
 
         self.bernoulli = (self.id / self.exp.dec()).derivatives()
 
@@ -81,19 +100,19 @@ class PowerSeriesRingI(SageObject):
                 return K(0)
             n = (N + 1) / 2
             return K(self.bernoulli[2*n] * (-4)**n * (1-4**n) / factorial(2*n))
-        self.tan = PSF(tan)
+        self.tan = self(tan,1)
 
         def tanh(N):
             if N % 2 == 0:
                 return K(0)
             n = (N+1)/2
             return K(self.bernoulli[2*n] * (-1)**(2*n) * 4**n * (4**n-1) / factorial(2*n))
-        self.tanh = PSF(tanh)
+        self.tanh = self(tanh,1)
 
-        self.xexp = PSF(lambda n: K(0) if n==0 else K(1/factorial(n-1)))
+        self.xexp = self(lambda n: K(0) if n==0 else K(1/factorial(n-1)),1)
         """ x*exp(x) """
 
-        self.lambert_w = PSF(lambda n: K(0) if n==0 else K((-n)**(n-1)/factorial(n)))
+        self.lambert_w = self(lambda n: K(0) if n==0 else K((-n)**(n-1)/factorial(n)),1)
         """ Lambert W function is the inverse of f(x)=x*e^x """
 
         def sqrt_inc(n):
@@ -107,7 +126,7 @@ class PowerSeriesRingI(SageObject):
             return K((-1)**n *oddprod/evenprod/(1-2*n))
         self.sqrt_inc = PSF(sqrt_inc)
 
-        self.stirling1 = PowerSeriesRingI(None)()
+        self.stirling1 = PowerSeriesRingI(self)()
         def f(n):
             """
             Returns the sequence of Stirling numbers of the first kind.
@@ -158,20 +177,18 @@ class PowerSeriesRingI(SageObject):
         """
 
     def _repr_(self):
-        return "Infinite Lazy/Cached Power Series over " + repr(self._R)
+        return "Infinite Lazy/Cached Power Series over " + repr(self.K)
 
     def base_ring(self):
-        return self._R
+        return self.K
 
-
-                
     #does not really belong to a powerseries package but there is currently no
     #other place for it
-    def sexp(self,n,prec):
-        #sexp(z)=exp^z(1)=exp^{z+1}(0)
-        x=var('x')
-        sexp = self.exp.it_matrixpower(x+1,n,root_field=RealField(prec))[0]
-        return lambda z: sexp(x=z)
+#     def sexp(self,n):
+#         #sexp(z)=exp^z(1)=exp^{z+1}(0)
+#         x=var('x')
+#         sexp = self.exp.it_mp(x+1,n)[0]
+#         return lambda z: sexp(x=z)
 
     def _test(self):
         """
@@ -280,7 +297,7 @@ class PowerSeriesRingI(SageObject):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: (p << 1).log()*a[0] + (a[1] | p) - a[1]
+        sage: (p << 1).log().sm(a[0]) + (a[1] | p) - a[1]
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
         sage: p = PowerSeriesRingI(PolynomialRing(QQ,a))(exp(a*x)-1,x)
@@ -436,13 +453,15 @@ class PowerSeriesI(SageObject):
         self._powMemo = {}
         self._itMemo = {}
 
-        if isinstance(p,Integer) or isinstance(p,int):
+        self.K = self._parent.K
+        
+        if isinstance(p,Integer) or isinstance(p,int) or isinstance(p,Rational):
             def f(n):
                 if n < 0:
-                    return self.base_ring()(0)
+                    return self.K(0)
                 if n > 0:
-                    return self.base_ring()(0)
-                return self.base_ring()(p)
+                    return self.K(0)
+                return self.K(p)
             self.f = f
             self._max_degree = 0
             return
@@ -460,7 +479,7 @@ class PowerSeriesI(SageObject):
 
             def f(n):
                 if n<self._val or n>self._max_degree:
-                    return 0
+                    return self.K(0)
                 return p[n-v]
 
             self.f = f
@@ -478,7 +497,7 @@ class PowerSeriesI(SageObject):
                 #if not at == 0 and n==0:
                 #    return expr({v:at})-at
                 #return simplify(diff(expr,v,n).substitute({v:at})/factorial(n))
-                return self.base_ring()(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
+                return self.K(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
 
             #coeffs always returns non-empty list, at least [0,0] is contained
             self._val = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
@@ -489,20 +508,21 @@ class PowerSeriesI(SageObject):
             if v == None:
                 v = 0
 
-            for n in range(v,2):
-                if p(n) != 0:
-                    v = n
-                    break
+            if decidable0(self.K):
+                for n in range(v,2):
+                    if p(n)!= 0:
+                        v = n
+                        break
 
             self._val=v
 
             if at != None:
                 self._max_degree = at
             
-            self.f = lambda n: p(n) if n >= self._val else 0
+            self.f = lambda n: p(n) if n >= self._val else self.K(0)
 
     def base_ring(self):
-        return self._parent.base_ring()
+        return self._parent.K
 
     def __getitem__(self,n): # []
         if not self._memo.has_key(n):
@@ -529,19 +549,25 @@ class PowerSeriesI(SageObject):
         """
         The sequence of derivatives a[n]*n! of the powerseries a
         """
-        return a._parent(lambda n: a[n]*factorial(n))
+        return a._parent(lambda n: a[n]*a.K(factorial(n)))
 
     def inc(a):
         """
         Increment: a + 1
         """
-        return a._parent(lambda n: a[0]+1 if n==0 else a[n])
+        return a._parent(lambda n: a[0]+a.K(1) if n==0 else a[n])
 
     def dec(a):
         """
         Decrement: a-1
         """
-        return a._parent(lambda n: a[0]-1 if n==0 else a[n])
+        return a._parent(lambda n: a[0]-a.K(1) if n==0 else a[n])
+
+    def sm(a,s):
+        """
+        Scalar multiplication with scalar s
+        """
+        return a._parent(lambda n: a[n]*s,a._val,a._max_degree)
 
     def __add__(a,b): # +
         """
@@ -587,19 +613,8 @@ class PowerSeriesI(SageObject):
 
     def __mul__(a,b): # *
         """
-        Multiplication:
-        If b is a powerseries then powerseries multiplication
-        if b is a scalar then just multiply each coefficient by that scalar
-        in that case: a*b=a*PQ([b])
+        Multiplication of two powerseries.
         """
-        scalar = True
-        try:
-            c=a[0]*b
-        except TypeError:
-            scalar = False
-
-        #multiplication by scalar
-        if scalar: return a._parent(lambda n: a[n]*b)
 
         #multiplication of two powerseries
         #this a lazy algorithm: 
@@ -674,7 +689,7 @@ class PowerSeriesI(SageObject):
         """
         Non-integer power.
         """
-        assert a._val == 0, "0th coefficient must be non-zero for non-integer powers"
+        assert not decidable0(a.K) or a[0] != 0, "0th coefficient must be non-zero for non-integer powers"
 
         da = a.set_index(0,0)
 
@@ -694,7 +709,7 @@ class PowerSeriesI(SageObject):
         """
 
         P = a._parent
-        assert a[0] == 1
+        assert not decidable0(a.K) or a[0] == 1
         dec_a = P(lambda n: 0 if n==0 else a[n])
 
         return P.log_inc | dec_a
@@ -732,8 +747,8 @@ class PowerSeriesI(SageObject):
         """
         Composition: f.o(g).poly(m*n,x) == f.poly(m,g.poly(n,x)) 
         """
-        if b[0] != 0:
-            raise ValueError, "0th coefficient of b must be 0"
+        if decidable0(b.K) and b[0] != 0:
+            raise ValueError, "0th coefficient of b must be 0 but is " + repr(b[0])
         def f(n):
             res = sum(a[k]*(b.npow(k)[n]) for k in range(n+1))
             if a._val < 0:
@@ -746,8 +761,8 @@ class PowerSeriesI(SageObject):
         """
         Inverse: f.inv().o(f)=Id
         """
-        if a[0] != 0:
-            raise ValueError, "0th coefficient of b must be 0"
+        if decidable0(a.K) and a[0] != 0:
+            raise ValueError, "0th coefficient of a must be 0 but is " + repr(a[0])
         return a.it(-1)
 
 
@@ -762,7 +777,7 @@ class PowerSeriesI(SageObject):
         if x == None:
             return lambda x: sum(a[k]*x**k for k in range(n))
         else:
-            return PolynomialRing(a.base_ring(),x)(sum(a[k]*x**k for k in range(n)))
+            return PolynomialRing(a.K,x)(sum(a[k]*x**k for k in range(n)))
 
     def _repr_(a):
 #         res = ""
@@ -801,9 +816,16 @@ class PowerSeriesI(SageObject):
         #res = repr([ a(m) for m in range(10)])
         return res
 
+    def complex_contour(a,N,fp=0):
+        r = abs(a[N])**(-1/Integer(N))
+        l = r/sqrt(2.0)
+        f = a.poly(N)
+        x0=real(fp)
+        y0=imag(fp)
+        return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
                     
     def it(a,t):
-        if a[0] != 0:
+        if decidable0(a.K) and a[0] != 0:
             raise ValueError, "0th coefficient of b must be 0"
         if a[1] == 1: return a.it_par(t)
         else: return a.it_npar(t)
@@ -812,7 +834,7 @@ class PowerSeriesI(SageObject):
         """
         Regular iteration at fixed point 0 for f'(0)!=1 (non-parabolic).
         """
-        assert a._val == 1
+        assert not decidable0(a.K) or (a[0]==0 and a[1]!=1)
         b = a._parent()
         b._val = 1
         def f(n):
@@ -838,7 +860,7 @@ class PowerSeriesI(SageObject):
         assert a._val == 1
         assert a[1] != 0
         
-        Poly=PolynomialRing(a.base_ring(),'x')
+        Poly=PolynomialRing(a.K,'x')
         b = PowerSeriesRingI(Poly)()
         b._val = 1
 
@@ -860,8 +882,13 @@ class PowerSeriesI(SageObject):
         
 
     def it_par(a,t):
-        assert a._val == 1, "The index of the lowest non-zero coefficient must be 1, but is " + repr(a._val)
-        assert a[1] == 1, "The first coefficient must be 1, but is " + repr(a[1])
+        """
+        Parabolic t-times iteration, i.e. for the case a[0]==0 and a[1]==1
+        """
+
+        if decidable0(a.K):
+            assert a[0] == 0, "The index of the lowest non-zero coefficient must be 1, but is " + repr(a._val)
+            assert a[1] == 1, "The first coefficient must be 1, but is " + repr(a[1])
             
         def f(n):
             if n == 1: return 1
@@ -904,11 +931,11 @@ class PowerSeriesI(SageObject):
         constant by the functional equation:
         s(a(z))=a[1]*s(z)
         """
-        if a[0] != 0:
+        if decidable0(a.K) and a[0] != 0:
             raise ValueError, "0th coefficient "+a[0]+" must be 0"
-        if a[1] == 0:
+        if decidable0(a.K) and a[1] == 0:
             raise ValueError, "1st coefficient "+a[1]+" must be nonequal 0"
-        if a[1] == 1:
+        if decidable0(a.K) and a[1] == 1:
             raise ValueError, "1st coefficient "+a[1]+" must be nonequal 1"
 
         q = a[1]
@@ -1100,7 +1127,7 @@ class PowerSeriesI(SageObject):
     
         #we want to have the first row of the product of the matrices
         #thatswhy we mulitply in front with:
-        prod = vector(p.base_ring(),[0,1]+[0]*(n-2))
+        prod = vector(p.K,[0,1]+[0]*(n-2))
         prodwo = [0]*n
         for k in range(n):
             prodwo[k]=prod #these are the first terms until k-1
@@ -1134,7 +1161,7 @@ class PowerSeriesI(SageObject):
     
         return res.list()
 
-    def it_mp(p,t,n,root_field=RR):
+    def sexp(p,n,res_field=RR):
         """
         t times Iteration via matrix power. t is a complex number.
         This method can also iterate power series with p[0]!=0.
@@ -1149,7 +1176,7 @@ class PowerSeriesI(SageObject):
         """
         assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients. But given was " + repr(n)
         CM = p.carleman_matrix(n)
-        ev = CM.charpoly().roots(root_field)
+        ev = [ r[0] for r in CM.charpoly().roots(QQbar) ]
         assert len(ev) == n, "Carleman matrix must have exactly " + repr(n) + "eigenvalues, but has " + repr(len(ev))
     
         #We want to compute:
@@ -1159,11 +1186,11 @@ class PowerSeriesI(SageObject):
             #here is possibility for improvement of precision
             #to separate the fractional from the root parts
             #expanding the product
-            Char[k] = CM - ev[k][0]*identity_matrix(n)
+            Char[k] = CM - ev[k]*identity_matrix(n)
     
         #we want to have the first row of the product of the matrices
         #thatswhy we mulitply in front with:
-        prod = vector(p.base_ring(),[0,1]+[0]*(n-2))
+        prod = vector(QQbar,[0,1]+[0]*(n-2))
         prodwo = [0]*n
         for k in range(n):
             prodwo[k]=prod #these are the first terms until k-1
@@ -1181,21 +1208,22 @@ class PowerSeriesI(SageObject):
         sprodwo = [0]*n
         for k in range(n):
             if k==0:
-                sprodwo[k] = ev[k][0] - ev[1][0]
+                sprodwo[k] = ev[k] - ev[1]
                 start = 2
             else:
-                sprodwo[k] = ev[k][0] - ev[0][0]
+                sprodwo[k] = ev[k] - ev[0]
                 start = 1
     
             for i in range(start,n):
                 if i != k:
-                    sprodwo[k] = sprodwo[k] * (ev[k][0] - ev[i][0])
+                    sprodwo[k] = sprodwo[k] * (ev[k] - ev[i])
     
-        res = ev[0][0]**t/sprodwo[0] * prodwo[0]
-        for k in range(1,n):
-            res += ev[k][0]**t/sprodwo[k]*prodwo[k]
-    
-        return res.list()
+        for k in range(n):
+            print ev[k]
+            print prodwo[k][0]/sprodwo[k]
+            print res_field
+        #return lambda t: sum(res_field(ev[k])**t*res_field(prodwo[k][0]/sprodwo[k]) for k in range(n))
+        return [ev,[prodwo[k][0]/sprodwo[k] for k in range(n)]]
 
     def natural_abel(p,n):
         """
@@ -1211,23 +1239,23 @@ class PowerSeriesI(SageObject):
 
 #     #static methods
 #     def Exp(self):
-#         return PowerSeriesI(lambda n: self._R(1)/self._R(factorial(n)))
+#         return PowerSeriesI(lambda n: self.K(1)/self.K(factorial(n)))
 # 
 #     def Log_inc(self):
-#         return PowerSeriesI(lambda n: 0 if n==0 else (self._R((-1)**(n+1)))/self._R(n))
+#         return PowerSeriesI(lambda n: 0 if n==0 else (self.K((-1)**(n+1)))/self.K(n))
 # 
 #     def Sin(self):
 #         def c(n):
 #             if n % 2 == 0:
 #                 return 0
-#             return self._R((-1)**(n/2))/self._R(factorial(n))
+#             return self.K((-1)**(n/2))/self.K(factorial(n))
 #         return PowerSeriesI(c)
 # 
 #     def Cos(self):
 #         def c(n):
 #             if n % 2 == 1:
 #                 return 0
-#             return self._R((-1)**(n/2))/self._R(factorial(n))
+#             return self.K((-1)**(n/2))/self.K(factorial(n))
 #         return PowerSeriesI(c)
 # 
 #     def LambertW(self):
