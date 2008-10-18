@@ -59,9 +59,6 @@ class PowerSeriesRingI(SageObject):
         self.sin = self(lambda n: K(0) if n % 2 == 0 else K((-1)**((n-1)/2)/factorial(n)),1)
         self.cos = PSF(lambda n: K(0) if n % 2 == 1 else K((-1)**(n/2)/factorial(n)))
 
-        if not decidable0(K):
-            return
-
         def arcsin(n):
             if n % 2 == 0:
                 return K(0)
@@ -126,6 +123,10 @@ class PowerSeriesRingI(SageObject):
             return K((-1)**n *oddprod/evenprod/(1-2*n))
         self.sqrt_inc = PSF(sqrt_inc)
 
+        #dont go into a recursion defining stirling1
+        if isinstance(K,PowerSeriesRingI):
+            return
+
         self.stirling1 = PowerSeriesRingI(self)()
         def f(n):
             """
@@ -144,15 +145,15 @@ class PowerSeriesRingI(SageObject):
         self.stirling1.f = f
 
         def lehmer_comtet(n,k): #A008296
-            return sum(binomial(l, k)*k^(l-k)*self.stirling1[n][l] for l in range(k,n+1))
-        self.A000248 = PSF(lambda n: sum(k**(n-k)*binomial(n,k) for k in range(n+1)))
+            return sum([binomial(l, k)*k^(l-k)*self.stirling1[n][l] for l in range(k,n+1)],self.K(0))
+        self.A000248 = PSF(lambda n: sum([k**(n-k)*binomial(n,k) for k in range(n+1)],self.K(0)))
 
-        #self.selfpower_inc = PSF(lambda n: K(sum( lehmer_comtet(n,k) for k in range(0,n+1))/factorial(n)))
-        self.selfpower_inc = PSF(lambda n: K(sum( self.stirling1[n][k]*self.A000248[k] for k in range(n+1))/factorial(n)))
+        #self.selfpower_inc = PSF(lambda n: K(sum([ lehmer_comtet(n,k) for k in range(0,n+1))/factorial(n),self.K(0)))
+        self.selfpower_inc = PSF(lambda n: K(sum([ self.stirling1[n][k]*self.A000248[k] for k in range(n+1)],self.K(0))/factorial(n)))
         """
         Power series of x^x at 1
         """
-        self.superroot_inc = PSF(lambda n: K(sum( self.stirling1[n][k]*Integer(1-k)**(k-1) for k in range(n+1))/factorial(n)))
+        self.superroot_inc = PSF(lambda n: K(sum([ self.stirling1[n][k]*Integer(1-k)**(k-1) for k in range(n+1)],self.K(0))/factorial(n)))
         """
         Powerseries of the inverse of x^x developed at 1.
         """
@@ -161,15 +162,15 @@ class PowerSeriesRingI(SageObject):
             """
             Derivatives of exp(x*e^(-x)) at 0
             """
-            return K(sum( (-k)**(n-k)*binomial(n, k) for k in range(n+1)))
+            return K(sum([ (-k)**(n-k)*binomial(n, k) for k in range(n+1)],self.K(0)))
         self.A003725 = PSF(A003725)
 
-        self.selfroot_inc = PSF(lambda n: K(sum( self.stirling1[n][k]*self.A003725[k] for k in range(n+1))/factorial(n)))
+        self.selfroot_inc = PSF(lambda n: K(sum([ self.stirling1[n][k]*self.A003725[k] for k in range(n+1)],self.K(0))/factorial(n)))
         """
         Development of x^(1/x) at 1
         """
 
-        self.inv_selfroot_inc = PSF(lambda n: K(sum(self.stirling1[n][k]*K((k+1))**(k-1) for k in range(n+1))/factorial(n)))
+        self.inv_selfroot_inc = PSF(lambda n: K(sum([self.stirling1[n][k]*K((k+1))**(k-1) for k in range(n+1)],self.K(0))/factorial(n)))
         """
         The inverse of the self root x^(1/x) at 1.
         The power series at 1, that computes the fixed point of b^x
@@ -615,12 +616,11 @@ class PowerSeriesI(SageObject):
         """
         Multiplication of two powerseries.
         """
-
         #multiplication of two powerseries
         #this a lazy algorithm: 
         #for initial 0 in a[k] and initial 0 in b[n-k] the corresponding b[n-k] or a[k] is not evaluated
         def f(n):
-            return sum(a[k]*b[n-k] for k in range(a._val,n+1-b._val))
+            return sum([a[k]*b[n-k] for k in range(a._val,n+1-b._val)],a.K(0))
         return a._parent(f,a._val+b._val,a._max_degree+b._max_degree)
 
     def times(a,b):
@@ -639,7 +639,7 @@ class PowerSeriesI(SageObject):
         def f(n):
             if n<c._val-b._val:
                 return 0
-            return (c[n+b._val] - sum(a[k]*b[n+b._val-k] for k in range(a._val,n)))/b[b._val]
+            return (c[n+b._val] - sum([a[k]*b[n+b._val-k] for k in range(a._val,n)],c.K(0)))/b[b._val]
         a.f = f
         return a
 
@@ -663,7 +663,7 @@ class PowerSeriesI(SageObject):
             raise TypeError, type(n)
         if not a._powMemo.has_key(n):
             if n==0:
-                res = a._parent([1])
+                res = a._parent.one
             elif n==1:
                 res = a
             else:
@@ -689,12 +689,13 @@ class PowerSeriesI(SageObject):
         """
         Non-integer power.
         """
-        assert not decidable0(a.K) or a[0] != 0, "0th coefficient must be non-zero for non-integer powers"
+        if decidable0(a.K):
+            assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
 
         da = a.set_index(0,0)
 
         def f(n):
-            return sum(binomial(t,k) * a[0]**(t-k) * da.npow(k)[n] for k in range(n+1))
+            return sum([binomial(t,k) * a[0]**(t-k) * da.npow(k)[n] for k in range(n+1)],a.K(0))
         return a._parent(f)
         
     def sqrt(a):
@@ -709,7 +710,9 @@ class PowerSeriesI(SageObject):
         """
 
         P = a._parent
-        assert not decidable0(a.K) or a[0] == 1
+        if decidable0(a.K):
+            assert a[0] == 1
+
         dec_a = P(lambda n: 0 if n==0 else a[n])
 
         return P.log_inc | dec_a
@@ -743,6 +746,12 @@ class PowerSeriesI(SageObject):
         """
         return a.o(b)
 
+    def apply(a,b):
+        """
+        a.apply(b) is the same as b | a
+        """
+        return b.o(a)
+
     def o(a,b):
         """
         Composition: f.o(g).poly(m*n,x) == f.poly(m,g.poly(n,x)) 
@@ -750,10 +759,10 @@ class PowerSeriesI(SageObject):
         if decidable0(b.K) and b[0] != 0:
             raise ValueError, "0th coefficient of b must be 0 but is " + repr(b[0])
         def f(n):
-            res = sum(a[k]*(b.npow(k)[n]) for k in range(n+1))
+            res = sum([a[k]*(b.npow(k)[n]) for k in range(n+1)],a.K(0))
             if a._val < 0:
                 bi = b.rcp()
-                res += sum(a[k]*(bi.npow(-k)[n]) for k in range(a._val,0))
+                res += sum([a[k]*(bi.npow(-k)[n]) for k in range(a._val,0)],a.K(0))
             return res
         return a._parent(f,a._val*b._val)
 
@@ -775,9 +784,9 @@ class PowerSeriesI(SageObject):
         Without second argument you the get polynomial as function.
         """
         if x == None:
-            return lambda x: sum(a[k]*x**k for k in range(n))
+            return lambda x: sum([a[k]*x**k for k in range(n)],a.K(0))
         else:
-            return PolynomialRing(a.K,x)(sum(a[k]*x**k for k in range(n)))
+            return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K(0)))
 
     def _repr_(a):
 #         res = ""
@@ -834,7 +843,9 @@ class PowerSeriesI(SageObject):
         """
         Regular iteration at fixed point 0 for f'(0)!=1 (non-parabolic).
         """
-        assert not decidable0(a.K) or (a[0]==0 and a[1]!=1)
+        if decidable0(a.K):
+            assert a[0]==0 and a[1]!=1
+
         b = a._parent()
         b._val = 1
         def f(n):
@@ -846,7 +857,7 @@ class PowerSeriesI(SageObject):
                 #print ")"
                 return a[1]**t
             res = a[n]*(b[1]**n)-b[1]*a[n]
-            res += sum(a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n))
+            res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
             res /= a[1]**n - a[1]
             #print ")"
             return res
@@ -857,8 +868,9 @@ class PowerSeriesI(SageObject):
         """
         diff(it_npar(a,t),t)(t=0) = ln(a[1])*julia_npar(a)
         """
-        assert a._val == 1
-        assert a[1] != 0
+        if decidable0(a.K):
+            assert a[0] == 0
+            assert a[1] != 0
         
         Poly=PolynomialRing(a.K,'x')
         b = PowerSeriesRingI(Poly)()
@@ -870,13 +882,13 @@ class PowerSeriesI(SageObject):
             if n == 1:
                 return Poly([0,1])
             res = a[n]*(b[1]**n)-b[1]*a[n]
-            res += sum(a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n))
+            res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
             res /= a[1]**n - a[1]
             return res
         b.f = f
 
         def h(p):
-            return sum(p.coeffs()[n]*n for n in range(p.degree()+1))
+            return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
 
         return a._parent(lambda n: h(b[n]),1)
         
@@ -894,33 +906,38 @@ class PowerSeriesI(SageObject):
             if n == 1: return 1
             def c(m):
                 return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-            res = sum(c(m)*a.nit(m)[n] for m in range(n))
+            res = sum([c(m)*a.nit(m)[n] for m in range(n)],a.K(0))
             return res
         return a._parent(f,1)
 
     def it_par2(a,t):
-        assert a._val == 1
-        assert a[1] == 1
+        if decidable0(a.K):
+            assert a[0] == 0
+            assert a[1] == 1
 
         def f(n):
-            return sum(binomial(t,m)*sum(binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)) for m in range(n))
+            return sum([binomial(t,m)*sum([binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)],a.K(0)) for m in range(n)],a.K(0))
         return a._parent(f,1)
 
     def julia_par(a):
         #diff(,t)(t=0) is the first coefficient of binomial(t,m)
         #stirling1(m)[k] is the kth coefficient of m!*binomial(t,m)
         P = a._parent
-        res = P(lambda n: sum(P.stirling1[m][1]/factorial(m)*sum(binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)) for m in range(n)))
+        res = P(lambda n: sum([P.stirling1[m][1]/factorial(m)*sum([binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)],a.K(0)) for m in range(n)],a.K(0)))
         res._val = res.val()
         return res
         
 
     def julia(a):
-        assert a._val == 1
-        if a[1] == 1:
-            return a.julia_par()
-        else:
-            return a.julia_npar()
+        if decidable0(a.K):
+            assert a[0] == 0
+
+            if a[1] == 1:
+                return a.julia_par()
+            else:
+                return a.julia_npar()
+
+        assert decidable0(a.K)
 
     def schroeder_npar(a):
         """
@@ -946,7 +963,7 @@ class PowerSeriesI(SageObject):
                 return 0
             if n == 1:
                 return 1
-            return sum(s[m]*a.npow(m)[n] for m in range(1,n))/(q - q**n)
+            return sum([s[m]*a.npow(m)[n] for m in range(1,n)],a.K(0))/(q - q**n)
         s.f = f
         return s
         
