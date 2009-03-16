@@ -15,6 +15,37 @@ Description:
 from sage.all import *
 from special_functions import LambertW
 
+def iterationsCount(x,F,y,maxit=infinity):
+    """
+    Computes how many iterations n (n>=0) are needed such that 
+    F^n(x)<=y<F^{n+1}(x)
+    It is assumed that F is strictly increasing and that x<=y
+    """
+    Fit = x
+    n = 0
+    while Fit <= y:
+        Fit = F(Fit)
+        n += 1
+    return n
+        
+def super(F,a,initial):
+    """
+    Computes the super function f of F, i.e.a function such that
+    f(x+1)=F(f(x)) and f(x)=initial(x) on a<=x<initial(a)
+    """
+
+    b=initial(a)
+    def res(x):
+        if a<=x and x<b:
+            return initial(x)
+        if b<=x:
+            return F(f(x-1))
+        #x<a
+        #find_root(lambda y: F(y)-f(x+1),)
+        #TODO numerically inverse function
+    return res
+
+
 def hyper_HC_simple(b, h, rank=3):
     """
     hyper_HC_simple(base, height, rank)
@@ -39,6 +70,7 @@ def hyper_HD_simple(b, h, rank=3):
         return b**h
     else:
         return (b*h)*cos(rank*pi/2)**2 + (b**h)*sin(rank*pi/2)**2
+
 
 def hyper(rank):
     def ret(base, height, 

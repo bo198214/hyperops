@@ -4,32 +4,37 @@ Regular Iteration
 Author: Henryk Trappmann
 """
 
-def princ_abel(f):
+from sage.rings.complex_field import ComplexField
+
+def par_abel(f,x0):
     """
     Takes a function f with f'(a)=1 and f^(m)(a)<0 for
     the first m>1 with f^(m)!= 0
-    Computes the principal Abel function. 
+    Computes the regular Abel function with alpha(x0)=0. 
     """
     
-    def r(x,iprec='_default'):
+    def r(x,iprec=None):
         """
         Principal Abel function.
         The precision of x is taken as the precision of the outcome.
         """
         prec = x.prec()
-        if iprec == '_default':
-            iprec = 3*prec #heuristic
-        R=type(x.parent())(iprec)
+        if iprec == None:
+            iprec = 5*prec #heuristic
 
-        itf = x
-        itf0 = (x + f(x))/2
+        itf = x.n(iprec)
+        itf0 = x0.n(iprec)
         itf01 = f(itf0)
+	yp = itf0
         while True:
             itf = f(itf)
             itf0 = itf01
             itf01 = f(itf0)
 
             y = (itf-itf0)/(itf01-itf0)
+            #yp = y + 2**(-prec)+1
+            print "yp:",yp
+            print "y: ",y
             if abs(y-yp) < 2**(-prec):
                 break
             yp = y
@@ -37,30 +42,30 @@ def princ_abel(f):
         return x.parent()(y)
         
     return r
-    
+   
 def reg_schroeder_at(f,x0,a=0):
     """
-    Takes a function f with f(0)==0 and 0<|f'(0)|<1 and an initial value x0!=a.
-    Computes the regular Schroeder function s that is determined by s(x0)=1
+    Takes a real function f with f(a)==a and 0<|f'(a)|<1 and 
+    an initial value x0!=a with f^n(x0) -> a. 
+    Computes the regular Schroeder function s that is determined by s(x0)=1 
     """
 
-    def r(x,iprec='_default'):
+    def r(x,iprec=None):
         prec = x.prec()
-        if iprec == '_default':
+        if iprec == None:
             iprec = 3*prec #heuristic
-        R=type(x.parent())(iprec)
 
-        _check_funcprec(f,x,R)
+        f = with_prec(f,iprec,x)
 
-        itf=R(x)
-        itf0=R(x0)
+        itf=x.n(iprec)
+        itf0=x0.n(iprec)
         yp = (a-x)/(a-x0)
-        if yp == 1:
-            return 1
-        if yp > 1:
-            signum = 1
-        else:
-            signum = -1
+#         if yp == 1:
+#             return 1
+#         if yp > 1:
+#             signum = 1
+#         else:
+#             signum = -1
 
         while True:
             itf=f(itf)
@@ -69,9 +74,10 @@ def reg_schroeder_at(f,x0,a=0):
             
             #print y.prec(),itf.prec(),itf,itf0,y
             d = yp - y
-            if d*signum < 0:
-                raise ZeroDivisionError
-            if d*signum < 2**(-prec):
+#             if d*signum < 0:
+#                 raise ZeroDivisionError
+#             if d*signum < 2**(-prec):
+            if abs(d) < 2**(-prec):
                 break
             yp=y
         return x.parent()(y)
@@ -79,22 +85,23 @@ def reg_schroeder_at(f,x0,a=0):
     return r
 
 def princ_schroeder_at0(f):
-    def r(x,iprec='_default'):
+    def r(x,iprec=None):
         prec = x.prec()
-        if iprec == '_default':
+        if iprec == None:
             iprec = 3*prec #heuristic
-        R=type(x.parent())(iprec)
 
-        _check_funcprec(f,x,R)
+        f = with_prec(f,iprec,x)
 
         #compute f'(0)
-        c=f(R(2)**(-(iprec/2)))*2**(iprec/2)
+        c=f(RealField(iprec)(2**(-(iprec/2))))*2**(iprec/2)
 
-        itf=R(x)
+        itf=x.n(iprec)
         cn=1
         yp = x
-        dmin = 2**(iprec/2)
+#        dmin = 2**(iprec/2)
         while True:
+            print itf
+            print exp(itf-l+k)+1
             itf=f(itf)
             cn*=c
             y=itf/cn
@@ -104,34 +111,29 @@ def princ_schroeder_at0(f):
             if d<2**(-prec):
                 break
             yp=y
-            if d < dmin:
-                dmin = d
-            else:
-                print "Warning"
+#             if d < dmin:
+#                 dmin = d
+#             else:
+#                 print "Warning"
         return x.parent()(y)
     return r;
 
-def _check_funcprec(f,x,R):
-    iprec = R(x).prec()
-    func_prec = f(R(x)).prec()
-    if  func_prec < iprec:
-        raise ZeroDivisionError, "function must be able to return at least the same precision (returned: " + repr(func_prec) + ") as the argument (given: " + repr(iprec) + ")."
-
-
-def fixed_point(f,x0,iprec='_default'):
+def fixed_point(f,x0,prec=53,iprec=None,T=ComplexField):
     #slightly increase precision
-    prec = x0.prec()
-    if iprec == '_default':
+    if iprec == None:
         iprec = prec+4
-    R=type(x0.parent())(iprec)
 
-    _check_funcprec(f,x0,R)
+    K = T(prec)
+    Ki = T(iprec)
 
-    yp = R(x0)
+    x0 = Ki(x0)
+    f = with_prec(f,iprec,x0)
+
+    yp = x0
     while True:
         y=f(yp)
         if abs(yp-y) < 2**(-prec):
-            return y
+            return K(y)
         yp=y
 
 def lower_fixed_point_exp_base(b):
@@ -144,30 +146,50 @@ def lower_fixed_point_exp_base(b):
         #print err, xp, x, (err+xp)*b**(-err)
     return x
         
+def with_prec(f,prec,x0):
+    for name in f.func_code.co_varnames:
+        if name == 'prec':
+            def res(*args,**kwargs):
+                kwargs['prec']=prec
+                return f(*args,**kwargs)
+            return res
+    func_prec = f(x0.n(prec)).prec()
+    if func_prec < prec:
+        raise TypeError, "function must be able to return at least the same precision (returned: " + repr(func_prec) + ") as the argument (given: " + repr(iprec) + ")."
+    return f
 
-def reg_schroeder(f):
+
+def to_prec(K,prec):
+    if K == complex:
+        return ComplexField(prec)
+    if K == float:
+        return RealField(prec)
+    return type(K)(prec)
+    
+def reg_schroeder(f,x0,prec=53,iprec=None,T=ComplexField):
     fpcache = {}
 
-    def r(x,x0,iprec='_default',out='_default'):
-        prec = x.prec()
-        if iprec == '_default':
-            iprec = 3*prec #heuristic
-        R=type(x.parent())(iprec)
+    if iprec == None:
+        iprec = 3*prec #heuristic
 
-        _check_funcprec(f,x,R)
+    K = T(prec)
+    Ki = T(iprec)
 
-        if not fpcache.has_key(prec):
-            fpcache[prec] = fixed_point(f,R(x))
-        a = fpcache[prec]
-        #print a
+    x0 = Ki(x0)
 
-        itf=R(x)
-        itf0=R(x0)
-        yp = (a-x)/(a-x0)
-        dmin = 2**(iprec/2)
+    a = fixed_point(f,x0,prec=iprec)
+
+    f = with_prec(f,iprec,x0)
+
+    def r(x,out=None):
+        itf=Ki(x)
+        itf0=Ki(x0)
+        yp = 1
+        #dmin = 2**(iprec/2)
         while True:
             itf=f(itf)
             itf0=f(itf0)
+            #print itf, itf0
             y=(a-itf)/(a-itf0)
             
             #print y.prec(),itf.prec(),cn.prec(),cn,y
@@ -175,42 +197,38 @@ def reg_schroeder(f):
             if d<2**(-prec):
                 break
             yp=y
-            if d < dmin:
-                dmin = d
-            else:
-                print "Warning"
-        if out == '_default':
-            return x.parent()(y)
+        if out == None:
+            return K(y)
         else:
-            return [a,x.parent()(y)]
+            return [a,K(y)]
     return r;
 
 def princ_schroeder(f):
     fpcache = {}
 
-    def r(x,iprec='_default',out='_default'):
+    def r(x,iprec=None,out=None):
         prec = x.prec()
-        if iprec == '_default':
+        if iprec == None:
             iprec = 3*prec #heuristic
-        R=type(x.parent())(iprec)
 
-        _check_funcprec(f,x,R)
+        f = with_prec(f,iprec,x)
 
         if not fpcache.has_key(prec):
-            fpcache[prec] = fixed_point(f,R(x))
+            fpcache[prec] = fixed_point(f,x,prec=iprec)
         a = fpcache[prec]
         #print a
 
         #compute f'(0), no cache needed should be fast
-        c=(f(a+R(2)**(-(iprec/2)))-a)*2**(iprec/2)
+        c=(f(a+2**(-(iprec/2)))-a)*2**(iprec/2)
         #print c
 
-        itf=R(x)
+        itf=x.n(iprec)
         cn=1
         yp = x
-        dmin = 2**(iprec/2)
+#        dmin = 2**(iprec/2)
         while True:
             itf=f(itf)
+            #print itf
             cn*=c
             y=(a-itf)/cn
             
@@ -219,11 +237,11 @@ def princ_schroeder(f):
             if d<2**(-prec):
                 break
             yp=y
-            if d < dmin:
-                dmin = d
-            else:
-                print "Warning"
-        if out == '_default':
+#             if d < dmin:
+#                 dmin = d
+#             else:
+#                 print "Warning"
+        if out == None:
             return x.parent()(y)
         else:
             return [a,c,x.parent()(y)]
@@ -250,17 +268,16 @@ def rslog1(b):
     f=lambda x: x.parent()(b)**x
     s=princ_schroeder(f)
     s1cache = {}
-    def r(x,iprec='_default'):
+    def r(x,iprec=None):
         prec = x.prec()
-        if iprec == '_default':
+        if iprec == None:
             iprec = prec+4
-        R=type(x.parent())(iprec)
         
         if not s1cache.has_key(prec):
-            s1cache[prec]=s(R(1))
+            s1cache[prec]=s(1,prec=iprec)
         s1=s1cache[prec]
 
-        [a,c,y]=s(R(x),out=1)
+        [a,c,y]=s(x,prec=iprec,out=1)
         return log(y/s1,c)
     return r
 
@@ -278,13 +295,12 @@ def rslog2(b):
     """
     f=lambda x: x.parent()(b)**x
     s=reg_schroeder(f)
-    def r(x,iprec='_default'):
+    def r(x,iprec=None):
         prec = x.prec()
-        if iprec == '_default':
+        if iprec == None:
             iprec = prec + 4
-        R=type(x.parent())(iprec)
 
-        [a,y]=s(R(x),1,out=1)
+        [a,y]=s(x,1,prec=iprec,out=1)
         return x.parent()(log(y,log(a)))
     return r
 

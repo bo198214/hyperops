@@ -185,11 +185,11 @@ class PowerSeriesRingI(SageObject):
 
     #does not really belong to a powerseries package but there is currently no
     #other place for it
-#     def sexp(self,n):
-#         #sexp(z)=exp^z(1)=exp^{z+1}(0)
-#         x=var('x')
-#         sexp = self.exp.it_mp(x+1,n)[0]
-#         return lambda z: sexp(x=z)
+    def msexp(self,n,digits):
+        #sexp(z)=exp^z(1)=exp^{z+1}(0)
+        x=var('x')
+        sexp = self.exp.it_matrixpower(x+1,n,RealField(digits))[0]
+        return lambda z: sexp(x=z)
 
     def _test(self):
         """
@@ -298,7 +298,7 @@ class PowerSeriesRingI(SageObject):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: (p << 1).log().sm(a[0]) + (a[1] | p) - a[1]
+        sage: (p << 1).log().smul(a[0]) + (a[1] | p) - a[1]
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
         sage: p = PowerSeriesRingI(PolynomialRing(QQ,a))(exp(a*x)-1,x)
@@ -552,6 +552,12 @@ class PowerSeriesI(SageObject):
         """
         return a._parent(lambda n: a[n]*a.K(factorial(n)))
 
+    def underivatives(a):
+        """
+        Returns the sequence a[n]/n!.
+        """
+        return a._parent(lambda n: a[n]/a.K(factorial(n)))
+
     def inc(a):
         """
         Increment: a + 1
@@ -564,7 +570,7 @@ class PowerSeriesI(SageObject):
         """
         return a._parent(lambda n: a[0]-a.K(1) if n==0 else a[n])
 
-    def sm(a,s):
+    def smul(a,s):
         """
         Scalar multiplication with scalar s
         """
@@ -766,6 +772,13 @@ class PowerSeriesI(SageObject):
             return res
         return a._parent(f,a._val*b._val)
 
+    def bell(a,n,k):
+        """
+        Returns the Bell polynomial of the sequence of variables a.
+        """
+        return derivatives(underivatives(a)**k).smul(1/factorial(k))
+        
+
     def inv(a):
         """
         Inverse: f.inv().o(f)=Id
@@ -892,6 +905,23 @@ class PowerSeriesI(SageObject):
 
         return a._parent(lambda n: h(b[n]),1)
         
+
+    def it_par0(p,t):
+        N=p.valit()
+        P = p._parent
+        q = P()
+        def f(n):
+            if n < N:
+                return P.id[n]
+            if n == N:
+                return t * p[N]
+            if n > N:
+                r=p[n]
+                r+=sum([p[m]*(q**m)[n] - q[m]*(p**m)[n] for m in range(N,n)])
+                return r
+            
+        q.f = f
+        return q
 
     def it_par(a,t):
         """
@@ -1242,7 +1272,7 @@ class PowerSeriesI(SageObject):
         #return lambda t: sum(res_field(ev[k])**t*res_field(prodwo[k][0]/sprodwo[k]) for k in range(n))
         return [ev,[prodwo[k][0]/sprodwo[k] for k in range(n)]]
 
-    def natural_abel(p,n):
+    def natural_abel_seq(p,n):
         """
         Returns the first n coefficients of the natural Abel power sequence,
         obtained from an nxn Carleman/Bell matrix.
