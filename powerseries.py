@@ -32,32 +32,28 @@ def decidable0(K):
     return False
 
 class PowerSeriesRingI(SageObject):
-    def ps(self,f,min_index,T=None):
-        if T == None:
+    def byLambda(self,f,*args,**kwargs):
+        kwargs['parent'] = self
+        if kwargs.has_key('T'):
+            T = kwargs['T'] 
+            del kwargs['T']
+            return T(f,*args,**kwargs)
+        else:
             if not decidable0(self.K):
-                return PowerSeriesI(f,parent=self)
+                return PowerSeriesI(f,*args,**kwargs)
 #                raise TypeError, "Can not decide type of powerseries, please specify with T="
-            if f(0) == self.K0 and f(1) == self.K1:
-                return PS01(f,parent=self)
+            if f(0) == 0 and f(1) == self.K1:
+                return PS01(f,*args,**kwargs)
             else:
-                return PowerSeriesI(f,parent=self)
-        return T(f,parent=self)
+                return PowerSeriesI(f,*args,**kwargs)
+
 
     def byUndefined(self,T=None):
         if T==None:
             return PowerSeriesI()
         return T()
     
-    def byLambda(self,f,min_index=0,**kwargs):
-#          if decidable0(self.K):
-#              for n in range(v,2):
-#                  if p(n)!= 0:
-#                      v = n
-#                      break
-
-        return self.ps(lambda n: f(n) if n >= min_index else self.K0,min_index,**kwargs)
-        
-    def byList(self,list,min_index=0,**kwargs):
+    def bySeq(self,list,start=0,**kwargs):
         l = len(list)
         M=0
         for M in range(l):
@@ -69,15 +65,14 @@ class PowerSeriesRingI(SageObject):
             if list[N] != 0:
                 break
 
-        start = min_index
         min_index = start + M
         max_index = start + N
         def f(k):
             if k<min_index or k>max_index:
-                return self.K0
+                return 0
             return list[k-start]
 
-        return self.ps(f,min_index,**kwargs)
+        return self.byLambda(f,min_index,**kwargs)
         
     def byTaylor(self,expr,v,at=0,**kwargs):
         assert not v == None
@@ -92,14 +87,14 @@ class PowerSeriesRingI(SageObject):
 
         #coeffs always returns non-empty list, at least [0,0] is contained
         min_index = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
-        return self.ps(f,min_index,**kwargs)
+        return self.byLambda(f,min_index,**kwargs)
 
     def byConst(self,c,**kwargs):
         def f(n):
             if n == 0:
                 return self.K(c)
-            return self.K0
-        return self.ps(f,0,**kwargs)
+            return 0
+        return self.byLambda(f,0,**kwargs)
         
     def zero_element(self):
         return self.Zero
@@ -140,7 +135,7 @@ class PowerSeriesRingI(SageObject):
             return self.byConst(p,**kwargs)
 
         if isinstance(p,list):
-            return self.byList(p,**kwargs)
+            return self.bySeq(p,**kwargs)
 
         if isinstance(p,SymbolicExpression):
             if at == None:
@@ -165,13 +160,9 @@ class PowerSeriesRingI(SageObject):
         def PSF0N(f):
             return self.byLambda(f,T=PS0N)
         def PSF01(f):
-            return self.byLambda(f,1,T=PS01)
+            return self.byLambda(f,T=PS01)
         def PSS(seq):
-            return self.byList(seq,T=PowerSeriesI)
-        def PSS0N(seq):
-            return self.byList(seq,T=PS0N)
-        def PSS01(seq):
-            return self.byList(seq,1,T=PS01)
+            return self.bySeq(seq,T=PowerSeriesI)
 
         if self.K == int:
             self.K = Integer
@@ -179,12 +170,13 @@ class PowerSeriesRingI(SageObject):
         K = self.K
         K1 = K.one_element()
         self.K1 = K1
-        K0 = K.zero_element()
+        #K0 = K.zero_element()
+        K0 = 0
         self.K0 = K0
 
         self.Zero = PSS([])
         self.One = PSS([K1])
-        self.Id = PSS01([K1])
+        self.Id = self.bySeq([K1],start=1)
         self.Inc = PSS([K1,K1])
         self.Dec = PSS([K(-1),K1])
         self.Exp = PSF(lambda n: K(1/factorial(n)))
@@ -401,7 +393,7 @@ class PowerSeriesRingI(SageObject):
 #         sage: P(exp(x)-1,x)-P.Exp.dec()
 #         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
-        sage: P.Log_inc | P.Exp.dec().asPS0()
+        sage: P.Log_inc | P.Exp.dec().reclass()
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Arcsin | P.Sin      
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -411,9 +403,9 @@ class PowerSeriesRingI(SageObject):
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Lambert_w | P.Xexp
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.Selfpower_inc | P.Superroot_inc.dec().asPS0()
+        sage: P.Selfpower_inc | P.Superroot_inc.dec().reclass()
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.Selfroot_inc | P.Inv_selfroot_inc.dec().asPS0()          
+        sage: P.Selfroot_inc | P.Inv_selfroot_inc.dec().reclass()          
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: P.Superroot_inc ** P.Superroot_inc
@@ -433,10 +425,10 @@ class PowerSeriesRingI(SageObject):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: (p << 1).log().smul(a[0]) + (a[1] | p) - a[1]
+        sage: ((p << 1).log().smul(a[0]) + (a[1] | p) - a[1]).reclass()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
-        sage: p = PowerSeriesRingI(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=PS0p)
+        sage: p = PowerSeriesRingI(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=PS0)
         sage: pah = p.abel()
         sage: pac = p.abel2()
         sage: pah
@@ -497,7 +489,7 @@ class PowerSeriesI(SageObject):
         sage: p**2
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: #composition only works for coefficient 0 being 0 in the second operand         
-        sage: dexp = (expps - one).asPS01()
+        sage: dexp = (expps - one).reclass()
         sage: expps.o(dexp)
         [1, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
 
@@ -519,12 +511,10 @@ class PowerSeriesI(SageObject):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: #symbolic (parabolic) iteration                                                 
-        sage: dexp.it(x)
-        [0, 1, x/2, 5*(x - 1)*x/12 - (x - 2)*x/6, ...]
+        sage: dexp.it(x)[5].expand()
+        x^4/16 - 13*x^3/144 + x^2/24 - x/180
         sage: q = dexp.it(1/x).it(x)
-        sage: q[3]
-        (5*(1/x - 1)/(6*x) - (1/x - 2)/(3*x) + 1/(2*x^2))*(x - 1)*x/2 - (5*(1/x - 1)/(12*x) - (1/x - 2)/(6*x))*(x - 2)*x
-        sage: #simiplify and compare                                                          
+
         sage: expand(q[3])
         1/6
         sage: dexp[3]
@@ -535,7 +525,7 @@ class PowerSeriesI(SageObject):
         sage: bsrt = PowerSeriesRingI(SR)(sqrt(2)^x,x)
 
         sage: #making the 0-th coefficient 0 to get the decremented exponential   
-        sage: dbsrt = bsrt.ps0p()
+        sage: dbsrt = bsrt.ps0()
         
         sage: #and now starting hyperbolic iteration                                          
         sage: dbsrt2 = dbsrt.it(x).it(1/x)
@@ -547,7 +537,7 @@ class PowerSeriesI(SageObject):
         -8.67361737988404e-19
     """
 
-    def __init__(self,f=None,min_index=0,base_ring=None,parent=None):
+    def __init__(self,f=None,min_index=0,complies=True,base_ring=None,parent=None):
         self._parent = parent
         if parent == None:
             if base_ring==None:
@@ -561,13 +551,21 @@ class PowerSeriesI(SageObject):
         self._itMemo = {}
 
         self.K = self._parent.K
-        self.f = f
 
-    def parent():
-        return _parent
+        self.min_index = min_index
+        if complies:
+            self.f = f
+        else:
+            self.f = lambda n: f(n) if n >= min_index else 0
+            
+    def PowerSeriesI(self,f=None,min_index=0,**kwargs):
+        return PowerSeriesI(f,min_index,parent=self._parent,**kwargs)
 
-    def new(self,f=None,min_index=0,**kwargs):
-        return type(self)(f,parent=self._parent,**kwargs)
+    def parent(self):
+        return self._parent
+
+#    def new(self,f=None,min_index=0,**kwargs):
+#        return type(self)(f,parent=self._parent,**kwargs)
         
     def base_ring(self):
         return self._parent.K
@@ -588,47 +586,80 @@ class PowerSeriesI(SageObject):
     def __getslice__(self,i,j): # [i:j]
         return [self[k] for k in range(i,j)]
 
-    def set_index(a, index, value):
+    def set_min_index(a,min_index):
+        """
+        Returns the powerseries with elements before min_index replaced by 0.
+        """
+        return a.PowerSeriesI(a.f,min_index)
+
+    def reclass(p):
+        """
+        Recalculates the class of this object which 
+        possibly changes to a subclass having more operations available.
+
+        The coefficients p[0] and p[1] must be decidable to be 0 and to be 1.
+
+        Returns p. Does not return if p is Zero or Id.
+        """
+        p.min_index = p.val()
+        if p.min_index > 0:
+            if p[1]==1:
+                p.__class__ = PS01
+                return p
+            p.__class__ = PS0
+            return p
+        return p
+
+    def ps0(a):
+        """
+        Returns a, with a[0]=0
+        """
+        return PS0(lambda n: 0 if n == 0 else a[n], parent=a._parent)
+
+    def PS0(self,f=None,**kwargs):
+        return PS0(f,parent=self._parent,**kwargs)
+
+    def set_element(a, index, value):
         """
         Returns the powerseries that has a[index] replaced by value.
         """
-        return a.new(lambda n: value if n == index else a[n],a.min_index)
+        return a.PowerSeriesI(lambda n: value if n == index else a[n],a.min_index)
 
     def set_slice(a, i, j, seq):
         """
         Returns the powerseries that has a[i:j] replaced by seq.
         """
-        return a.new(lambda n: seq[n-i] if i<=n and n<j else a[n],a.min_index)
+        return a.PowerSeriesI(lambda n: seq[n-i] if i<=n and n<j else a[n],a.min_index)
 
     def derivatives(a):
         """
         The sequence of derivatives a[n]*n! of the powerseries a
         """
-        return a.new(lambda n: a[n]*a.K(factorial(n)))
+        return a.PowerSeriesI(lambda n: a[n]*a.K(factorial(n)))
 
     def underivatives(a):
         """
         Returns the sequence a[n]/n!.
         """
-        return a.new(lambda n: a[n]/a.K(factorial(n)))
+        return a.PowerSeriesI(lambda n: a[n]/a.K(factorial(n)))
 
     def inc(a):
         """
         Increment: a + 1
         """
-        return a.new(lambda n: a[0]+a.K(1) if n==0 else a[n])
+        return a.PowerSeriesI(lambda n: a[0]+a.K(1) if n==0 else a[n])
 
     def dec(a):
         """
         Decrement: a-1
         """
-        return a.new(lambda n: a[0]-a.K(1) if n==0 else a[n])
+        return a.PowerSeriesI(lambda n: a[0]-a.K(1) if n==0 else a[n])
 
     def smul(a,s):
         """
         Scalar multiplication with scalar s
         """
-        return a.new(lambda n: a[n]*s,a.min_index)
+        return a.PowerSeriesI(lambda n: a[n]*s,a.min_index)
 
     def __add__(a,b): # +
         """
@@ -642,7 +673,7 @@ class PowerSeriesI(SageObject):
             if n < b.min_index:
                 return a[n]
             return a[n]+b[n]
-        return a.new(f,min(a.min_index,b.min_index))
+        return a.PowerSeriesI(f,min(a.min_index,b.min_index))
 
     def plus(a,b):
         """
@@ -664,13 +695,20 @@ class PowerSeriesI(SageObject):
                 #b[0]==0
                 return a[n]
             return a[n]-b[n]
-        return a.new(f,min(a.min_index,b.min_index))
+        return a.PowerSeriesI(f,min(a.min_index,b.min_index))
 
     def minus(a,b):
         """
         a.minus(b) == a-b
         """
         return a-b
+
+    def __neg__(a):
+        def f(n):
+            if n < a.min_index:
+                return 0
+            return -a[n]
+        return a.PowerSeriesI(f,a.min_index)
 
     def __mul__(a,b): # *
         """
@@ -687,7 +725,12 @@ class PowerSeriesI(SageObject):
 
         def f(n):
             return sum([ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)],a.K(0))
-        return a.new(f,a.min_index+b.min_index)
+
+        min_index = a.min_index+b.min_index
+        if min_index > 0:
+            return a.PS0(f,min_index=min_index)
+        else:
+            return a.PowerSeriesI(f,min_index=min_index)
 
     def times(a,b):
         """
@@ -699,7 +742,7 @@ class PowerSeriesI(SageObject):
         """
         Division: a/b*b=a, a*b/b=a
         """
-        a = c.new()
+        a = c.PowerSeriesI()
         b.min_index = b.val()
         a.min_index = c.min_index - b.min_index
 
@@ -759,16 +802,17 @@ class PowerSeriesI(SageObject):
 
     def pow_ni(a,t):
         """
-        Non-integer power.
+        Non-integer power of a.
+        a[0] must be nonzero.
         """
-        if decidable0(a.K):
-            assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
-
-        da = a.set_index(0,0)
+        da = a.set_element(0,0)
 
         def f(n):
+            if decidable0(a.K):
+                assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
+
             return sum([binomial(t,k) * a[0]**(t-k) * da.npow(k)[n] for k in range(n+1)],a.K(0))
-        return a.new(f)
+        return a.PowerSeriesI(f)
         
     def sqrt(a):
         """
@@ -788,11 +832,11 @@ class PowerSeriesI(SageObject):
         """
 
         P = a._parent
-        if decidable0(a.K):
-            assert a[0] == 1
 
         dec_a = a.ps0()
 
+#        if decidable0(a.K):
+#            assert a[0] == 1
         return P.Log_inc | dec_a
     
     def __xor__(a,t): # ^
@@ -818,6 +862,9 @@ class PowerSeriesI(SageObject):
             return lambda x: sum([a[k]*x**k for k in range(n)],a.K(0))
         else:
             return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K(0)))
+
+    def _assertp0(a):
+        assert a.min_index > 0, "min_index must be > 0, but is" + repr(a.min_index) + ". Use reclass() if necessary."
 
     def _repr_(a):
 #         res = ""
@@ -890,46 +937,17 @@ class PowerSeriesI(SageObject):
     def o(a,b):
         """
         Composition: a.o(b).poly(m*n,x) == a.poly(m,b.poly(n,x)) 
-        b must be of type PS0
+        b[0] == 0. 
         """
-        assert isinstance(b,PS0)
-#        if decidable0(b.K) and b[0] != 0:
-#            raise ValueError, "0th coefficient of b must be 0 but is " + repr(b[0])
+        b._assertp0()
+
         def f(n):
             res = sum([a[k]*(b.npow(k)[n]) for k in range(n+1)],a.K(0))
             if a.min_index < 0:
                 bi = b.rcp()
                 res += sum([a[k]*(bi.npow(-k)[n]) for k in range(a.min_index,0)],a.K(0))
             return res
-        return a.new(f,a.min_index*b.min_index)
-
-    def ps0(a):
-        """
-        Returns a, with a[0]=0
-        """
-        return PS0(lambda n: a.K(0) if n == 0 else a[n], parent=a._parent)
-
-    def ps0p(a):
-        return PS0p(lambda n: a.K(0) if n == 0 else a[n], parent=a._parent)
-
-    def isPS0(a):
-        return a[0] == 0
-
-    def isPS01(a):
-        return a[0] == 0 and a[1] == 1
-
-    def asPS0(a):
-        """
-        Returns it as PS0 without any questioning.
-        """
-        return PS0(a.f,parent=a._parent)
-
-    def asPS01(a):
-        """
-        Returns it as PS01 without any questioning.
-        """
-        return PS01(a.f,parent=a._parent)
-        
+        return (type(a))(f,a.min_index*b.min_index,parent=a._parent)
 
     def val(a):
         """
@@ -942,10 +960,10 @@ class PowerSeriesI(SageObject):
         return n
 
     def __lshift__(a,m=1):
-        return a.new(lambda n: a[n+m])
+        return PowerSeriesI(lambda n: a[n+m],parent=a._parent)
 
-    def __rshift__(a,m=1):
-        return a.new(lambda n: 0 if n<m else a[n-m])
+    def __rshift__(a,c=0):
+        return PowerSeriesI(lambda n: c if n<1 else a[n-1],parent=a._parent)
 
     def diff(a,m=1): 
         """
@@ -962,7 +980,7 @@ class PowerSeriesI(SageObject):
                 return max(v-m,0)
             return v-m
 
-        return a.new(f,deg(a.min_index,m))
+        return PowerSeriesI(f,deg(a.min_index,m),parent=a._parent)
 
 #     def integral(a,c=0,m=1):
 #         """
@@ -993,7 +1011,10 @@ class PowerSeriesI(SageObject):
                 return c
             return a[n-1]/Integer(n)
             
-        return a.new(f)
+        if c == 0:
+            return a.PowerSeriesI(f,a.min_index+1)
+        else:
+            return a.PowerSeriesI(f)
 
     ### finite approximate operations
 
@@ -1155,6 +1176,10 @@ class PowerSeriesI(SageObject):
         return [-1]+x[0].list()
 
 class PS0(PowerSeriesI):
+    def __init__(self,f=None,min_index=1,**kwargs):
+        assert min_index >= 1
+        super(PS0,self).__init__(f,min_index,**kwargs)
+        
     def apply(a,b):
         """
         a.apply(b) is the same as b | a
@@ -1188,8 +1213,7 @@ class PS0(PowerSeriesI):
         Inverse: a.inv().o(f)=Id
         also ~a
         """
-        if decidable0(a.K) and a[0] != 0:
-            raise ValueError, "0th coefficient of a must be 0 but is " + repr(a[0])
+        a._assertp0()
         return a.it(-1)
 
 
@@ -1197,15 +1221,16 @@ class PS0(PowerSeriesI):
         """
         diff(it(a,t),t)(t=0) = ln(a[1])*julia(a)
         """
-        if decidable0(a.K):
-            assert a[0] == 0
-            assert a[1] != 0
+        a._assertp0()
         
         Poly=PolynomialRing(a.K,'x')
         b = PowerSeriesRingI(Poly)()
         b.min_index = 1
 
         def f(n):
+            if decidable0(a.K):
+                assert a[1] != 0
+
             if n == 0:
                 return Poly([0])
             if n == 1:
@@ -1219,7 +1244,7 @@ class PS0(PowerSeriesI):
         def h(p):
             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
 
-        return a.new(lambda n: h(b[n]),1)
+        return a.PS0(lambda n: h(b[n]))
         
     def itlog(a):
         """
@@ -1239,26 +1264,24 @@ class PS0(PowerSeriesI):
         g = a.it(_t)
         def f(n):
            return diff(g[n],_t)(_t=0)
-        res = a.new(f)
+        res = a.PS0(f)
         res.min_index = res.val()
         return res
 
-
-
-class PS0p(PS0):
-    """
-    PowerSeries p of the form p[0]=0 and p[1]!=0,1
-    """
     def it(a,t):
         """
-        Regular iteration at fixed point 0 for f'(0)!=1 (non-parabolic).
+        Regular iteration at fixed point 0 for a[1]**n != a[1] for all n.
+        Especially a[1]!=0 and a[1]!=1.
         """
-        if decidable0(a.K):
-            assert a[0]==0 and a[1]!=1
+        a._assertp0()
 
-        b = a.new()
+        b = a.PS0()
         b.min_index = 1
         def f(n):
+            if decidable0(a.K):
+                assert a[1]!=1, a[1]
+                assert a[1]!=0, a[1]
+
             #print "(" + repr(n)
             if n == 0:
                 #print ")"
@@ -1283,17 +1306,16 @@ class PS0p(PS0):
         constant by the functional equation:
         s(a(z))=a[1]*s(z)
         """
-        if decidable0(a.K) and a[0] != 0:
-            raise ValueError, "0th coefficient "+a[0]+" must be 0"
-        if decidable0(a.K) and a[1] == 0:
-            raise ValueError, "1st coefficient "+a[1]+" must be nonequal 0"
-        if decidable0(a.K) and a[1] == 1:
-            raise ValueError, "1st coefficient "+a[1]+" must be nonequal 1"
+        a._assertp0()
 
         q = a[1]
-        s = a.new()
+        s = PS01(parent=a._parent)
         s.min_index = 1
         def f(n):
+            if decidable0(a.K):
+                assert a[1] != 0, a[1]
+                assert a[1] != 1, a[1]
+            
             if n == 0:
                 return 0
             if n == 1:
@@ -1304,23 +1326,29 @@ class PS0p(PS0):
         
     def abel(f):
         """
-        The regular Abel function of a non-parabolic powerseries f has the form
-        a(x)=(ln(x)+ps(x))/ln(q)
+        The regular Abel function of a powerseries f (f[1]**n != f[1]) 
+        has the form a(x)=(ln(x)+ps(x))/ln(q)
         where q=f[1]!=0,1 and ps is a powerseries
         
-        This method returns ps
+        This method returns ps.
         """
+        f._assertp0()
+
         P = f._parent
-        return P.Log_inc | ((f.schroeder()<<1) - P.One)
+        return P.Log_inc | ((f.schroeder()<<1) - P.One).reclass()
 
     def abel2(a):
-        return a.new(a.julia().rcp().f,0).integral()
         
+        return a.PowerSeriesI(a.julia().rcp().f,min_index=0,complies=False).integral()
+
 
 class PS01(PS0):
     """
     PowerSeries p of the form p[0]=0 and p[1]=1
     """
+
+    def PS01(self,f,**kwargs):
+        return PS01(f,parent=self._parent,**kwargs)
 
     def valit(a):
         """
@@ -1368,7 +1396,7 @@ class PS01(PS0):
                 return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
             res = sum([c(m)*a.nit(m)[n] for m in range(n)],a.K(0))
             return res
-        return a.new(f,1)
+        return a.PS01(f)
 
     def it(a,t):
 
@@ -1378,7 +1406,7 @@ class PS01(PS0):
                 assert a[1] == 1
 
             return sum([binomial(t,m)*sum([binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)],a.K(0)) for m in range(n)],a.K(0))
-        return a.new(f,1)
+        return a.PS01(f)
 
     def julia(a):
         #diff(,t)(t=0) is the first coefficient of binomial(t,m)
@@ -1416,5 +1444,5 @@ class PS01(PS0):
 #         return [[ juli[m+i]/(i+1) for i in range(-m,-1) ],juli[m-1], (juli<<m).integral()]
         resit = juli[-1]
         #juli[-1]=0
-        return [resit,juli.set_index(-1,0).integral()]
+        return [resit,juli.set_element(-1,0).integral()]
 
