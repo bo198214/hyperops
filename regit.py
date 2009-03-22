@@ -5,6 +5,7 @@ Author: Henryk Trappmann
 """
 
 from sage.rings.complex_field import ComplexField
+from sage.misc.functional import n
 
 def par_abel(f,x0):
     """
@@ -22,8 +23,8 @@ def par_abel(f,x0):
         if iprec == None:
             iprec = 5*prec #heuristic
 
-        itf = x.n(iprec)
-        itf0 = x0.n(iprec)
+        itf = n(x,iprec)
+        itf0 = n(x0,iprec)
         itf01 = f(itf0)
 	yp = itf0
         while True:
@@ -32,7 +33,6 @@ def par_abel(f,x0):
             itf01 = f(itf0)
 
             y = (itf-itf0)/(itf01-itf0)
-            #yp = y + 2**(-prec)+1
             print "yp:",yp
             print "y: ",y
             if abs(y-yp) < 2**(-prec):
@@ -43,29 +43,36 @@ def par_abel(f,x0):
         
     return r
    
-def reg_schroeder_at(f,x0,a=0):
+def reg_schroeder(f,x0,prec=None,iprec=None,T=ComplexField):
     """
-    Takes a real function f with f(a)==a and 0<|f'(a)|<1 and 
+    Takes a (real or complex) function f with f(a)==a and 0<|f'(a)|<1 and 
     an initial value x0!=a with f^n(x0) -> a. 
-    Computes the regular Schroeder function s that is determined by s(x0)=1 
+    Computes the regular Schroeder function s that is determined by s(x0)=1.
+    The Schr\"oder function of f is the same as that of f^{-1} so you always
+    can choose 0<|f'(a)|<1.
     """
 
-    def r(x,iprec=None):
-        prec = x.prec()
-        if iprec == None:
-            iprec = 3*prec #heuristic
+    if prec == None:
+        prec = x0.prec()
 
-        f = with_prec(f,iprec,x)
+    if iprec == None:
+        iprec = 3*prec #heuristic
+    
+    K = T(iprec)
+    err = K(2)**(-prec)
 
-        itf=x.n(iprec)
-        itf0=x0.n(iprec)
-        yp = (a-x)/(a-x0)
-#         if yp == 1:
-#             return 1
-#         if yp > 1:
-#             signum = 1
-#         else:
-#             signum = -1
+    x0 = K(x0)
+
+    f = with_prec(f,iprec,x0)
+    a = fixed_point(f,x0,prec=iprec)
+
+
+    def r(x):
+        itf=K(x)
+        #itf=n(T(x),iprec)
+        itf0=K(x0)
+        #itf0=n(x0,iprec)
+        yp = (a-itf)/(a-itf0)
 
         while True:
             itf=f(itf)
@@ -74,72 +81,142 @@ def reg_schroeder_at(f,x0,a=0):
             
             #print y.prec(),itf.prec(),itf,itf0,y
             d = yp - y
-#             if d*signum < 0:
-#                 raise ZeroDivisionError
-#             if d*signum < 2**(-prec):
-            if abs(d) < 2**(-prec):
+            if abs(d) < err:
                 break
             yp=y
-        return x.parent()(y)
-        
+        return n(y,prec)
     return r
 
-def princ_schroeder_at0(f):
-    def r(x,iprec=None):
-        prec = x.prec()
-        if iprec == None:
-            iprec = 3*prec #heuristic
 
-        f = with_prec(f,iprec,x)
+def princ_schroeder(f,x0,prec=None,iprec=None,T=ComplexField,out=None):
+    """
+    Takes a (real or complex) function f with f(a)==a and 0<|f'(a)|<1 and 
+    an x0 such that f^n(x0)->a.
+    Computes the regular Schroeder function s that is determined by s(a)=1.
+    The Schr\"oder function of f is the same as that of f^{-1} so you always
+    can choose 0<|f'(a)|<1.
 
-        #compute f'(0)
-        c=f(RealField(iprec)(2**(-(iprec/2))))*2**(iprec/2)
+    If out!=None then [a,f'(a),s] is returned.
+    """
 
-        itf=x.n(iprec)
+    if prec == None:
+        prec = x0.prec()
+
+    if iprec == None:
+        iprec = 3*prec #heuristic
+    
+    K = T(iprec)
+    x0 = K(x0)
+
+    f = with_prec(f,iprec,x0)
+    a = fixed_point(f,x0,prec=iprec)
+
+    #compute f'(a), no cache needed should be fast
+    d = K(2)**(-int(iprec)/2)
+    c=(f(a+d)-a)/d
+
+    err = K(2)**(-prec)
+
+    def r(x):
+#        print x,
+        itf=K(x)
         cn=1
-        yp = x
-#        dmin = 2**(iprec/2)
+        yp = a-itf
+
         while True:
-            print itf
-            print exp(itf-l+k)+1
+#            print yp
             itf=f(itf)
             cn*=c
-            y=itf/cn
+            y=(a-itf)/cn
             
-            #print y.prec(),itf.prec(),cn.prec(),cn,y
             d = abs(yp - y)
-            if d<2**(-prec):
+            if d<err:
                 break
             yp=y
-#             if d < dmin:
-#                 dmin = d
-#             else:
-#                 print "Warning"
-        return x.parent()(y)
+        return T(prec)(y)
+
+    if out == None:
+        return r
+    else:
+        return [a,c,r]
+
     return r;
 
+def compose(f,g):
+    return lambda x: f(g(x))
+
+def nit(f,n):
+    if n==0:
+        return lambda x: x
+    if n==1:
+        return lambda x: f(x)
+    m1 = int(n)/2
+    m2 = n - m1
+    return compose(nit(f,m1),nit(f,m2))
+    
+def newton_it(f,prec=53,iprec=None,T=ComplexField):
+
+    if iprec == None:
+        iprec = prec + 4
+
+    K = T(iprec)
+
+    err = K(2)**(-prec)
+
+    def r(t,x):
+        fit = {}
+        y = K(0)
+        fit[0] = K(x)
+        n = 1
+        
+        while True:
+            fit[n] = f(fit[n-1])
+            print 'n',n,'fit[n]',fit[n]
+            s = sum([binomial(n,k) * Integer(-1)**(n-k) *fit[k] for k in range(n+1)])
+            print 's',s
+            d = binomial(t,n)*s
+            y += d
+            print y
+            if abs(d)<err:
+                return T(prec)(y)
+            n+=1
+
+    return r
+    
 def fixed_point(f,x0,prec=53,iprec=None,T=ComplexField):
     #slightly increase precision
+
     if iprec == None:
         iprec = prec+4
 
-    K = T(prec)
-    Ki = T(iprec)
+    K = T(iprec)
 
-    x0 = Ki(x0)
+    err = K(2)**(-prec)
+
+    x0 = K(x0)
     f = with_prec(f,iprec,x0)
 
     yp = x0
+
     while True:
         y=f(yp)
-        if abs(yp-y) < 2**(-prec):
-            return K(y)
+        if abs(yp-y) < err:
+            return T(prec)(y)
         yp=y
 
-def lower_fixed_point_exp_base(b):
-    xp = b
-    x = b**b
-    err = 2**(-b.prec())
+def lower_fixed_point_exp_base(b,prec=None,iprec=None):
+    T = RealField
+
+    if prec == None:
+        prec = b.prec()
+    if iprec == None:
+        iprec = prec + 4
+        
+    K = T(iprec)
+    err = K(2)**(-prec)
+
+    xp = K(b)
+    x = xp**xp
     while x > (err+xp)*b**(-err):
         xp = x
         x = b**xp
@@ -153,7 +230,7 @@ def with_prec(f,prec,x0):
                 kwargs['prec']=prec
                 return f(*args,**kwargs)
             return res
-    func_prec = f(x0.n(prec)).prec()
+    func_prec = f(n(x0,prec)).prec()
     if func_prec < prec:
         raise TypeError, "function must be able to return at least the same precision (returned: " + repr(func_prec) + ") as the argument (given: " + repr(iprec) + ")."
     return f
@@ -166,87 +243,6 @@ def to_prec(K,prec):
         return RealField(prec)
     return type(K)(prec)
     
-def reg_schroeder(f,x0,prec=53,iprec=None,T=ComplexField):
-    fpcache = {}
-
-    if iprec == None:
-        iprec = 3*prec #heuristic
-
-    K = T(prec)
-    Ki = T(iprec)
-
-    x0 = Ki(x0)
-
-    a = fixed_point(f,x0,prec=iprec)
-
-    f = with_prec(f,iprec,x0)
-
-    def r(x,out=None):
-        itf=Ki(x)
-        itf0=Ki(x0)
-        yp = 1
-        #dmin = 2**(iprec/2)
-        while True:
-            itf=f(itf)
-            itf0=f(itf0)
-            #print itf, itf0
-            y=(a-itf)/(a-itf0)
-            
-            #print y.prec(),itf.prec(),cn.prec(),cn,y
-            d = abs(yp - y)
-            if d<2**(-prec):
-                break
-            yp=y
-        if out == None:
-            return K(y)
-        else:
-            return [a,K(y)]
-    return r;
-
-def princ_schroeder(f):
-    fpcache = {}
-
-    def r(x,iprec=None,out=None):
-        prec = x.prec()
-        if iprec == None:
-            iprec = 3*prec #heuristic
-
-        f = with_prec(f,iprec,x)
-
-        if not fpcache.has_key(prec):
-            fpcache[prec] = fixed_point(f,x,prec=iprec)
-        a = fpcache[prec]
-        #print a
-
-        #compute f'(0), no cache needed should be fast
-        c=(f(a+2**(-(iprec/2)))-a)*2**(iprec/2)
-        #print c
-
-        itf=x.n(iprec)
-        cn=1
-        yp = x
-#        dmin = 2**(iprec/2)
-        while True:
-            itf=f(itf)
-            #print itf
-            cn*=c
-            y=(a-itf)/cn
-            
-            #print y.prec(),itf.prec(),cn.prec(),cn,y
-            d = abs(yp - y)
-            if d<2**(-prec):
-                break
-            yp=y
-#             if d < dmin:
-#                 dmin = d
-#             else:
-#                 print "Warning"
-        if out == None:
-            return x.parent()(y)
-        else:
-            return [a,c,x.parent()(y)]
-    return r;
-
 def ellipt_abel(f):
     s=princ_schroeder(f)
     def r(x):
