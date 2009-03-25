@@ -154,9 +154,23 @@ def nit(f,n):
     m2 = n - m1
     return compose(nit(f,m1),nit(f,m2))
     
+
+def newton_sexp(b,prec=20,iprec=None):
+    T = RealField
+    K = T(iprec)
+    f = lambda x: K(b)**x
+    return newton_it(f,prec=prec,iprec=iprec,T=T)
+
 def newton_it(f,prec=53,iprec=None,T=ComplexField):
+    """
+    works only for monotonic functions
+    """
 
     if iprec == None:
+        if prec==10:
+            iprec = 26
+        if prec==25:
+            iprec = 2000
         iprec = prec + 4
 
     K = T(iprec)
@@ -165,18 +179,51 @@ def newton_it(f,prec=53,iprec=None,T=ComplexField):
 
     def r(t,x):
         fit = {}
-        y = K(0)
+        y = K(1)
         fit[0] = K(x)
         n = 1
+        admin = Infinity
         
         while True:
             fit[n] = f(fit[n-1])
-            print 'n',n,'fit[n]',fit[n]
             s = sum([binomial(n,k) * Integer(-1)**(n-k) *fit[k] for k in range(n+1)])
-            print 's',s
-            d = binomial(t,n)*s
+            d = binomial(K(t),n)*s
+
+            if abs(d) < admin:
+                admin = abs(d)
+                ybest = y
+
+            #print abs(d),admin
             y += d
-            print y
+
+            if abs(d)<err:
+                return T(prec)(y)
+
+            if abs(d)>100:
+                print 'no convergence',x,T(prec)(ybest),admin
+                return [T(prec)(ybest),admin]
+            n+=1
+
+    return r
+
+def newton_it_b(f,prec=53,iprec=None,T=ComplexField):
+    if iprec == None:
+        iprec = prec * 3
+
+    K = T(iprec)
+    err = K(2)**(-prec)
+    
+    def r(t,x):
+        fit = {}
+        y = K(0)
+        fit[0] = K(x)
+        n = 1
+
+        while True:
+            fit[n] = f(fit[n-1])
+            s = sum([binomial(n,k) * Integer(-1)**(k) * fit[n-k-1] for k in range(n+1)])
+            d = binomial(t+1,n)*s
+            y+=d
             if abs(d)<err:
                 return T(prec)(y)
             n+=1
