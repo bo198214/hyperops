@@ -120,7 +120,7 @@ class FormalPowerSeriesRing(Ring):
         min_index = start + M
         max_index = start + N
         def f(k):
-            """ the coefficient function """
+            """ sage: f(k)   # indirect doctest """
             if k<min_index or k>max_index:
                 return 0
             return list[k-start]
@@ -141,7 +141,7 @@ class FormalPowerSeriesRing(Ring):
         assert isinstance(v,SymbolicVariable)
 
         def f(n):
-            """ the coefficient function """
+            """ sage: f(k)   # indirect doctest """
             #too slow
             #if not at == 0 and n==0:
             #    return expr({v:at})-at
@@ -153,18 +153,18 @@ class FormalPowerSeriesRing(Ring):
         #print "after",min_index
         return self.by_lambda(f,min_index,**kwargs)
 
-    def by_const(self,c,**kwargs):
+    def by_constant(self,c,**kwargs):
         """
         Returns the powerseries with coefficients [c,0,0,...].
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: f = P.by_const(42)
+        sage: f = P.by_constant(42)
         sage: f
         [42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         def f(n):
-            """ the coefficient function """
+            """ sage: f(k)   # indirect doctest """
             if n == 0:
                 return self.K(c)
             return 0
@@ -268,7 +268,7 @@ class FormalPowerSeriesRing(Ring):
         """
 
         if isinstance(p,Integer) or isinstance(p,int) or isinstance(p,Rational):
-            return self.by_const(p,**kwargs)
+            return self.by_constant(p,**kwargs)
 
         if isinstance(p,list):
             return self.by_sequence(p,**kwargs)
@@ -288,6 +288,10 @@ class FormalPowerSeriesRing(Ring):
     def __init__(self,base_ring):
         """
         Returns the powerseries ring over base_ring.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ) 
+        FormalPowerSeriesRing over Rational Field
         """
         if base_ring == None:
             return
@@ -295,13 +299,13 @@ class FormalPowerSeriesRing(Ring):
         self.K = base_ring
 
         def PSF(f):
-            """ Initialize as FormalPowerSeries """
+            """ sage: PSF(f)   # indirect doctest """
             return self.by_lambda(f,T=FormalPowerSeries)
         def PSF01(f):
-            """ Initialize as FPS01 """
+            """ sage: PSF01(f)   # indirect doctest """
             return self.by_lambda(f,T=FPS01)
         def PSS(seq):
-            """ Initialize as FormalPowerSeries by sequence """
+            """ sage: PSS(seq)   # indirect doctest """
             return self.by_sequence(seq,T=FormalPowerSeries)
 
         if self.K == int:
@@ -326,9 +330,7 @@ class FormalPowerSeriesRing(Ring):
         self.Cos = PSF(lambda n: K0 if n % 2 == 1 else K((-1)**(n/2)/factorial(n)))
 
         def arcsin(n):
-            """
-            powerseries coefficients of arcsin.
-            """
+            """ sage: arcsin(n)   # indirect doctest """
             if n % 2 == 0:
                 return K0
             evenprod = Integer(1)
@@ -346,9 +348,7 @@ class FormalPowerSeriesRing(Ring):
         self.Sinh = PSF01(lambda n: K0 if n % 2 == 0 else K(1/factorial(n)))
         self.Cosh = PSF(lambda n: K0 if n % 2 == 1 else K(1/factorial(n)))
         def arcsinh(n):
-            """
-            powerseries coefficients of arcsinh.
-            """
+            """ sage: arcsinh(n)   # indirect doctest """
             if n % 2 == 0:
                 return K0
             evenprod = Integer(1)
@@ -365,9 +365,7 @@ class FormalPowerSeriesRing(Ring):
         self.Bernoulli = (self.Id / self.Exp.dec()).derivatives()
 
         def tan(N):
-            """
-            powerseries coefficients of tan
-            """
+            """ sage: tan(n)   # indirect doctest """
             if N % 2 == 0:
                 return K0
             n = (N + 1) / 2
@@ -375,9 +373,7 @@ class FormalPowerSeriesRing(Ring):
         self.Tan = PSF01(tan)
 
         def tanh(N):
-            """
-            powerseries coefficients of tanh
-            """
+            """ sage: tanh(n)   # indirect doctest """
             if N % 2 == 0:
                 return K0
             n = (N+1)/2
@@ -391,9 +387,7 @@ class FormalPowerSeriesRing(Ring):
         """ Lambert W function is the inverse of f(x)=x*e^x """
 
         def sqrt_inc(n):
-            """
-            powerseries coefficients of sqrt(x+1) at x=0.
-            """
+            """ sage: sqrt_inc(n)   # indirect doctest """
             evenprod=Integer(1)
             oddprod=Integer(1)
             for k in range(2,2*n+1):
@@ -414,6 +408,8 @@ class FormalPowerSeriesRing(Ring):
             Returns the sequence of Stirling numbers of the first kind.
             These are the coefficients of the polynomial x(x-1)(x-2)...(x-n+1).
             stirling1[n][k] is the coefficient of x^k in the above polynomial.
+
+            sage: f(n)   # indirect doctest
             """
             
             if n==0:
@@ -428,6 +424,7 @@ class FormalPowerSeriesRing(Ring):
         def lehmer_comtet(n,k): #A008296
             """
             Lehmer Comtet sequence, Sloane A008296
+            sage: f(n)   # indirect doctest
             """
             return sum([binomial(l, k)*k^(l-k)*self.Stirling1[n][l] for l in range(k,n+1)],K0)
         self.Lehmer_comtet = PSF(lambda n: sum([k**(n-k)*binomial(n,k) for k in range(n+1)],K0))
@@ -446,6 +443,7 @@ class FormalPowerSeriesRing(Ring):
         def A003725(n):
             """
             Derivatives of exp(x*e^(-x)) at 0
+            sage: A003725(n)   # indirect doctest
             """
             return K(sum([ (-k)**(n-k)*binomial(n, k) for k in range(n+1)],K0))
         self.A003725 = PSF(A003725)
@@ -465,12 +463,20 @@ class FormalPowerSeriesRing(Ring):
     def _repr_(self):
         """
         Description of this FormalPowerSeriesRing.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ)._repr_()            
+        'FormalPowerSeriesRing over Rational Field'
         """
-        return "Formal Power Series over " + repr(self.K)
+        return "FormalPowerSeriesRing over " + repr(self.K)
 
     def base_ring(self):
         """
         Returns the base ring of the powerseries ring.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).base_ring() == QQ
+        True
         """
         return self.K
 
@@ -733,6 +739,11 @@ class FormalPowerSeries(RingElement):
     def parent(self):
         """
         The FormalPowerSeriesRing to which this FormalPowerSeries belongs.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(1).parent() == P
+        True
         """
         return self._parent
 
@@ -743,22 +754,29 @@ class FormalPowerSeries(RingElement):
         """
         Returns the base ring of the FormalPowerSeriesRing 
         this FormalPowerSeries is contained in.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).by_constant(1).base_ring() == QQ
+        True
         """
         return self._parent.K
 
-    def __nonzero__(self):
-        """
-        Returns always None, 
-        as it is not decidable whether a powerseries is 0.
-        """
-        return None
+#     def __nonzero__(self):
+#         """
+#         Returns always None, 
+#         as it is not decidable whether a powerseries is 0.
 
-    def is_one(self):
-        """
-        Returns always None,
-        as it is not decidable whether a powerseries is 1.
-        """
-        return None
+#         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+#         sage: FormalPowerSeriesRing(QQ)(0).is_zero() == None
+#         """
+#         return None
+
+#     def is_one(self):
+#         """
+#         Returns always None,
+#         as it is not decidable whether a powerseries is 1.
+#         """
+#         return None
 
     def define(self,p):
         """
@@ -781,6 +799,11 @@ class FormalPowerSeries(RingElement):
         """
         Returns the n-th coefficient of this powerseries.
         This is the coefficient of x^n.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3])[1] == 2
+        True
         """
 
         if not self._memo.has_key(n):
@@ -791,14 +814,26 @@ class FormalPowerSeries(RingElement):
     def __getslice__(self,i,j): # [i:j]
         """
         Returns the list of coefficients with indices in range(i,j).
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: n)[1:3]
+        [1, 2]
         """
         return [self[k] for k in range(i,j)]
 
     def set_min_index(a,min_index):
         """
         Returns the powerseries with elements before min_index replaced by 0.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: n).set_min_index(5)
+        [0, 0, 0, 0, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...]
+        sage: P(lambda n: n).set_min_index(-5)
+        [-5, -4, -3, -2, -1; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, ...]
         """
-        return a.FormalPowerSeries(a.f,min_index)
+        return a.FormalPowerSeries(a.f,min_index,complies=False)
 
     def reclass(p):
         """
@@ -838,44 +873,83 @@ class FormalPowerSeries(RingElement):
 
     def FPS0(self,f=None,**kwargs):
         """
-        Returns an uninitialized FPS0 from the same 
-        PowerSeriesRing self is contained in.
+        Returns a FPS0 from the same parent.
+        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([1,2,3])          
+        sage: q = p.FPS0(lambda n: -n)
+        sage: p.parent() == q.parent()
+        True
         """
         return FPS0(f,parent=self._parent,**kwargs)
 
     def set_element(a, index, value):
         """
         Returns the powerseries that has a[index] replaced by value.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3]).set_element(1,42)
+        [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.FormalPowerSeries(lambda n: value if n == index else a[n],a.min_index)
 
     def set_slice(a, i, j, seq):
         """
         Returns the powerseries that has a[i:j] replaced by seq.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
+        [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
         """
         return a.FormalPowerSeries(lambda n: seq[n-i] if i<=n and n<j else a[n],a.min_index)
 
     def derivatives(a):
         """
         The sequence of derivatives a[n]*n! of the powerseries a
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.Exp.derivatives()                                   
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
         return a.FormalPowerSeries(lambda n: a[n]*a.K(factorial(n)))
 
     def underivatives(a):
         """
         Returns the sequence a[n]/n!.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: 1).underivatives() - P.Exp
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.FormalPowerSeries(lambda n: a[n]/a.K(factorial(n)))
 
     def inc(a):
         """
-        Increment: a + 1
+        Increment: a + 1. 
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.Zero.inc()
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P.Zero + P.One
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.FormalPowerSeries(lambda n: a[0]+a.K(1) if n==0 else a[n])
 
     def dec(a):
         """
         Decrement: a-1
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+
+        sage: P.Zero.dec()
+        [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.FormalPowerSeries(lambda n: a[0]-a.K(1) if n==0 else a[n])
 
