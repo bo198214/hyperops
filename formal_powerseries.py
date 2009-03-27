@@ -1836,7 +1836,10 @@ class FPS0(FormalPowerSeries):
                 #print ")"
                 return a[1]**t
             res = a[n]*(b[1]**n)-b[1]*a[n]
-            res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
+
+            for m in range(2,n):
+                res += a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n]
+
             res /= a[1]**n - a[1]
             #print ")"
             return res
@@ -1846,6 +1849,12 @@ class FPS0(FormalPowerSeries):
     def regit_b(a,t):
         """
         Regular iteration via the schroeder function.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([0,2]).regit_b(1/2)
+        sage: (p[0],p[1],p[2])
+        (0, sqrt(2), 0)
         """
         s = a.schroeder()
         return s.inv()(s.scalm(a[1]**t))
@@ -1895,6 +1904,7 @@ class FPS0(FormalPowerSeries):
 
         b = FPS0()
         def f(n):
+            """ sage: None # indirect doctest """
             if n==0:
                 return 0
             if n==1:
@@ -1905,7 +1915,7 @@ class FPS0(FormalPowerSeries):
         return b
 
 
-    def julia(a):
+    def julia_b(a):
         """
         diff(it(a,t),t)(t=0) == ln(a[1])*julia(a)
         """
@@ -1931,19 +1941,60 @@ class FPS0(FormalPowerSeries):
         b.f = f
 
         def h(p):
-            """
-            Auxiliary function.
-            """
+            """ sage: None # indirect doctest """
             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
 
         return a.FPS0(lambda n: h(b[n]))
+
+    def julia(a):
+        """
+
+        Precondition: a[1]**n!=a[1] for all n>1
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: a = P([0,2,1])               
+        sage: j = a.julia_b()                   
+        sage: j(a) - a.diff()*j            
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        """
+        
+        ap = a.diff()
+        
+        j = FormalPowerSeries()
+        def f(n):
+            """ sage: None #indirect doctest """
+
+            if n < 0:
+                return 0
+
+            if n == 1:
+                return 1
+            
+            r = a.K(0)
+
+            for k in range(1,n):
+                r+=ap[n-k]*j[k]
+
+            for k in range(1,n):
+                r-=j[k]*a.npow(k)[n]
+
+            return r/(a[1]**n-a[1])
+        j.f = f
+        return j
+            
         
     def itlog(a):
         """
-        Iterative logarithm:
+        Iterative logarithm or Julia function.
+        Has different equivalent definitions:
+        1. Solution j of: j o a = a' * j
+        2. j = diff(f.it(t),t)(t=0)
+
+        It has similar properties like the logarithm:
         itlog(f^t) == t*itlog(f)
-        defined by: diff(f.it(t),t)(t=0)
-        can be used to define the regular Abel function abel(f) by
+
+        It can be used to define the regular Abel function abel(f) by
         abel(f)' = 1/itlog(f)
 
         Refs:
@@ -1971,6 +2022,8 @@ class FPS0(FormalPowerSeries):
         s(a(z))=a[1]*s(z)
 
         Let f(x) = 2*x + x**2, let s(x)=log(1+x), then s(f(x))=2*s(x):
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,2,1]).schroeder() - P.Log_inc
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -2039,34 +2092,44 @@ class FPS01(FPS0):
             n+=1
         return n
 
-    def it0(p,t):
-        """
-        A different implementation for it.
-        """
-        N=p.valit()
-        P = p._parent
-        q = P()
-        def f(n):
-            """ sage: None   # indirect doctest """
-            if n < N:
-                return P.Id[n]
-            if n == N:
-                return t * p[N]
-            if n > N:
-                r=p[n]
-                r+=sum([p[m]*(q**m)[n] - q[m]*(p**m)[n] for m in range(N,n)])
-                return r
-            
-        q.f = f
-        return q
+#     def it_b(p,t):
+#         """
+#         A different direct implementation for `it'.
 
-    def it(a,t):
+#         sage: p = P.Dec_exp.it_b(1/2)  
+#         sage: (p | p) - P.Dec_exp    
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+#         """
+#         N=p.valit()
+#         P = p._parent
+#         q = P()
+#         def f(n):
+#             """ sage: None   # indirect doctest """
+#             if n < N:
+#                 return P.Id[n]
+#             if n == N:
+#                 return t * p[N]
+#             if n > N:
+#                 r=p[n]
+#                 r+=sum([p[m]*(q**m)[n] - q[m]*(p**m)[n] for m in range(N,n)])
+#                 return r
+            
+#         q.f = f
+#         return q
+
+    def regit(a,t):
         """
         Regular iteration for powerseries with a[0]==0 and a[1]==1. 
         The iteration index t needs not to be an integer.
         t should be a number in the base ring of this powerseries, 
         but at least have a defined multiplication with the elements 
         of the base ring.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P.Dec_exp.regit(1/2)  
+        sage: (p | p) - P.Dec_exp    
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
 
         def f(n):
