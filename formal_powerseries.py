@@ -698,7 +698,7 @@ class FormalPowerSeriesRing(Ring):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1]).reclass()
+        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1])
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
         sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
@@ -2057,7 +2057,7 @@ class FPS0(FormalPowerSeries):
         f._assertp0()
 
         P = f._parent
-        return ((f.schroeder()<<1) - P.One).reclass() | P.Log_inc
+        return ((f.schroeder()<<1) - P.One) | P.Log_inc
 
     def abel2(a):
         """
