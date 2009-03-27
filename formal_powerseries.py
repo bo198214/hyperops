@@ -20,7 +20,9 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
 from sage.misc.misc_c import prod
 from sage.rings.infinity import Infinity
+from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.polynomial.polynomial_element import Polynomial
+from sage.matrix.constructor import matrix
 
 def decidable0(K): 
     """
@@ -126,6 +128,18 @@ class FormalPowerSeriesRing(Ring):
             return list[k-start]
 
         return self.by_lambda(f,min_index,**kwargs)
+
+    def by_polynomial(self,p):
+        """
+        Returns the FormalPowerSeries from the given Polynomial.
+        """
+        return self.by_sequence(p.padded_list())
+
+    def by_powerseries(self,p):
+        """
+        Returns the FormalPowerSeries from the given PowerSeries.
+        """
+        return self.by_polynomial(p.polynomial())
         
     def by_taylor(self,expr,v,at=0,**kwargs):
         """
@@ -277,6 +291,12 @@ class FormalPowerSeriesRing(Ring):
             if at == None:
                 at = 0
             return self.by_taylor(p,v,at,**kwargs)
+
+        if isinstance(p,Polynomial):
+            return self.by_polynomial(p)
+
+        if isinstance(p,PowerSeries):
+            return self.by_powerseries(p)
 
         if type(p) is type(lambda n: 0):
             if at == None:
@@ -651,7 +671,7 @@ class FormalPowerSeriesRing(Ring):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: ((p << 1).log().smul(a[0]) + (p | a[1]) - a[1]).reclass()
+        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1]).reclass()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: a = var('a')
         sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
@@ -663,6 +683,7 @@ class FormalPowerSeriesRing(Ring):
         [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
         sage: [pac[k] - pah[k]==0 for k in range(0,5)]
         [True, True, True, True, True]
+        sage: P._test()
         """
         pass
 
@@ -678,7 +699,7 @@ class FormalPowerSeries(RingElement):
         sage: PQ = FormalPowerSeriesRing(QQ)
         sage: #Predefined PowerSeries                                                         
         sage: expps = PQ.Exp
-        sage: expps.poly(10,x)
+        sage: expps.polynomial(10,x)
         1/362880*x^9 + 1/40320*x^8 + 1/5040*x^7 + 1/720*x^6 + 1/120*x^5 + 1/24*x^4 + 1/6*x^3 + 1/2*x^2 + x + 1
         sage: expps
         [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
@@ -690,7 +711,7 @@ class FormalPowerSeries(RingElement):
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: #finite powerseries                                                             
         sage: p = PQ([1,2,3,4])
-        sage: p.poly(10,x)
+        sage: p.polynomial(10,x)
         4*x^3 + 3*x^2 + 2*x + 1
         sage: p
         [1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -994,7 +1015,7 @@ class FormalPowerSeries(RingElement):
 
     def inc(a):
         """
-        Increment: a + 1. 
+        Increment: a + One. 
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1007,7 +1028,7 @@ class FormalPowerSeries(RingElement):
 
     def dec(a):
         """
-        Decrement: a-1
+        Decrement: a - One.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1017,15 +1038,26 @@ class FormalPowerSeries(RingElement):
         """
         return a.FormalPowerSeries(lambda n: a[0]-a.K(1) if n==0 else a[n])
 
-    def smul(a,s):
+    def scalm(a,s):
         """
         Scalar multiplication with scalar s
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3]).scalm(2)
+        [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.FormalPowerSeries(lambda n: a[n]*s,a.min_index)
 
-    def __add__(a,b): # +
+    def add(a,b):
         """
-        Addition:
+        Addition of two powerseries.
+
+        Alternative expression: a.add(b) == a+b
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3]).add(P([4,5,6]))
+        [5, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         def f(n):
             """ sage: None   # indirect doctest """
@@ -1038,15 +1070,25 @@ class FormalPowerSeries(RingElement):
             return a[n]+b[n]
         return a.FormalPowerSeries(f,min(a.min_index,b.min_index))
 
-    def plus(a,b):
+    def __add__(a,b):
         """
-        a.plus(b) == a+b
-        """
-        return a+b
+        Addition of two powerseries: a+b.
 
-    def __sub__(a,b): # -
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3])+P([4,5,6])
+        [5, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        Subtraction:
+        return a.add(b)
+
+    def __sub__(a,b): 
+        """
+        Subtraction of two powerseries: a-b.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: n) - P(lambda n: n)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         def f(n):
             """ sage: None   # indirect doctest """
@@ -1061,9 +1103,16 @@ class FormalPowerSeries(RingElement):
             return a[n]-b[n]
         return a.FormalPowerSeries(f,min(a.min_index,b.min_index))
 
-    def minus(a,b):
+    def sub(a,b):
         """
-        a.minus(b) == a-b
+        Subtraction of two powerseries.
+
+        Alternative expression: a.sub(b) == a-b
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P(lambda n: n).sub(P(lambda n: n))
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a-b
 
@@ -1073,6 +1122,8 @@ class FormalPowerSeries(RingElement):
 
         Alternative expression a.neg() == -a.
 
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: 1).neg()         
         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
         """
@@ -1085,11 +1136,14 @@ class FormalPowerSeries(RingElement):
 
     def __neg__(a):
         """
-        Negation of the powerseries a.
+        Negation of powerseries: -a.
 
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: -P(lambda n: 1)
         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
         """
+        return a.neg()
 
     def mul(a,b): 
         """
@@ -1109,6 +1163,7 @@ class FormalPowerSeries(RingElement):
         def ab(m,n):
             """
             Lazy product of a[m] and b[n]
+            sage: None # indirect doctest
             """
             if a[m] == a.K(0):
                 return a.K(0)
@@ -1158,6 +1213,7 @@ class FormalPowerSeries(RingElement):
         def ab(m,n):
             """
             Lazy product of b[n] and a[m].
+            sage: None # indirect doctest
             """
             if b[n] == b.K(0):
                 return b.K(0)
@@ -1204,7 +1260,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P([1,2,3])**2/P([1,2,3])
+        sage: P([1,2,3]).npow(2)/P([1,2,3])
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         if (not isinstance(n,Integer) and not isinstance(n,int)) or n<0:
@@ -1339,24 +1395,49 @@ class FormalPowerSeries(RingElement):
         sage: PP = FormalPowerSeriesRing(QQ)
 
         """
-        return (a.underivatives()**k).derivatives().smul(1/factorial(k))
+        return (a.underivatives()**k).derivatives().scalm(1/factorial(k))
 
     def bell_polynomial(a,n,k):
         return a.bell(k)[n]
         
 
-    def poly(a,n,x=None):
+    def genfunc(a,n):
+        """
+        Returns the generating function of this powerseries up to term
+        a[n-1]*x**(n-1).
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: f = P.by_sequence([1,2,3],-2).polynomial(5)                  
+        sage: g = P.by_sequence([1,2,3],-2).genfunc(5)
+        sage: f(3.7)==g(3.7)
+        True
+        """
+        m = a.min_index
+        return lambda x: sum([a[k]*x**k for k in range(m,n)],a.K(0))
+        
+    def polynomial(a,n,x=var('x')):
         """
         Returns the associated polynomial for the first n coefficients.
         f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
-        With second argument you get the polynomial as expression in that
-        variable.
-        Without second argument you the get polynomial as function.
+
+        In case of a Laurant series with e.g. min_index=-2:
+        f_{-2} x^(-2) + f_{-1} x^(-1) + ... + f_{n-1}*x^{n-1}
+        
+        You can adjust the variable by setting x.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.by_sequence([0,1,2]).polynomial(5).padded_list()
+        [0, 1, 2]
         """
-        if x == None:
-            return lambda x: sum([a[k]*x**k for k in range(n)],a.K(0))
-        else:
-            return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K(0)))
+
+#        return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K(0)))
+        P = PolynomialRing(a.K,x)
+        m = a.min_index
+        if m >= 0:
+            return P(a[:n])
+        return P(a[m:n])/P(x**(-m))
 
     def _assertp0(a):
         """
@@ -1416,7 +1497,7 @@ class FormalPowerSeries(RingElement):
         """
         r = abs(a[N])**(-1/Integer(N))
         l = r/sqrt(2.0)
-        f = a.poly(N)
+        f = a.polynomial(N)
         x0=real(fp)
         y0=imag(fp)
         return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
@@ -1440,7 +1521,7 @@ class FormalPowerSeries(RingElement):
 
     def __call__(a,b):
         """
-        Composition: a(b).poly(m*n,x) == a.poly(m,b.poly(n,x)) 
+        Composition: a(b).polynomial(m*n,x) == a.polynomial(m,b.polynomial(n,x)) 
         b[0] == 0. 
         """
         b._assertp0()
@@ -1549,162 +1630,36 @@ class FormalPowerSeries(RingElement):
 
     ### finite approximate operations
 
-    def carleman_matrix(p,M,N=None):
+    def carleman_matrix(p,N,M=None):
         """
-        The carleman_matrix has as nth row the coefficients of p^n
-        It has M rows and M columns, except N specifies a different number of 
-        columns.
+        The carleman_matrix has as nth row the coefficients of p^n.
+        It has N rows and N columns, except M specifies a different number of 
+        rows.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,1]).carleman_matrix(4) == matrix([[1,0,0,0],[1,1,0,0],[1,2,1,0],[1,3,3,1]])                      
+        True
         """
-        if N == None: 
-            N=M
+        if M == None: 
+            M=N
         return matrix([[p.npow(m)[n] for n in range(N) ] for m in range(M)])
 
-    def bell_matrix(a,M,N=None):
+    def bell_matrix(a,N,M=None):
         """
-        The Bell matrix with M rows and M (or N) columns of this power series.
-        The m-th column of the Bell matrix (starting to count with m=0)
-        is the sequence of coefficients of the m-th power of the power series.
+        The Bell matrix with N (or M) rows and N columns of this power series.
+        The n-th column of the Bell matrix is the sequence of coefficients 
+        of the n-th power of the power series.
         The Bell matrix is the transpose of the Carleman matrix.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,1]).bell_matrix(4) == matrix([[1,1,1,1],[0,1,2,3],[0,0,1,3],[0,0,0,1]])                      
+        True
         """
-        if N == None:
-            N=M
+        if M == None:
+            M=N
         return matrix([[a.npow(n)[m] for n in range(N)] for m in range(M)])
-
-    def it_matrixpower(p,t,n,root_field=RR):
-        """
-        t times Iteration via matrix power. t is a complex number.
-        This method can also iterate power series with p[0]!=0.
-        It is identical with the regular iteration for the case p[0]==0.
-        However in the case p[0]!=0 it is no finite operation anymore and
-        hence requires the size n of the Carleman matrix to use.
-        This matrix which has the coefficients of p in its first row
-        is raised to the t-th power and then the coefficients 
-        of the first row are returned.
-
-        Works currently only if the eigenvalues are all different.
-        """
-        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients. But given was " + repr(n)
-        CM = p.carleman_matrix(n)
-        ev = CM.charpoly().roots(root_field)
-        assert len(ev) == n, "Carleman matrix must have exactly " + repr(n) + "eigenvalues, but has " + repr(len(ev))
-    
-        Char = [0]*n
-        for k in range(n):
-            #here is possibility for improvement of precision
-            #to separate the fractional from the root parts
-            #expanding the product
-            Char[k] = CM - ev[k][0]*identity_matrix(n)
-    
-        #we want to have the first row of the product of the matrices
-        #thatswhy we mulitply in front with:
-        prod = vector(p.K,[0,1]+[0]*(n-2))
-        prodwo = [0]*n
-        for k in range(n):
-            prodwo[k]=prod #these are the first terms until k-1
-    
-            #no need to continue
-            if k == n-1:
-                break
-    
-            #and we add the terms starting with k+1
-            for i in range(k+1,n):
-                prodwo[k] = prodwo[k] * Char[i]
-    
-            prod = prod * Char[k]
-    
-        sprodwo = [0]*n
-        for k in range(n):
-            if k==0:
-                sprodwo[k] = ev[k][0] - ev[1][0]
-                start = 2
-            else:
-                sprodwo[k] = ev[k][0] - ev[0][0]
-                start = 1
-    
-            for i in range(start,n):
-                if i != k:
-                    sprodwo[k] = sprodwo[k] * (ev[k][0] - ev[i][0])
-    
-        res = ev[0][0]**t/sprodwo[0] * prodwo[0]
-        for k in range(1,n):
-            res += ev[k][0]**t/sprodwo[k]*prodwo[k]
-    
-        return res.list()
-
-    def sexp(p,n,res_field=RR):
-        """
-        t times Iteration via matrix power. t is a complex number.
-        This method can also iterate power series with p[0]!=0.
-        It is identical with the regular iteration for the case p[0]==0.
-        However in the case p[0]!=0 it is no finite operation anymore and
-        hence requires the size n of the Carleman matrix to use.
-        This matrix which has the coefficients of p in its first row
-        is raised to the t-th power and then the coefficients 
-        of the first row are returned.
-
-        Works currently only if the eigenvalues are all different.
-        """
-        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients. But given was " + repr(n)
-        CM = p.carleman_matrix(n)
-        ev = [ r[0] for r in CM.charpoly().roots(QQbar) ]
-        assert len(ev) == n, "Carleman matrix must have exactly " + repr(n) + "eigenvalues, but has " + repr(len(ev))
-    
-        #We want to compute:
-        #sum over k: evk^t*(CM-ev1*I)*(CM-ev2*I)*. omit k * (CM-evn*I)/(evk-ev1)*.. omit k *(evk-evn)
-        Char = [0]*n
-        for k in range(n):
-            #here is possibility for improvement of precision
-            #to separate the fractional from the root parts
-            #expanding the product
-            Char[k] = CM - ev[k]*identity_matrix(n)
-    
-        #we want to have the first row of the product of the matrices
-        #thatswhy we mulitply in front with:
-        prod = vector(QQbar,[0,1]+[0]*(n-2))
-        prodwo = [0]*n
-        for k in range(n):
-            prodwo[k]=prod #these are the first terms until k-1
-    
-            #no need to continue
-            if k == n-1:
-                break
-    
-            #and we add the terms starting with k+1
-            for i in range(k+1,n):
-                prodwo[k] = prodwo[k] * Char[i]
-    
-            prod = prod * Char[k]
-    
-        sprodwo = [0]*n
-        for k in range(n):
-            if k==0:
-                sprodwo[k] = ev[k] - ev[1]
-                start = 2
-            else:
-                sprodwo[k] = ev[k] - ev[0]
-                start = 1
-    
-            for i in range(start,n):
-                if i != k:
-                    sprodwo[k] = sprodwo[k] * (ev[k] - ev[i])
-    
-        for k in range(n):
-            print ev[k]
-            print prodwo[k][0]/sprodwo[k]
-            print res_field
-        #return lambda t: sum(res_field(ev[k])**t*res_field(prodwo[k][0]/sprodwo[k]) for k in range(n))
-        return [ev,[prodwo[k][0]/sprodwo[k] for k in range(n)]]
-
-    def natural_abel_seq(p,n):
-        """
-        Returns the first n coefficients of the natural Abel power sequence,
-        obtained from an nxn Carleman/Bell matrix.
-        This method does not work for p[0]=0.
-        """
-        assert n>=2, "Carleman matrix must at least be of size 2 to retrieve the coefficients."
-        B=p.carleman_matrix(n)-diagonal_matrix([1]*(n))
-        x=B[range(1,n),range(n-1)].solve_left(matrix([[1] + [0]*(n-2)]))
-        return [-1]+x[0].list()
 
 class FPS0(FormalPowerSeries):
     """
