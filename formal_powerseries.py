@@ -1,5 +1,5 @@
 """
-Formal powerseries and formal Laurant series in one variable.
+Cached formal powerseries and formal Laurant series in one variable.
 
 Author: Henryk Trappmann
 """
@@ -80,6 +80,31 @@ class FormalPowerSeriesRing(Ring):
             return FormalPowerSeries(f,*args,**kwargs)
 
 
+    def by_iterator(self,g,min_index=0):
+        """
+        Returns a powerseries from the generator g.
+        The powerseries coefficients start at min_index
+        which is allowed be negative obtaining a formal Laurant series.
+
+        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.by_iterator(iter(ZZ),-2) 
+        [0, 1; -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8, 9, -9, 10, -10, ...]
+        """
+        res = self.by_undefined()
+        res.min_index = min_index
+        def f(n):
+            """ sage: None # indirect doctest """
+            if n<min_index:
+                return 0
+            if n==min_index:
+                return g.next()
+            x = res[n-1] #dummy to compute the prev value
+            return g.next()
+        res.f = f
+        return res
+        
     def by_undefined(self,T=None):
         """
         Returns an undefined powerseries. This is useful to use method `define'.
@@ -297,6 +322,8 @@ class FormalPowerSeriesRing(Ring):
 
         if isinstance(p,PowerSeries):
             return self.by_powerseries(p)
+
+        #TODO generator if isinstance(p,
 
         if type(p) is type(lambda n: 0):
             if at == None:
@@ -880,9 +907,9 @@ class FormalPowerSeries(RingElement):
         """
         self.f = p.f
         
-    def __getitem__(self,n): # []
+    def __getitem__(self,n):
         """
-        Returns the n-th coefficient of this powerseries.
+        Returns the n-th coefficient of this powerseries: self[n].
         This is the coefficient of x^n.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
@@ -1543,6 +1570,23 @@ class FormalPowerSeries(RingElement):
             return res
         return (type(a))(f,a.min_index*b.min_index,parent=a._parent)
 
+    def compose(b,a):
+        """
+        Composition (left after right), in mathematical notation b o a.
+        Alternative expressions: b.compose(a) == b(a) == a | b
+        
+        Precondition: 
+            a[0] == 0. 
+        Satisfies:
+            a(b).polynomial(m*n,x) == a.polynomial(m,b.polynomial(n,x)) 
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3]).compose(P([0,1,2]))
+        [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        """
+        return b(a)
+
     def val(a):
         """
         Returns the first index i such that a[i] != 0
@@ -1580,7 +1624,7 @@ class FormalPowerSeries(RingElement):
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         sage: (P.Exp.derivatives() >> 1).underivatives() - P.Exp
-        [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return FormalPowerSeries(lambda n: 0 if n<m else a[n-m],parent=a._parent)
 
@@ -1695,12 +1739,14 @@ class FormalPowerSeries(RingElement):
 
 class FPS0(FormalPowerSeries):
     """
-    The formal power series' f with f[0]==0.
+    The formal powerseries f with f[0]==0.
     """
     def __init__(self,f=None,min_index=1,**kwargs):
         """
         Initializes this FPS0. 
         Should be called only from FormalPowerSeriesRing.
+
+        sage: None
         """
         assert min_index >= 1
         super(FPS0,self).__init__(f,min_index,**kwargs)
@@ -1713,23 +1759,6 @@ class FPS0(FormalPowerSeries):
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,1,2]) | P([1,2,3])
-        [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return b(a)
-
-    def compose(b,a):
-        """
-        Composition (left after right), in mathematical notation b o a.
-        Alternative expressions: b.compose(a) == b(a) == a | b
-        
-        Precondition: 
-            a[0] == 0. 
-        Satisfies:
-            a(b).polynomial(m*n,x) == a.polynomial(m,b.polynomial(n,x)) 
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P([1,2,3]).compose(P([0,1,2]))
         [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return b(a)
@@ -1763,6 +1792,11 @@ class FPS0(FormalPowerSeries):
         Alternative expression: a.it(t) == a & t
 
         See also: nit, regit (for restrictions depending t's kind)
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([0,2]).it(-2)              
+        [0, 1/4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         a._assertp0()
 
@@ -1780,7 +1814,11 @@ class FPS0(FormalPowerSeries):
             Particularly a[1]!=0 and a[1]!=1.
             a[1]**t must be defined.
 
-        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([0,2]).it(1/2)
+        sage: (p[0],p[1],p[2])
+        (0, sqrt(2), 0)
         """
         b = a.FPS0()
         b.min_index = 1
@@ -1805,13 +1843,25 @@ class FPS0(FormalPowerSeries):
         b.f = f
         return b
 
+    def regit_b(a,t):
+        """
+        Regular iteration via the schroeder function.
+        """
+        s = a.schroeder()
+        return s.inv()(s.scalm(a[1]**t))
+
+
 
     def __and__(a,t):
         """
         t-th (possibly non-integer) iteration: a&t.
         For documentation see: `it'.
 
-        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([0,2]).it(1/2)
+        sage: (p[0],p[1],p[2])
+        (0, sqrt(2), 0)
         """
         
         return a.it(t)
@@ -1831,7 +1881,9 @@ class FPS0(FormalPowerSeries):
     def inv(a):
         """
         The inverse.
-        Satisfies: a.inv()(f)=Id
+
+        Precondition: a[1] != 0
+        Satisfies: a.inv()(a)=Id
         Alternative expression: a.inv() == ~a
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
@@ -1840,7 +1892,17 @@ class FPS0(FormalPowerSeries):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         a._assertp0()
-        return a.it(-1)
+
+        b = FPS0()
+        def f(n):
+            if n==0:
+                return 0
+            if n==1:
+                return 1/a[1]
+            if n>1:
+                return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)],a.K(0))/a[1]**n
+        b.f = f
+        return b
 
 
     def julia(a):
@@ -1907,6 +1969,10 @@ class FPS0(FormalPowerSeries):
         The Schroeder powerseries s is determined up to a multiplicative
         constant by the functional equation:
         s(a(z))=a[1]*s(z)
+
+        Let f(x) = 2*x + x**2, let s(x)=log(1+x), then s(f(x))=2*s(x):
+        sage: P([0,2,1]).schroeder() - P.Log_inc
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         a._assertp0()
 
