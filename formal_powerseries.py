@@ -593,7 +593,7 @@ class FormalPowerSeriesRing(Ring):
 
     def _test(self):
         """
-        sage: from sage.rings.formal_powerseries import *
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         
         sage: P.Exp
@@ -692,24 +692,6 @@ class FormalPowerSeriesRing(Ring):
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
 
-        sage: P([0,1,0,2]).abel_coeffs()
-        [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, ...]]
-        sage: p = P([0,1,0,0,1,2,3])
-        sage: a = p.abel_coeffs()
-        sage: a
-        [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1])
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: a = var('a')
-        sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
-        sage: pah = p.abel()
-        sage: pac = p.abel2()
-        sage: pah
-        [0, 1/2*a/(-a + 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
-        sage: pac
-        [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
-        sage: [pac[k] - pah[k]==0 for k in range(0,5)]
-        [True, True, True, True, True]
         sage: P._test()
         """
         pass
@@ -1647,9 +1629,7 @@ class FormalPowerSeries(RingElement):
                 return a[n+m]*prod(k for k in range(n+1,n+m+1))
 
         def deg(v,m):
-            """
-            Minimal index of a[n]!=0
-            """
+            """ sage: None # indirect doctest """
             if v >= 0:
                 return max(v-m,0)
             return v-m
@@ -1816,7 +1796,7 @@ class FPS0(FormalPowerSeries):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P([0,2]).it(1/2)
+        sage: p = P([0,2]).regit(1/2)
         sage: (p[0],p[1],p[2])
         (0, sqrt(2), 0)
         """
@@ -1915,46 +1895,60 @@ class FPS0(FormalPowerSeries):
         return b
 
 
-    def julia_b(a):
-        """
-        diff(it(a,t),t)(t=0) == ln(a[1])*julia(a)
-        """
-        a._assertp0()
+#     def julia_b(a):
+#         """
+#         diff(it(a,t),t)(t=0) == ln(a[1])*julia(a)
+#         """
+#         a._assertp0()
         
-        Poly=PolynomialRing(a.K,'x')
-        b = FormalPowerSeriesRing(Poly)()
-        b.min_index = 1
+#         Poly=PolynomialRing(a.K,'x')
+#         b = FormalPowerSeriesRing(Poly)()
+#         b.min_index = 1
 
-        def f(n):
-            """ sage: None   # indirect doctest """
-            if decidable0(a.K):
-                assert a[1] != 0
+#         def f(n):
+#             """ sage: None   # indirect doctest """
+#             if decidable0(a.K):
+#                 assert a[1] != 0
 
-            if n == 0:
-                return Poly([0])
-            if n == 1:
-                return Poly([0,1])
-            res = a[n]*(b[1]**n)-b[1]*a[n]
-            res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
-            res /= a[1]**n - a[1]
-            return res
-        b.f = f
+#             if n == 0:
+#                 return Poly([0])
+#             if n == 1:
+#                 return Poly([0,1])
+#             res = a[n]*(b[1]**n)-b[1]*a[n]
+#             res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
+#             res /= a[1]**n - a[1]
+#             return res
+#         b.f = f
 
-        def h(p):
-            """ sage: None # indirect doctest """
-            return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
+#         def h(p):
+#             """ sage: None # indirect doctest """
+#             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
 
-        return a.FPS0(lambda n: h(b[n]))
+#         return a.FPS0(lambda n: h(b[n]))
 
     def julia(a):
         """
+        Iterative logarithm or Julia function.
+        Has different equivalent definitions:
+        1. Solution j of: j o a = a' * j, j[1]=1
+        2. j = diff(f.it(t),t)(t=0)
 
         Precondition: a[1]**n!=a[1] for all n>1
+
+        It has similar properties like the logarithm:
+        itlog(f^t) == t*itlog(f)
+
+        It can be used to define the regular Abel function abel(f) by
+        abel(f)' = 1/itlog(f)
+
+        Refs:
+        Eri Jabotinsky, Analytic iteration (1963), p 464
+        Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         sage: a = P([0,2,1])               
-        sage: j = a.julia_b()                   
+        sage: j = a.julia()                   
         sage: j(a) - a.diff()*j            
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1984,33 +1978,19 @@ class FPS0(FormalPowerSeries):
         return j
             
         
-    def itlog(a):
-        """
-        Iterative logarithm or Julia function.
-        Has different equivalent definitions:
-        1. Solution j of: j o a = a' * j
-        2. j = diff(f.it(t),t)(t=0)
+#     def itlog(a):
+#         """
+#         """
 
-        It has similar properties like the logarithm:
-        itlog(f^t) == t*itlog(f)
-
-        It can be used to define the regular Abel function abel(f) by
-        abel(f)' = 1/itlog(f)
-
-        Refs:
-        Eri Jabotinsky, Analytic iteration (1963), p 464
-        Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
-        """
-
-        #TODO this should be possible directly
-        _t = var('_t')
-        g = a.it(_t)
-        def f(n):
-            """ sage: None   # indirect doctest """
-            return diff(g[n],_t)(_t=0)
-        res = a.FPS0(f)
-        res.min_index = res.val()
-        return res
+#         #TODO this should be possible directly
+#         _t = var('_t')
+#         g = a.it(_t)
+#         def f(n):
+#             """ sage: None   # indirect doctest """
+#             return diff(g[n],_t)(_t=0)
+#         res = a.FPS0(f)
+#         res.min_index = res.val()
+#         return res
 
     def schroeder(a):
         """
@@ -2053,16 +2033,33 @@ class FPS0(FormalPowerSeries):
         where q=f[1]!=0,1 and ps is a powerseries
         
         This method returns ps.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing,FPS0
+        sage: a = var('a')
+        sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
+        sage: pah = p.abel()
+        sage: pac = p.abel2()
+        sage: pah
+        [0, 1/2*a/(-a + 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
+        sage: [pac[k] - pah[k]==0 for k in range(0,5)]
+        [True, True, True, True, True]
         """
         f._assertp0()
 
         P = f._parent
-        return ((f.schroeder()<<1) - P.One) | P.Log_inc
+        return (f.schroeder()<<1).dec() | P.Log_inc
 
     def abel2(a):
         """
         A different implementation of the regular Abel function via
         intgeration of 1/julia(a).
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FPS0
+        sage: a = var('a')
+        sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
+        sage: p.abel2()
+        [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
+        
         """
         
         return a.FormalPowerSeries(a.julia().rcp().f,min_index=0,complies=False).integral()
@@ -2081,7 +2078,12 @@ class FPS01(FPS0):
 
     def valit(a):
         """
-        Returns the first index i such that f[i] != id[i]
+        Returns the first index i such that a[i] != Id[i]
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([0,1,0,0,1]).valit()
+        4
         """
         if not a[0] == 0:
             return 0
@@ -2148,13 +2150,45 @@ class FPS01(FPS0):
 
     def julia(a):
         """
-        diff(it(a,t),t)(t=0) == ln(a[1])*julia(a)
+        Iterative logarithm or Julia function.
+        Has different equivalent definitions:
+        1. Solution j of: j o a = a' * j, j[1]=1
+        2. j = diff(f.it(t),t)(t=0)
+
+        It has similar properties like the logarithm:
+        itlog(f^t) == t*itlog(f)
+
+        It can be used to define the regular Abel function abel(f) by
+        abel(f)' = 1/itlog(f)
+
+        Refs:
+        Eri Jabotinsky, Analytic iteration (1963), p 464
+        Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: j = P.Dec_exp.julia()
+        sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         #diff(,t)(t=0) is the first coefficient of binomial(t,m)
         #Stirling1(m)[k] is the kth coefficient of m!*binomial(t,m)
         P = a._parent
-        res = P(lambda n: sum([P.Stirling1[m][1]/factorial(m)*sum([binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] for k in range(m+1)],a.K(0)) for m in range(n)],a.K(0)))
-        res.min_index = res.val()
+        
+        def f(n):
+            """ sage: None # indirect doctest """
+            r = a.K(0)
+            
+            for m in range(n):
+                s = a.K(0)
+                for k in range(m+1):
+                    s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
+                s *= P.Stirling1[m][1]/factorial(m)
+                r += s
+
+            return r
+        res = a.FPS0(f)
+        #res.min_index = res.val()
         return res
         
 
@@ -2177,6 +2211,18 @@ class FPS01(FPS0):
 
         The Abel function can then be gained by
         lim_{n->oo} F(f&n(z))-n
+
+        
+        sage: from sage.rings.formal_powerseries import *
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([0,1,0,2]).abel_coeffs()
+        [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, ...]]
+        sage: p = P([0,1,0,0,1,2,3])
+        sage: a = p.abel_coeffs()
+        sage: a
+        [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
+        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1])
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         
         juli = a.julia().rcp()
