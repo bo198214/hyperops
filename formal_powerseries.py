@@ -2052,7 +2052,7 @@ class FPS0(FormalPowerSeries):
     def abel2(a):
         """
         A different implementation of the regular Abel function via
-        intgeration of 1/julia(a).
+        integration of 1/julia(a).
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FPS0
         sage: a = var('a')
