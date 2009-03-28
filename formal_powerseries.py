@@ -810,6 +810,10 @@ class FPS(RingElement):
         
         This method should only be called from FPSRing.
         See the description there how to obtain a FPS.
+
+        sage: from sage.rings.formal_powerseries import FPSRing,FPS
+        sage: FPS(parent=FPSRing(QQ))
+        Undefined
         """
         self._parent = parent
         if parent == None:
@@ -836,8 +840,12 @@ class FPS(RingElement):
             
     def FPS(self,f=None,min_index=0,**kwargs):
         """ 
-        Returns a FPS from the 
-        same parent.
+        Returns a FPS from the same parent.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: p = FPSRing(QQ)([1,2])
+        sage: p.FPS(lambda n: n).parent() == p.parent()
+        True
         """
         return FPS(f,min_index,parent=self._parent,**kwargs)
 
@@ -1439,19 +1447,30 @@ class FPS(RingElement):
 #         #Not recognized as it seems to be mapped to ** in sage
 #         return NotImplemented
 
-    def bell(a,k):
+    def bell_polynomials(a,k):
         """
         The sequence of Bell polynomials (of the second kind)
         [B_{0,k}(a[1],a[2],...),B_{1,k}(a[1],a[2],...),...]
 
         sage: from sage.rings.formal_powerseries import FPSRing
-        sage: PP = FPSRing(QQ)
-
+        sage: P = PolynomialRing(QQ,['x1','x2','x3'])          
+        sage: a = FPSRing(P)([P('x1'),P('x2'),P('x3')])
+        sage: a.bell_polynomials(2)
+        [1/2*x1^2, x1*x2, x2^2 + x1*x3, 3*x2*x3, 3*x3^2, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return (a.underivatives()**k).derivatives().scalm(1/factorial(k))
 
     def bell_polynomial(a,n,k):
-        return a.bell(k)[n]
+        """
+        The Bell polynomial (of the second kind)
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = PolynomialRing(QQ,['x1','x2','x3'])          
+        sage: a = FPSRing(P)([P('x1'),P('x2'),P('x3')])
+        sage: a.bell_polynomial(2,2)
+        x2^2 + x1*x3
+        """
+        return a.bell_polynomials(k)[n]
         
 
     def genfunc(a,n):
@@ -1495,6 +1514,10 @@ class FPS(RingElement):
     def _assertp0(a):
         """
         Asserts a[0]==0.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = FPSRing(QQ)
+        sage: P([0,2])._assertp0()
         """
         assert a.min_index > 0, "min_index must be > 0, but is " + repr(a.min_index) + ". Use reclass() if necessary."
 
@@ -1504,6 +1527,14 @@ class FPS(RingElement):
         coefficients.
         If it is a formal Laurant series 
         the coefficients before index 0 are seperated by ";"
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: FPSRing(QQ).by_sequence([1,2,3],-2)
+        [1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: FPSRing(QQ).by_sequence([1,2,3],2) 
+        [0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: FPSRing(QQ).by_sequence([1,2,3],-2)._repr_()
+        '[1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]'
         """
 #         res = ""
 #         for n in range(80):
@@ -2108,12 +2139,17 @@ class FPS0(FPS):
 
 class FPS01(FPS0):
     """
-    The FPS p with p[0]==0 and p[1]==1.
+    The FPSs p with p[0]==0 and p[1]==1.
     """
 
     def FPS01(self,f,**kwargs):
         """
         Returns a FPS01 with the same parent as self.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: p = FPSRing(QQ).Id
+        sage: p.FPS01(lambda n: n).parent() == p.parent()
+        True
         """
         return FPS01(f,parent=self._parent,**kwargs)
 
