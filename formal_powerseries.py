@@ -1453,22 +1453,26 @@ class FPS(RingElement):
         [B_{0,k}(a[1],a[2],...),B_{1,k}(a[1],a[2],...),...]
 
         sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = PolynomialRing(QQ,['x1','x2','x3'])          
-        sage: a = FPSRing(P)([P('x1'),P('x2'),P('x3')])
-        sage: a.bell_polynomials(2)
-        [1/2*x1^2, x1*x2, x2^2 + x1*x3, 3*x2*x3, 3*x3^2, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
+        sage: c1 = P('c1'); c2= P('c2'); c3 = P('c3'); c4 = P('c4'); c5 = P('c5')
+        sage: c = FPSRing(QQ)([0,c1,c2,c3,c4,c5])
+        sage: c.bell_polynomials(2)[6] == 6*c5*c1 + 15*c4*c2 + 10*c3**2
+        True
         """
-        return (a.underivatives()**k).derivatives().scalm(1/factorial(k))
+        return (a.underivatives()**k).derivatives().scalm(Integer(1)/factorial(k))
 
     def bell_polynomial(a,n,k):
         """
         The Bell polynomial (of the second kind)
 
         sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = PolynomialRing(QQ,['x1','x2','x3'])          
-        sage: a = FPSRing(P)([P('x1'),P('x2'),P('x3')])
-        sage: a.bell_polynomial(2,2)
-        x2^2 + x1*x3
+        sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
+        sage: c1 = P('c1'); c2= P('c2'); c3 = P('c3'); c4 = P('c4'); c5 = P('c5')
+        sage: c = FPSRing(QQ)([0,c1,c2,c3,c4,c5])
+        sage: c.bell_polynomial(6,3) == 15*c4*c1**2 + 60*c3*c2*c1 + 15*c2**3
+        True
+        sage: c.bell_polynomial(6,2) == 6*c5*c1 + 15*c4*c2 + 10*c3**2
+        True
         """
         return a.bell_polynomials(k)[n]
         
@@ -1574,35 +1578,18 @@ class FPS(RingElement):
         #res = repr([ a(m) for m in range(10)])
         return res
 
-    def complex_contour(a,N,fp=0):
-        """
-        Returns a contour plot of this powerseries.
-        Experimental yet.
-        """
-        r = abs(a[N])**(-1/Integer(N))
-        l = r/sqrt(2.0)
-        f = a.polynomial(N)
-        x0=real(fp)
-        y0=imag(fp)
-        return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
+#     def complex_contour(a,N,fp=0):
+#         """
+#         Returns a contour plot of this powerseries.
+#         Experimental yet.
+#         """
+#         r = abs(a[N])**(-1/Integer(N))
+#         l = r/sqrt(2.0)
+#         f = a.polynomial(N)
+#         x0=real(fp)
+#         y0=imag(fp)
+#         return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
                     
-#     def it(a,t):
-#         if decidable0(a.K) and a[0] != 0:
-#             raise ValueError, "0th coefficient of b must be 0"
-#         if a[1] == 1: return a.it_par(t)
-#         else: return a.it_npar(t)
-
-#     def julia(a):
-#         if decidable0(a.K):
-#             assert a[0] == 0
-
-#             if a[1] == 1:
-#                 return a.julia_par()
-#             else:
-#                 return a.julia_npar()
-
-#         assert decidable0(a.K)
-
     def __call__(a,b):
         """
         Composition (left after right): a(b).
