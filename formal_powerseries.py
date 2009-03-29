@@ -795,7 +795,7 @@ class FPS(RingElement):
         sage: bsrt = FPSRing(SR)(sqrt(2)^x,x)
 
         sage: #making the 0-th coefficient 0 to get the decremented exponential 
-        sage: dbsrt = bsrt.setitem(0,0)
+        sage: dbsrt = bsrt.set_item(0,0)
         
         sage: #and now starting hyperbolic iteration
         sage: dbsrt2 = dbsrt.it(x).it(1/x)
@@ -1017,15 +1017,15 @@ class FPS(RingElement):
             return p
         return p
             
-    def setitem(a, index, value):
+    def set_item(a, index, value):
         """
         Returns the powerseries that has a[index] replaced by value.
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P([1,2,3]).setitem(1,42)
+        sage: P([1,2,3]).set_item(1,42)
         [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P([1,2]).setitem(0,0).min_index
+        sage: P([1,2]).set_item(0,0).min_index
         1
         """
         min_index = a.min_index
@@ -1033,15 +1033,15 @@ class FPS(RingElement):
             min_index += 1
         return a.new(lambda n: value if n == index else a[n],min_index)
 
-    def setslice(a, i, j, seq):
+    def set_slice(a, i, j, seq):
         """
         Returns the powerseries that has a[i:j] replaced by seq.
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P(lambda n: n).setslice(5,10,[42,43,44,45,46])
+        sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
         [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
-        sage: P([1,2]).setslice(0,1,[0]).min_index
+        sage: P([1,2]).set_slice(0,1,[0]).min_index
         1
         """
 
@@ -1123,7 +1123,7 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P([1,2,3]).add(P([4,5,6]))
+        sage: P([1,2,3]) + P([4,5,6])
         [5, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         def f(n):
@@ -1137,18 +1137,9 @@ class FPS(RingElement):
             return a[n]+b[n]
         return a.new(f,min(a.min_index,b.min_index))
 
-    def _add_(a,b):
-        """
-        Addition of two powerseries: a+b.
+    _add_ = add
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P([1,2,3])+P([4,5,6])
-        [5, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return a.add(b)
-
-    def _sub_(a,b): 
+    def sub(a,b): 
         """
         Subtraction of two powerseries: a-b.
 
@@ -1172,18 +1163,7 @@ class FPS(RingElement):
             return a[n]-b[n]
         return a.new(f,min(a.min_index,b.min_index))
 
-    def sub(a,b):
-        """
-        Subtraction of two powerseries.
-
-        Alternative expression: a.sub(b) == a-b
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P(lambda n: n).sub(P(lambda n: n))
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return a-b
+    _sub_ = sub
 
     def neg(a):
         """
@@ -1193,7 +1173,7 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P(lambda n: 1).neg()         
+        sage: -P(lambda n: 1)
         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
         """
         def f(n):
@@ -1203,16 +1183,7 @@ class FPS(RingElement):
             return -a[n]
         return a.new(f,a.min_index)
 
-    def _neg_(a):
-        """
-        Negation of powerseries: -a.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: -P(lambda n: 1)
-        [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
-        """
-        return a.neg()
+    _neg_ = neg
 
     def mul(a,b): 
         """
@@ -1224,7 +1195,7 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P(lambda n: 1).mul(P(lambda n:1))
+        sage: P(lambda n: 1) * P(lambda n:1)
         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, ...]
         """
         #multiplication of two powerseries
@@ -1245,17 +1216,7 @@ class FPS(RingElement):
         min_index = a.min_index+b.min_index
         return a.new(f,min_index)
 
-    def _mul_(a,b):
-        """
-        Multiplication of two powerseries a*b.
-        For documentation see: `mul'.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P([1,1])*P([1,1])
-        [1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return a.mul(b)
+    _mul_ = mul
 
     def div(c,b):
         """
@@ -1272,8 +1233,10 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P([1,2,3]).div(P([2,3,4]))
+        sage: P([1,2,3])/P([2,3,4])
         [1/2, 1/4, 1/8, -11/16, 25/32, 13/64, -239/128, 613/256, 73/512, ...]
+        sage: P.One/P(lambda n: (-1)**n)
+        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         a = c.new()
         b.min_index = b.val()
@@ -1300,18 +1263,7 @@ class FPS(RingElement):
         a.f = f
         return a
 
-    def _div_(c,b):
-        """
-        Division of two powerseries a/b.
-        For documentation see: `div'.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P.One/P(lambda n: (-1)**n)
-        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return c.div(b)
-
+    _div_ = div
 
     def rcp(a):
         """
@@ -1363,7 +1315,7 @@ class FPS(RingElement):
         sage: PR.Exp.nipow(0.5)                       
         [1.0000, 0.50000, 0.12500, 0.020833, 0.0026041, 0.00026041, 0.000021577, ...]
         """
-        da = a.setitem(0,0)
+        da = a.set_item(0,0)
 
         def f(n):
             """ sage: None   # indirect doctest """
@@ -1391,6 +1343,9 @@ class FPS(RingElement):
         sage: P = FPSRing(QQ)
         sage: P(lambda n: 1).pow(-1)
         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P = FPSRing(RealField(16))
+        sage: P([1,2,3])**(-0.37)
+        [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.092, -9.079, 6.390, ...]
         """
 
         if isinstance(t,FPS):
@@ -1402,18 +1357,7 @@ class FPS(RingElement):
             return a.rcp().npow(-t)
         return a.nipow(t)
 
-    def __pow__(a,t):
-        """
-        The t-th (possibly non-integer) power: a**t.
-        For documentation see: `pow'.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(RealField(16))
-        sage: P([1,2,3])**(-0.37)
-        [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.092, -9.079, 6.390, ...]
-        """
-        return a.pow(t)
-
+    __pow__ = pow
 
     def sqrt(a):
         """
@@ -1450,7 +1394,7 @@ class FPS(RingElement):
 
         P = a._parent
 
-        dec_a = a.setitem(0,0)
+        dec_a = a.set_item(0,0)
 
 #        if decidable0(a.K):
 #            assert a[0] == 1
@@ -1634,27 +1578,6 @@ class FPS(RingElement):
 #         y0=imag(fp)
 #         return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
                     
-    def __call__(a,b):
-        """
-        Composition (left after right): a(b).
-        For documentation see: `compose'.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P([1,2,3])(P([0,1,2]))
-        [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        b._assertp0()
-
-        def f(n):
-            """ sage: None   # indirect doctest """
-            res = sum([a[k]*(b.npow(k)[n]) for k in range(n+1)])
-            if a.min_index < 0:
-                bi = b.rcp()
-                res += sum([a[k]*(bi.npow(-k)[n]) for k in range(a.min_index,0)],a.K(0))
-            return res
-        return a.new(f,a.min_index*b.min_index)
-
     def compose(b,a):
         """
         Composition (left after right), in mathematical notation b o a.
@@ -1669,8 +1592,21 @@ class FPS(RingElement):
         sage: P = FPSRing(QQ)
         sage: P([1,2,3]).compose(P([0,1,2]))
         [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P([1,2,3])(P([0,1,2]))
+        [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return b(a)
+        a._assertp0()
+
+        def f(n):
+            """ sage: None   # indirect doctest """
+            res = sum([b[k]*(a.npow(k)[n]) for k in range(n+1)])
+            if b.min_index < 0:
+                bi = a.rcp()
+                res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)],b.K(0))
+            return res
+        return b.new(f,b.min_index*a.min_index)
+
+    __call__ = compose
 
     def val(a):
         """
@@ -2337,5 +2273,5 @@ class FPS01(FPS0):
 #         return [[ juli[m+i]/(i+1) for i in range(-m,-1) ],juli[m-1], (juli<<m).integral()]
         resit = juli[-1]
         #juli[-1]=0
-        return [resit,juli.setitem(-1,0).integral()]
+        return [resit,juli.set_item(-1,0).integral()]
 
