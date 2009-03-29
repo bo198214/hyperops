@@ -41,6 +41,8 @@ def decidable0(K):
         return True
     if isinstance(K,RationalField):
         return True
+    if isinstance(K,RealField):
+        return True
     if isinstance(K,PolynomialRing_field):
         return True
     #            if isinstance(K,RealField):
@@ -152,7 +154,7 @@ class FPSRing(Ring):
                 return 0
             return list[k-start]
 
-        return self.by_lambda(f,min_index,**kwargs)
+        return self.by_lambda(f,min_index,**kwargs).reclass() 
 
     def by_polynomial(self,p):
         """
@@ -347,10 +349,10 @@ class FPSRing(Ring):
 
         def PSF(f):
             """ sage: None   # indirect doctest """
-            return self.by_lambda(f)
+            return self.by_lambda(f).reclass()
         def PSF01(f):
             """ sage: None   # indirect doctest """
-            return self.by_lambda(f)
+            return self.by_lambda(f).reclass() 
         def PSS(seq):
             """ sage: None   # indirect doctest """
             return self.by_sequence(seq)
@@ -678,7 +680,7 @@ class FPSRing(Ring):
 #         sage: P(exp(x)-1,x)-P.Exp.dec()
 #         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
-        sage: P.Exp.dec() | P.Log_inc 
+        sage: P.Exp.dec().reclass() | P.Log_inc 
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Sin | P.Arcsin 
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -688,9 +690,9 @@ class FPSRing(Ring):
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Xexp | P.Lambert_w
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.Superroot_inc.dec() | P.Selfpower_inc
+        sage: P.Superroot_inc.dec().reclass() | P.Selfpower_inc
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.Inv_selfroot_inc.dec() | P.Selfroot_inc
+        sage: P.Inv_selfroot_inc.dec().reclass() | P.Selfroot_inc
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: P.Superroot_inc ** P.Superroot_inc
@@ -757,7 +759,7 @@ class FPS(RingElement):
         sage: p**2
         [1, 4, 10, 20, 25, 24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: #composition only works for coefficient 0 being 0 in the second operand         
-        sage: dexp = (expps - one)
+        sage: dexp = (expps - one).reclass()
         sage: expps(dexp)
         [1, 1, 1, 5/6, 5/8, 13/30, 203/720, 877/5040, 23/224, 1007/17280, ...]
 
@@ -804,7 +806,7 @@ class FPS(RingElement):
         -8.67361737988404e-19
     """
 
-    def __init__(self,f=None,min_index=0,complies=True,base_ring=None,parent=None):
+    def __init__(self,f=None,min_index=None,complies=True,base_ring=None,parent=None):
         """
         Returns the formal powerseries. 
         
@@ -822,6 +824,8 @@ class FPS(RingElement):
             else:
                 self._parent = FPSRing(base_ring)
 
+        if min_index == None:
+            min_index = 0
         self.min_index = min_index #the minimal non-zero index
         self._memo = {}
         self._powMemo = {}
@@ -835,19 +839,35 @@ class FPS(RingElement):
         else:
             self.f = lambda n: f(n) if n >= min_index else 0
 
-        if not f==None:
-            self.reclass()
+        if self.min_index > 0:
+            self.__class__ = FPS0
+        #if not f==None:
+        #    self.reclass()
             
-    def FPS(self,f=None,min_index=0,**kwargs):
+#    def new(self,f=None,min_index=0,**kwargs):
+#        return type(self)(f,parent=self._parent,**kwargs)
+        
+    def new(self,f=None,min_index=None,**kwargs):
         """ 
-        Returns a FPS from the same parent.
+        Returns a FPS from the same parent and class.
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: p = FPSRing(QQ)([1,2])
-        sage: p.FPS(lambda n: n).parent() == p.parent()
+        sage: p.new(lambda n: n).parent() == p.parent()
+        True
+        sage: p = FPSRing(QQ)([0,2])
+        sage: type(p.new(lambda n: n)) == type(p)
+        True
+        sage: p = FPSRing(QQ)([0,1])
+        sage: type(p.new()) == type(p)
         True
         """
-        return FPS(f,min_index,parent=self._parent,**kwargs)
+        res = FPS(f,min_index,parent=self._parent,**kwargs)
+        if min_index == None:
+            res.__class__ = self.__class__
+            if issubclass(self.__class__,FPS0):
+                res.min_index = 1
+        return res
 
     def parent(self):
         """
@@ -860,9 +880,6 @@ class FPS(RingElement):
         """
         return self._parent
 
-#    def new(self,f=None,min_index=0,**kwargs):
-#        return type(self)(f,parent=self._parent,**kwargs)
-        
     def base_ring(self):
         """
         Returns the base ring of the FPSRing 
@@ -905,6 +922,15 @@ class FPS(RingElement):
         sage: f.define(integral(f,1))      
         sage: f                            
         [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+        
+        Or generally one can define g = exp o f by taking the integral of
+        g * f'. For example for f(x)=x**2, [0,0,1]:
+        sage: g = P()
+        sage: f = P([0,0,1])
+        sage: fd = f.diff()
+        sage: g.define(integral(g*fd,1))                  
+        sage: g - (f | P.Exp)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         self.f = p.f
         
@@ -946,7 +972,7 @@ class FPS(RingElement):
         sage: P(lambda n: n).set_min_index(-5)
         [-5, -4, -3, -2, -1; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, ...]
         """
-        return a.FPS(a.f,min_index,complies=False)
+        return a.new(a.f,min_index,complies=False)
 
     def reclass(p):
         """
@@ -954,8 +980,8 @@ class FPS(RingElement):
         possibly changes to a subclass having more operations available.
         Returns p.
 
-        It should never be necessary to call this method,
-        if so consider it a bug.
+        Reclass queries p[0] and p[1], so for the sake of a lazy `define'
+        this is not automatically done on creation.
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
@@ -991,19 +1017,6 @@ class FPS(RingElement):
             return p
         return p
             
-    def FPS0(self,f=None,**kwargs):
-        """
-        Returns a FPS0 from the same parent.
-        
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: p = P([1,2,3])          
-        sage: q = p.FPS0(lambda n: -n)
-        sage: p.parent() == q.parent()
-        True
-        """
-        return FPS0(f,parent=self._parent,**kwargs)
-
     def setitem(a, index, value):
         """
         Returns the powerseries that has a[index] replaced by value.
@@ -1018,7 +1031,7 @@ class FPS(RingElement):
         min_index = a.min_index
         if min_index == index and value == 0:
             min_index += 1
-        return a.FPS(lambda n: value if n == index else a[n],min_index)
+        return a.new(lambda n: value if n == index else a[n],min_index)
 
     def setslice(a, i, j, seq):
         """
@@ -1043,7 +1056,7 @@ class FPS(RingElement):
             min_index = i+min_s
         else:
             min_index = min(min_index,i+min_s)
-        return a.FPS(lambda n: seq[n-i] if i<=n and n<j else a[n],min_index)
+        return a.new(lambda n: seq[n-i] if i<=n and n<j else a[n],min_index)
 
     def derivatives(a):
         """
@@ -1054,7 +1067,7 @@ class FPS(RingElement):
         sage: P.Exp.derivatives()                                   
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
-        return a.FPS(lambda n: a[n]*a.K(factorial(n)))
+        return a.new(lambda n: a[n]*a.K(factorial(n)))
 
     def underivatives(a):
         """
@@ -1065,7 +1078,7 @@ class FPS(RingElement):
         sage: P(lambda n: 1).underivatives() - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.FPS(lambda n: a[n]/a.K(factorial(n)))
+        return a.new(lambda n: a[n]/a.K(factorial(n)))
 
     def inc(a):
         """
@@ -1078,7 +1091,7 @@ class FPS(RingElement):
         sage: P.Zero + P.One
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.FPS(lambda n: a[0]+a.K(1) if n==0 else a[n])
+        return a.new(lambda n: a[0]+a.K(1) if n==0 else a[n])
 
     def dec(a):
         """
@@ -1090,7 +1103,7 @@ class FPS(RingElement):
         sage: P.Zero.dec()
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.FPS(lambda n: a[0]-a.K(1) if n==0 else a[n])
+        return a.new(lambda n: a[0]-a.K(1) if n==0 else a[n])
 
     def scalm(a,s):
         """
@@ -1100,7 +1113,7 @@ class FPS(RingElement):
         sage: P([1,2,3]).scalm(2)
         [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.FPS(lambda n: a[n]*s,a.min_index)
+        return a.new(lambda n: a[n]*s,a.min_index)
 
     def add(a,b):
         """
@@ -1122,7 +1135,7 @@ class FPS(RingElement):
             if n < b.min_index:
                 return a[n]
             return a[n]+b[n]
-        return a.FPS(f,min(a.min_index,b.min_index))
+        return a.new(f,min(a.min_index,b.min_index))
 
     def __add__(a,b):
         """
@@ -1157,7 +1170,7 @@ class FPS(RingElement):
                 #b[0]==0
                 return a[n]
             return a[n]-b[n]
-        return a.FPS(f,min(a.min_index,b.min_index))
+        return a.new(f,min(a.min_index,b.min_index))
 
     def sub(a,b):
         """
@@ -1188,7 +1201,7 @@ class FPS(RingElement):
             if n < a.min_index:
                 return 0
             return -a[n]
-        return a.FPS(f,a.min_index)
+        return a.new(f,a.min_index)
 
     def __neg__(a):
         """
@@ -1230,10 +1243,7 @@ class FPS(RingElement):
             return sum([ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)])
 
         min_index = a.min_index+b.min_index
-        if min_index > 0:
-            return a.FPS0(f,min_index=min_index)
-        else:
-            return a.FPS(f,min_index=min_index)
+        return a.new(f,min_index)
 
     def __mul__(a,b):
         """
@@ -1257,12 +1267,15 @@ class FPS(RingElement):
 
         If c[0]==0 it returns a formal Laurant series, i.e. min_index < 0.
 
+        This operation is not lazy in b, it retrieves values starting from 
+        i=min_index until it finds b[i]!=0
+
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
         sage: P([1,2,3]).div(P([2,3,4]))
         [1/2, 1/4, 1/8, -11/16, 25/32, 13/64, -239/128, 613/256, 73/512, ...]
         """
-        a = c.FPS()
+        a = c.new()
         b.min_index = b.val()
         a.min_index = c.min_index - b.min_index
 
@@ -1358,7 +1371,7 @@ class FPS(RingElement):
                 assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
 
             return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K(0))
-        return a.FPS(f)
+        return a.new(f)
 
     def pow(a,t):
         """
@@ -1449,7 +1462,7 @@ class FPS(RingElement):
 
     def bell_polynomials(a,k):
         """
-        The sequence of Bell polynomials (of the second kind)
+        The sequence of Bell polynomials (partial/of the second kind)
         [B_{0,k}(a[1],a[2],...),B_{1,k}(a[1],a[2],...),...]
 
         sage: from sage.rings.formal_powerseries import FPSRing
@@ -1463,7 +1476,7 @@ class FPS(RingElement):
 
     def bell_polynomial(a,n,k):
         """
-        The Bell polynomial (of the second kind)
+        The Bell polynomial (partial/of the second kind).
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
@@ -1475,6 +1488,9 @@ class FPS(RingElement):
         True
         """
         return a.bell_polynomials(k)[n]
+
+    def bell_complete(a,n):
+        return sum([a.bell_polynomials(k)[n] for k in range(1,n+1)])
         
 
     def genfunc(a,n):
@@ -1514,6 +1530,13 @@ class FPS(RingElement):
         if m >= 0:
             return P(a[:n])
         return P(a[m:n])/P(x**(-m))
+
+    def subs(a,*args,**kwargs):
+        def f(n):
+            if n < a.min_index:
+                return 0
+            return a[n].subs(*args,**kwargs)
+        return FPS(f,a.min_index)
 
     def _assertp0(a):
         """
@@ -1609,7 +1632,7 @@ class FPS(RingElement):
                 bi = b.rcp()
                 res += sum([a[k]*(bi.npow(-k)[n]) for k in range(a.min_index,0)],a.K(0))
             return res
-        return (type(a))(f,a.min_index*b.min_index,parent=a._parent)
+        return a.new(f,a.min_index*b.min_index)
 
     def compose(b,a):
         """
@@ -1739,9 +1762,9 @@ class FPS(RingElement):
             return a[n-1]/Integer(n)
             
         if c == 0:
-            return a.FPS(f,a.min_index+1)
+            return a.new(f,a.min_index+1)
         else:
-            return a.FPS(f)
+            return a.new(f,0)
 
     ### finite approximate operations
 
@@ -1780,15 +1803,15 @@ class FPS0(FPS):
     """
     The formal powerseries f with f[0]==0.
     """
-    def __init__(self,f=None,min_index=1,**kwargs):
-        """
-        Initializes this FPS0. 
-        Should be called only from FPSRing.
+#     def __init__(self,f=None,min_index=1,**kwargs):
+#         """
+#         Initializes this FPS0. 
+#         Should be called only from FPSRing.
 
-        sage: None
-        """
-        assert min_index >= 1
-        super(FPS0,self).__init__(f,min_index,**kwargs)
+#         sage: None
+#         """
+#         assert min_index >= 1
+#         super(FPS0,self).__init__(f,min_index,**kwargs)
         
     def __or__(a,b):
         """
@@ -1859,7 +1882,7 @@ class FPS0(FPS):
         sage: (p[0],p[1],p[2])
         (0, sqrt(2), 0)
         """
-        b = a.FPS0()
+        b = a.new()
         b.min_index = 1
         def f(n):
             """ sage: None   # indirect doctest """
@@ -1921,7 +1944,7 @@ class FPS0(FPS):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: ~P.Inv_selfroot_inc.dec() - P.Selfroot_inc.dec() 
+        sage: ~P.Inv_selfroot_inc.dec().reclass() - P.Selfroot_inc.dec() 
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.inv()
@@ -1941,7 +1964,7 @@ class FPS0(FPS):
         """
         a._assertp0()
 
-        b = FPS0()
+        b = a.new()
         def f(n):
             """ sage: None # indirect doctest """
             if n==0:
@@ -1983,7 +2006,7 @@ class FPS0(FPS):
 #             """ sage: None # indirect doctest """
 #             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
 
-#         return a.FPS0(lambda n: h(b[n]))
+#         return a.new(lambda n: h(b[n]))
 
     def julia(a):
         """
@@ -2047,7 +2070,7 @@ class FPS0(FPS):
 #         def f(n):
 #             """ sage: None   # indirect doctest """
 #             return diff(g[n],_t)(_t=0)
-#         res = a.FPS0(f)
+#         res = a.new(f)
 #         res.min_index = res.val()
 #         return res
 
@@ -2106,7 +2129,7 @@ class FPS0(FPS):
         f._assertp0()
 
         P = f._parent
-        return (f.schroeder()<<1).dec() | P.Log_inc
+        return (f.schroeder()<<1).dec().reclass() | P.Log_inc
 
     def abel2(a):
         """
@@ -2121,24 +2144,13 @@ class FPS0(FPS):
         
         """
         
-        return a.FPS(a.julia().rcp().f,min_index=0,complies=False).integral()
+        return a.new(a.julia().rcp().f,min_index=0,complies=False).integral()
 
 
 class FPS01(FPS0):
     """
     The FPSs p with p[0]==0 and p[1]==1.
     """
-
-    def FPS01(self,f,**kwargs):
-        """
-        Returns a FPS01 with the same parent as self.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: p = FPSRing(QQ).Id
-        sage: p.FPS01(lambda n: n).parent() == p.parent()
-        True
-        """
-        return FPS01(f,parent=self._parent,**kwargs)
 
     def valit(a):
         """
@@ -2219,7 +2231,7 @@ class FPS01(FPS0):
                 r += s
             return r
 
-        return a.FPS01(f)
+        return a.new(f)
 
     def julia(a):
         """
@@ -2260,7 +2272,7 @@ class FPS01(FPS0):
                 r += s
 
             return r
-        res = a.FPS0(f)
+        res = a.new(f)
         #res.min_index = res.val()
         return res
         
@@ -2294,7 +2306,7 @@ class FPS01(FPS0):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: ((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1])
+        sage: (((p << 1).log().scalm(a[0]) + (p | a[1]) - a[1])).reclass()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         

@@ -176,3 +176,46 @@ def sexpa(a,prec=167,N=64):
     f = lambda x: a+sip(c**x * d)
     return f
     
+def symm(N,prec=167):
+    R = RealField(prec)
+    b = R(sqrt(2))
+    fa = {}
+    sym = {}
+    x = 1
+    y = b
+    sym[x] = "1"
+    sym[y] = "b"
+
+    f = {}
+    f[x] = y
+    fa[x] = y 
+    for k in range(N):
+        fn = {}
+        for x in f.keys():
+            y = f[x]
+            fn[-y]=-x
+            fa[-y]=-x
+            sym[-y]="-(" + sym[y] + ")"
+            sym[-x]="-(" + sym[x] + ")"
+            #print 's',-y,-x
+            fn[x+1]=(b**y)
+            fa[x+1]=(b**y)
+            sym[x+1]="(" + sym[x] + ")+1"
+            sym[b**y]="b**(" + sym[y] + ")"
+            #print '1',x+1,b**y
+        
+        f = fn
+        args = fa.keys()
+        args.sort()
+        xp = -2
+        yp = -Infinity
+        for x in args:
+            y = fa[x]
+            if n(y)<=n(yp):
+                print k,':',(sym[xp],sym[yp]), (sym[x],sym[y])
+                print k,(xp,yp),(x,y)
+                break
+            yp = y
+            xp = x
+    
+    return line([[x,n(fa[x])] for x in args])
