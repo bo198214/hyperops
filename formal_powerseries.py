@@ -961,6 +961,102 @@ class FPS(RingElement):
         """
         return [self[k] for k in range(i,j)]
 
+    def set_item(a, index, value):
+        """
+        Returns the powerseries that has a[index] replaced by value.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = FPSRing(QQ)
+        sage: P([1,2,3]).set_item(1,42)
+        [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P([1,2]).set_item(0,0).min_index
+        1
+        """
+        min_index = a.min_index
+        if min_index == index and value == 0:
+            min_index += 1
+        return a.new(lambda n: value if n == index else a[n],min_index)
+
+    def __setitem__(a,index,value):
+        """
+        Replaces a[index] by value, returns None.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = FPSRing(QQ)
+        sage: p = P([1,2,3])
+        sage: p[1] = 42
+        sage: p
+        [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: p = P([1,2])
+        sage: p[0] = 0
+        sage: p.min_index
+        1
+        """
+        min_index = a.min_index
+        if min_index == index and value == 0:
+            min_index += 1
+        
+        a.min_index = min_index
+        f = a.f
+        a.f = lambda n: value if n == index else f(n)
+
+    def set_slice(a,i,j,seq):
+        """
+        Returns the powerseries that has a[i:j] replaced by seq, returns None.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = FPSRing(QQ)
+        sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
+        [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
+        sage: P([1,2]).set_slice(0,1,[0]).min_index
+        1
+        """
+
+        min_index = a.min_index
+        min_s=j-i
+        for k in range(0,j-i):
+            if not seq[k] == 0:
+                min_s = k
+                break
+
+        if i <= min_index and min_index <= i+min_s:
+            min_index = i+min_s
+        else:
+            min_index = min(min_index,i+min_s)
+        return a.new(lambda n: seq[n-i] if i<=n and n<j else a[n],min_index)
+
+    def __setslice__(a, i, j, seq):
+        """
+        Replaces a[i:j] by seq.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = FPSRing(QQ)
+        sage: p = P(lambda n: n)
+        sage: p[5:10] = [42,43,44,45,46]
+        sage: p
+        [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
+        sage: p = P([1,2])
+        sage: p[0:1] = [0]
+        sage: p.min_index
+        1
+        """
+
+        min_index = a.min_index
+        min_s=j-i
+        for k in range(0,j-i):
+            if not seq[k] == 0:
+                min_s = k
+                break
+
+        if i <= min_index and min_index <= i+min_s:
+            min_index = i+min_s
+        else:
+            min_index = min(min_index,i+min_s)
+
+        a.min_index = min_index
+        f = a.f
+        a.f = lambda n: seq[n-i] if i<=n and n<j else f(n)
+
     def set_min_index(a,min_index):
         """
         Returns the powerseries with elements before min_index replaced by 0.
@@ -1017,47 +1113,6 @@ class FPS(RingElement):
             return p
         return p
             
-    def set_item(a, index, value):
-        """
-        Returns the powerseries that has a[index] replaced by value.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P([1,2,3]).set_item(1,42)
-        [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P([1,2]).set_item(0,0).min_index
-        1
-        """
-        min_index = a.min_index
-        if min_index == index and value == 0:
-            min_index += 1
-        return a.new(lambda n: value if n == index else a[n],min_index)
-
-    def set_slice(a, i, j, seq):
-        """
-        Returns the powerseries that has a[i:j] replaced by seq.
-
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
-        sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
-        [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
-        sage: P([1,2]).set_slice(0,1,[0]).min_index
-        1
-        """
-
-        min_index = a.min_index
-        min_s=j-i
-        for k in range(0,j-i):
-            if not seq[k] == 0:
-                min_s = k
-                break
-
-        if i <= min_index and min_index <= i+min_s:
-            min_index = i+min_s
-        else:
-            min_index = min(min_index,i+min_s)
-        return a.new(lambda n: seq[n-i] if i<=n and n<j else a[n],min_index)
-
     def derivatives(a):
         """
         The sequence of derivatives a[n]*n! of the powerseries a
