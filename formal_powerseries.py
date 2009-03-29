@@ -1137,7 +1137,7 @@ class FPS(RingElement):
             return a[n]+b[n]
         return a.new(f,min(a.min_index,b.min_index))
 
-    def __add__(a,b):
+    def _add_(a,b):
         """
         Addition of two powerseries: a+b.
 
@@ -1148,7 +1148,7 @@ class FPS(RingElement):
         """
         return a.add(b)
 
-    def __sub__(a,b): 
+    def _sub_(a,b): 
         """
         Subtraction of two powerseries: a-b.
 
@@ -1203,7 +1203,7 @@ class FPS(RingElement):
             return -a[n]
         return a.new(f,a.min_index)
 
-    def __neg__(a):
+    def _neg_(a):
         """
         Negation of powerseries: -a.
 
@@ -1245,7 +1245,7 @@ class FPS(RingElement):
         min_index = a.min_index+b.min_index
         return a.new(f,min_index)
 
-    def __mul__(a,b):
+    def _mul_(a,b):
         """
         Multiplication of two powerseries a*b.
         For documentation see: `mul'.
@@ -1300,7 +1300,7 @@ class FPS(RingElement):
         a.f = f
         return a
 
-    def __div__(c,b):
+    def _div_(c,b):
         """
         Division of two powerseries a/b.
         For documentation see: `div'.
@@ -1402,9 +1402,9 @@ class FPS(RingElement):
             return a.rcp().npow(-t)
         return a.nipow(t)
 
-    def __pow__(a,t): # **
+    def __pow__(a,t):
         """
-        The t-th (possibly non-integer) power of a.
+        The t-th (possibly non-integer) power: a**t.
         For documentation see: `pow'.
 
         sage: from sage.rings.formal_powerseries import FPSRing
@@ -1490,7 +1490,24 @@ class FPS(RingElement):
         return a.bell_polynomials(k)[n]
 
     def bell_complete(a,n):
-        return sum([a.bell_polynomials(k)[n] for k in range(1,n+1)])
+        """
+        The complete Bell polynomial.
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
+        sage: c1 = P('c1');c2 = P('c2');c3 = P('c3');c4 = P('c4');c5 = P('c5')
+        sage: PS = FPSRing(P)
+        sage: c = PS([0,c1,c2,c3,c4,c5])
+        sage: (PS.Exp(c.underivatives()) - c.bell_complete(5).underivatives())[1:6]
+        [0, 0, 0, 0, 0]
+        """
+        if n <= 0:
+            return a._parent.Zero
+        
+        res = a.bell_polynomials(1)
+        for k in range(2,n+1):
+            res += a.bell_polynomials(k)
+        return res
         
 
     def genfunc(a,n):
@@ -1531,12 +1548,16 @@ class FPS(RingElement):
             return P(a[:n])
         return P(a[m:n])/P(x**(-m))
 
-    def subs(a,*args,**kwargs):
-        def f(n):
-            if n < a.min_index:
-                return 0
-            return a[n].subs(*args,**kwargs)
-        return FPS(f,a.min_index)
+#     def subs(a,*args,**kwargs):
+#         def f(n):
+#             if n < a.min_index:
+#                 return 0
+#             if a[n] == 0:
+#                 return 0
+#             if a[n] == 1:
+#                 return 1
+#             return a[n].subs(*args,**kwargs)
+#         return FPS(f,a.min_index)
 
     def _assertp0(a):
         """
