@@ -110,6 +110,7 @@ class FPSRing(Ring):
 
         Alternative expressions: 
             self.by_undefined() == self()
+            self.by_undefined(m) == self(None,m)
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
