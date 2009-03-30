@@ -52,9 +52,13 @@ def decidable0(K):
     return False
 
 class FPSRing(Ring):
-    def by_lambda(self,f,*args,**kwargs):
+    def by_lambda(self,f,min_index=0,complies=True):
         """
         Returns the powerseries with coefficients f(n).
+
+        Alternative expression: 
+            self.by_lambda(f) == self(f)
+            self.by_lambda(f,min_index) == self(f,min_index)
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
@@ -73,13 +77,7 @@ class FPSRing(Ring):
         sage: P.by_lambda(lambda n: n,3,complies=False)
         [0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...]
         """
-        kwargs['parent'] = self
-        if kwargs.has_key('T'):
-            T = kwargs['T'] 
-            del kwargs['T']
-            return T(f,*args,**kwargs)
-        else:
-            return FPS(f,*args,**kwargs)
+        return FPS(f,min_index,complies,parent=self)
 
 
     def by_iterator(self,g,min_index=0):
@@ -87,7 +85,6 @@ class FPSRing(Ring):
         Returns a powerseries from the generator g.
         The powerseries coefficients start at min_index
         which is allowed be negative obtaining a formal Laurant series.
-
         
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
@@ -107,32 +104,39 @@ class FPSRing(Ring):
         res.f = f
         return res
         
-    def by_undefined(self,T=None):
+    def by_undefined(self,min_index=0):
         """
         Returns an undefined powerseries. This is useful to use method `define'.
+
+        Alternative expressions: 
+            self.by_undefined() == self()
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
         sage: a = P.by_undefined()         
         sage: a
         Undefined
+        sage: P.by_undefined(2).min_index
+        2
         """
-        if T==None:
-            return FPS()
-        return T()
+        return FPS(min_index=min_index)
     
-    def by_sequence(self,list,start=0,**kwargs):
+    def by_list(self,list,start=0,**kwargs):
         """
         Returns the powerseries with coefficients p[n] where
         p[n]==0 for 0<=n<start, p[m+start]==list[m] for all list indices m,
         and p[n]==0 for all later indices n.
 
+        Alternative expression: 
+            self.by_list(list) == self(list)
+            self.by_list(list,start) == self(list,start)
+
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)                         
-        sage: f = P.by_sequence([1,2,3,4,5])
+        sage: f = P.by_list([1,2,3,4,5])
         sage: f
         [1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.by_sequence([1,2,3],5)
+        sage: P.by_list([1,2,3],5)
         [0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         l = len(list)
@@ -159,18 +163,40 @@ class FPSRing(Ring):
     def by_polynomial(self,p):
         """
         Returns the FPS from the given Polynomial.
+        Alternative expression: self.by_polynomial(p) == self(p)
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: PP = PolynomialRing(QQ,x)
+        sage: P = FPSRing(QQ)
+        sage: pp = PP([1,2,3])
+        sage: P.by_polynomial(pp)
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: x = PP(x)
+        sage: P(2*x+x**2)
+        [0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return self.by_sequence(p.padded_list())
+        return self.by_list(p.padded_list())
 
     def by_powerseries(self,p):
         """
         Returns the FPS from the given PowerSeries.
+        Alternative expression: self.py_powerseries(ps)==self(ps)
+
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: PS = PowerSeriesRing(QQ,x)
+        sage: FPS = FPSRing(QQ)
+        sage: FPS.by_powerseries(PS([0,1,2,3]))
+        [0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return self.by_polynomial(p.polynomial())
         
     def by_taylor(self,expr,v,at=0,**kwargs):
         """
         Returns the taylor series of `expr' with respect to `v' at `at'.
+
+        Alternative expressions:
+            self.by_taylor(expr,v) == self(expr,v)
+            self.by_taylor(expr,v,at) == self(expr,v,at)
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ) 
@@ -192,11 +218,13 @@ class FPSRing(Ring):
         #coeffs always returns non-empty list, at least [0,0] is contained
         min_index = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
         #print "after",min_index
-        return self.by_lambda(f,min_index,**kwargs)
+        return self.by_lambda(f,min_index,**kwargs).reclass()
 
     def by_constant(self,c,**kwargs):
         """
         Returns the powerseries with coefficients [c,0,0,...].
+
+        Alternative expression: self.by_constant(c) == self(c)
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
@@ -211,6 +239,67 @@ class FPSRing(Ring):
             return 0
         return self.by_lambda(f,0,**kwargs)
         
+
+    def __call__(self,p1=None,p2=None,p3=None,**kwargs):
+        """
+        Initialization by finite sequence of coefficients:
+        Examples:
+        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: PQ = FPSRing(QQ)
+        sage: PQ([1,2,3])
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ([])
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        
+        Initialization by coefficient function:
+        Example:
+        sage: PQ(lambda n: 1/factorial(n))
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+
+        Initialization by expresion:
+        Examples:
+        sage: PQ(1+2*x+3*x^2,x)
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ(exp(x),x)
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+        sage: PQ(ln(x),x,1)
+        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
+
+        Note: This is much slower than directly providing the coefficient function. 
+
+        See also methods: by_const, by_undef, by_list, by_taylor, by_lambda
+        """
+
+        if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
+            return self.by_constant(p1,**kwargs)
+
+        if isinstance(p1,list):
+            if p2 == None:
+                return self.by_list(p1,**kwargs)
+            return self.by_list(p1,p2,**kwargs)
+
+        if isinstance(p1,SymbolicExpression):
+            if p3 == None:
+                return self.by_taylor(p1,p2,**kwargs)
+            return self.by_taylor(p1,p2,p3,**kwargs)
+
+        if isinstance(p1,Polynomial):
+            return self.by_polynomial(p1)
+
+        if isinstance(p1,PowerSeries):
+            return self.by_powerseries(p1)
+
+        #TODO generator if isinstance(p1,
+
+        if type(p1) is type(lambda n: 0):
+            if p2 == None:
+                return self.by_lambda(p1,**kwargs)
+            return self.by_lambda(p1,p2,**kwargs)
+
+        if p1 == None:
+            return self.by_undefined(p2)
+
+        raise TypeError, "unrecognized initialization input" + repr(type(p1))
 
     def is_field(self):
         """
@@ -278,62 +367,6 @@ class FPSRing(Ring):
         """
         return self.One
         
-    def __call__(self,p=None,v=None,at=None,**kwargs):
-        """
-        Initialization by finite sequence of coefficients:
-        Examples:
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: PQ = FPSRing(QQ)
-        sage: PQ([1,2,3])
-        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PQ([])
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        
-        Initialization by coefficient function:
-        Example:
-        sage: PQ(lambda n: 1/factorial(n))
-        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
-
-        Initialization by expresion:
-        Examples:
-        sage: PQ(1+2*x+3*x^2,x)
-        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PQ(exp(x),x)
-        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
-        sage: PQ(ln(x),x,1)
-        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
-
-        Note: This is much slower than directly providing the coefficient function. 
-
-        See also methods: by_const, by_undef, by_sequence, by_taylor, by_lambda
-        """
-
-        if isinstance(p,Integer) or isinstance(p,int) or isinstance(p,Rational):
-            return self.by_constant(p,**kwargs)
-
-        if isinstance(p,list):
-            return self.by_sequence(p,**kwargs)
-
-        if isinstance(p,SymbolicExpression):
-            if at == None:
-                at = 0
-            return self.by_taylor(p,v,at,**kwargs)
-
-        if isinstance(p,Polynomial):
-            return self.by_polynomial(p)
-
-        if isinstance(p,PowerSeries):
-            return self.by_powerseries(p)
-
-        #TODO generator if isinstance(p,
-
-        if type(p) is type(lambda n: 0):
-            if at == None:
-                at = 0
-            return self.by_lambda(p,at,**kwargs)
-
-        return self.by_undefined()
-
     def __init__(self,base_ring):
         """
         Returns the powerseries ring over base_ring.
@@ -355,7 +388,7 @@ class FPSRing(Ring):
             return self.by_lambda(f).reclass() 
         def PSS(seq):
             """ sage: None   # indirect doctest """
-            return self.by_sequence(seq)
+            return self.by_list(seq)
 
         if self.K == int:
             self.K = Integer
@@ -372,7 +405,7 @@ class FPSRing(Ring):
         self.One.__doc__ = """
         The one element power series.
         """
-        self.Id = self.by_sequence([K1],start=1)
+        self.Id = self.by_list([K1],start=1)
         self.Id.__doc__ = """
         The powerseries of the identity function id(x)=x.
         """
@@ -1202,7 +1235,7 @@ class FPS(RingElement):
         sage: P = FPSRing(QQ)
         sage: P(lambda n: n) - P(lambda n: n)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P([0,1]) - P([1,0])          
+        sage: P([0,1]).sub(P([1,0]))
         [-1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         def f(n):
@@ -1516,8 +1549,8 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: f = P.by_sequence([1,2,3],-2).polynomial(5)                  
-        sage: g = P.by_sequence([1,2,3],-2).genfunc(5)
+        sage: f = P.by_list([1,2,3],-2).polynomial(5)                  
+        sage: g = P.by_list([1,2,3],-2).genfunc(5)
         sage: f(3.7)==g(3.7)
         True
         """
@@ -1536,7 +1569,7 @@ class FPS(RingElement):
 
         sage: from sage.rings.formal_powerseries import FPSRing
         sage: P = FPSRing(QQ)
-        sage: P.by_sequence([0,1,2]).polynomial(5).padded_list()
+        sage: P.by_list([0,1,2]).polynomial(5).padded_list()
         [0, 1, 2]
         """
 
@@ -1576,11 +1609,11 @@ class FPS(RingElement):
         the coefficients before index 0 are seperated by ";"
 
         sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ).by_sequence([1,2,3],-2)
+        sage: FPSRing(QQ).by_list([1,2,3],-2)
         [1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: FPSRing(QQ).by_sequence([1,2,3],2) 
+        sage: FPSRing(QQ).by_list([1,2,3],2) 
         [0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: FPSRing(QQ).by_sequence([1,2,3],-2)._repr_()
+        sage: FPSRing(QQ).by_list([1,2,3],-2)._repr_()
         '[1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]'
         """
 #         res = ""
@@ -1672,7 +1705,7 @@ class FPS(RingElement):
         sage: P = FPSRing(QQ)
         sage: P([0,0,42]).val()
         2
-        sage: P.by_sequence([1],-42).val()
+        sage: P.by_list([1],-42).val()
         -42
         """
         n = a.min_index
@@ -1712,7 +1745,7 @@ class FPS(RingElement):
         sage: P = FPSRing(QQ)
         sage: P.Exp.diff(3) - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P.by_sequence([1],5).diff(5)[0] == factorial(5)
+        sage: P.by_list([1],5).diff(5)[0] == factorial(5)
         True
         """
         def f(n):
@@ -2130,7 +2163,7 @@ class FPS0(FPS):
 
         sage: from sage.rings.formal_powerseries import FPSRing,FPS0
         sage: a = var('a')
-        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
+        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: pah = p.abel()
         sage: pac = p.abel2()
         sage: pah
@@ -2150,7 +2183,7 @@ class FPS0(FPS):
 
         sage: from sage.rings.formal_powerseries import FPSRing, FPS0
         sage: a = var('a')
-        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x,T=FPS0)
+        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: p.abel2()
         [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
         
