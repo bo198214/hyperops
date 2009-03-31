@@ -29,10 +29,10 @@ def decidable0(K):
     Returns true if K has a decidable 0.
     For example powerseries have no decidable 0.
 
-    sage: from sage.rings.formal_powerseries import FPSRing,decidable0
+    sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing,decidable0
     sage: decidable0(QQ)
     True
-    sage: decidable0(FPSRing(QQ))
+    sage: decidable0(FormalPowerSeriesRing(QQ))
     False
     """
     if K == Integer or K == int:
@@ -51,7 +51,7 @@ def decidable0(K):
     #                return true
     return False
 
-class FPSRing(Ring):
+class FormalPowerSeriesRing(Ring):
     def by_lambda(self,f,min_index=0,complies=True):
         """
         Returns the powerseries with coefficients f(n).
@@ -60,8 +60,8 @@ class FPSRing(Ring):
             self.by_lambda(f) == self(f)
             self.by_lambda(f,min_index) == self(f,min_index)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.by_lambda(lambda n: 1/factorial(n))
         [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
 
@@ -77,7 +77,7 @@ class FPSRing(Ring):
         sage: P.by_lambda(lambda n: n,3,complies=False)
         [0, 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...]
         """
-        return FPS(f,min_index,complies,parent=self)
+        return FormalPowerSeries(self,f,min_index,complies)
 
 
     def by_iterator(self,g,min_index=0):
@@ -86,8 +86,8 @@ class FPSRing(Ring):
         The powerseries coefficients start at min_index
         which is allowed be negative obtaining a formal Laurant series.
         
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.by_iterator(iter(ZZ),-2) 
         [0, 1; -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8, 9, -9, 10, -10, ...]
         """
@@ -112,15 +112,15 @@ class FPSRing(Ring):
             self.by_undefined() == self()
             self.by_undefined(m) == self(None,m)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: a = P.by_undefined()         
         sage: a
         Undefined
         sage: P.by_undefined(2).min_index
         2
         """
-        return FPS(min_index=min_index)
+        return FormalPowerSeries(self,min_index=min_index)
     
     def by_list(self,list,start=0,**kwargs):
         """
@@ -132,8 +132,8 @@ class FPSRing(Ring):
             self.by_list(list) == self(list)
             self.by_list(list,start) == self(list,start)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)                         
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)                         
         sage: f = P.by_list([1,2,3,4,5])
         sage: f
         [1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -163,12 +163,12 @@ class FPSRing(Ring):
 
     def by_polynomial(self,p):
         """
-        Returns the FPS from the given Polynomial.
+        Returns the FormalPowerSeries from the given Polynomial.
         Alternative expression: self.by_polynomial(p) == self(p)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: PP = PolynomialRing(QQ,x)
-        sage: P = FPSRing(QQ)
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: pp = PP([1,2,3])
         sage: P.by_polynomial(pp)
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -180,12 +180,12 @@ class FPSRing(Ring):
 
     def by_powerseries(self,p):
         """
-        Returns the FPS from the given PowerSeries.
+        Returns the FormalPowerSeries from the given PowerSeries.
         Alternative expression: self.py_powerseries(ps)==self(ps)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: PS = PowerSeriesRing(QQ,x)
-        sage: FPS = FPSRing(QQ)
+        sage: FPS = FormalPowerSeriesRing(QQ)
         sage: FPS.by_powerseries(PS([0,1,2,3]))
         [0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -199,8 +199,8 @@ class FPSRing(Ring):
             self.by_taylor(expr,v) == self(expr,v)
             self.by_taylor(expr,v,at) == self(expr,v,at)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ) 
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ) 
         sage: f = P.by_taylor(ln(x),x,1)   
         sage: f
         [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
@@ -227,8 +227,8 @@ class FPSRing(Ring):
 
         Alternative expression: self.by_constant(c) == self(c)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: f = P.by_constant(42)
         sage: f
         [42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -245,8 +245,8 @@ class FPSRing(Ring):
         """
         Initialization by finite sequence of coefficients:
         Examples:
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: PQ = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: PQ = FormalPowerSeriesRing(QQ)
         sage: PQ([1,2,3])
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PQ([])
@@ -307,10 +307,10 @@ class FPSRing(Ring):
         Returns True if self is a field, i.e. if it can be used as
         formal laurant series.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(IntegerRing()).is_field()
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(IntegerRing()).is_field()
         False
-        sage: FPSRing(QQ).is_field()           
+        sage: FormalPowerSeriesRing(QQ).is_field()           
         True
         """
         return self.K.is_field()
@@ -319,8 +319,8 @@ class FPSRing(Ring):
         """
         The powerseries is commutative if the base ring is.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(IntegerRing()).is_commutative()
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(IntegerRing()).is_commutative()
         True
         """
         return self.K.is_commutative()
@@ -329,10 +329,10 @@ class FPSRing(Ring):
         """
         The powerseries is exact if the base ring is.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(RR).is_exact()
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(RR).is_exact()
         False
-        sage: FPSRing(QQ).is_exact()           
+        sage: FormalPowerSeriesRing(QQ).is_exact()           
         True
         """
         return self.K.is_exact()
@@ -340,8 +340,8 @@ class FPSRing(Ring):
     def is_finite(self):
         """
         Powerseries ring is never finite (except the base ring has only 1 element).
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ).is_finite()     
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).is_finite()     
         False
         """
         return False
@@ -350,8 +350,8 @@ class FPSRing(Ring):
         """
         Returns the zero element of this power series ring.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.zero_element()             
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -361,8 +361,8 @@ class FPSRing(Ring):
         """
         Returns the one element of this power series ring.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.one_element()              
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -372,9 +372,9 @@ class FPSRing(Ring):
         """
         Returns the powerseries ring over base_ring.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ) 
-        FPSRing over Rational Field
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ) 
+        FormalPowerSeriesRing over Rational Field
         """
         if base_ring == None:
             return
@@ -544,10 +544,10 @@ class FPSRing(Ring):
         """
 
         #dont go into a recursion defining stirling1
-        if isinstance(K,FPSRing):
+        if isinstance(K,FormalPowerSeriesRing):
             return
 
-        self.Stirling1 = FPS(parent=self)
+        self.Stirling1 = FormalPowerSeries(self)
         def f(n):
             """ sage: None   # indirect doctest """
             
@@ -621,28 +621,28 @@ class FPSRing(Ring):
 
     def _repr_(self):
         """
-        Description of this FPSRing.
+        Description of this FormalPowerSeriesRing.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ)._repr_()            
-        'FPSRing over Rational Field'
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ)._repr_()            
+        'FormalPowerSeriesRing over Rational Field'
         """
-        return "FPSRing over " + repr(self.K)
+        return "FormalPowerSeriesRing over " + repr(self.K)
 
     def base_ring(self):
         """
         Returns the base ring of the powerseries ring.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ).base_ring() == QQ
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).base_ring() == QQ
         True
         """
         return self.K
 
     def _test(self):
         """
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         
         sage: P.Exp
         [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
@@ -744,7 +744,7 @@ class FPSRing(Ring):
         """
         pass
 
-class FPS(RingElement):
+class FormalPowerSeries(RingElement):
     """
     Formal power series:
 
@@ -752,8 +752,8 @@ class FPS(RingElement):
     The n-th coefficient is retrieved by p[n].
 
     EXAMPLES:
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: PQ = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: PQ = FormalPowerSeriesRing(QQ)
         sage: #Predefined PowerSeries
         sage: expps = PQ.Exp
         sage: expps.polynomial(10,x)
@@ -826,7 +826,7 @@ class FPS(RingElement):
 
         sage: #you can initialize power series with arbitrary functions on natural numbers    
         sage: #for example the power series of sqrt(2)^x can be given as
-        sage: bsrt = FPSRing(SR)(sqrt(2)^x,x)
+        sage: bsrt = FormalPowerSeriesRing(SR)(sqrt(2)^x,x)
 
         sage: #making the 0-th coefficient 0 to get the decremented exponential 
         sage: dbsrt = bsrt.set_item(0,0)
@@ -840,23 +840,23 @@ class FPS(RingElement):
         -8.67361737988404e-19
     """
 
-    def __init__(self,f=None,min_index=None,complies=True,base_ring=None,parent=None):
+    def __init__(self,parent,f=None,min_index=None,complies=True,base_ring=None):
         """
         Returns the formal powerseries. 
         
-        This method should only be called from FPSRing.
-        See the description there how to obtain a FPS.
+        This method should only be called from FormalPowerSeriesRing.
+        See the description there how to obtain a FormalPowerSeries.
 
-        sage: from sage.rings.formal_powerseries import FPSRing,FPS
-        sage: FPS(parent=FPSRing(QQ))
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing,FormalPowerSeries
+        sage: FormalPowerSeries(FormalPowerSeriesRing(QQ))
         Undefined
         """
         self._parent = parent
         if parent == None:
             if base_ring==None:
-                self._parent = FPSRing(QQ)
+                self._parent = FormalPowerSeriesRing(QQ)
             else:
-                self._parent = FPSRing(base_ring)
+                self._parent = FormalPowerSeriesRing(base_ring)
 
         if min_index == None:
             min_index = 0
@@ -874,41 +874,46 @@ class FPS(RingElement):
             self.f = lambda n: f(n) if n >= min_index else 0
 
         if self.min_index > 0:
-            self.__class__ = FPS0
+            self.__class__ = FormalPowerSeries0
         #if not f==None:
         #    self.reclass()
             
 #    def new(self,f=None,min_index=0,**kwargs):
-#        return type(self)(f,parent=self._parent,**kwargs)
+#        return type(self)(self._parent,f,**kwargs)
         
     def new(self,f=None,min_index=None,**kwargs):
         """ 
-        Returns a FPS from the same parent and class.
+        Returns a FormalPowerSeries from the same parent and class.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: p = FPSRing(QQ)([1,2])
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: p = FormalPowerSeriesRing(QQ)([1,2])
         sage: p.new(lambda n: n).parent() == p.parent()
         True
-        sage: p = FPSRing(QQ)([0,2])
+        sage: p = FormalPowerSeriesRing(QQ)([0,2])
         sage: type(p.new(lambda n: n)) == type(p)
         True
-        sage: p = FPSRing(QQ)([0,1])
+        sage: p = FormalPowerSeriesRing(QQ)([0,1])
         sage: type(p.new()) == type(p)
         True
         """
-        res = FPS(f,min_index,parent=self._parent,**kwargs)
+        res = FormalPowerSeries(self._parent,f,min_index,**kwargs)
         if min_index == None:
             res.__class__ = self.__class__
-            if issubclass(self.__class__,FPS0):
+            if issubclass(self.__class__,FormalPowerSeries0):
                 res.min_index = 1
         return res
 
+    def _coerce_map_from_(self,T):
+        print "_coerce_map_from_",T
+        if T == self.base_ring():
+            return True
+
     def parent(self):
         """
-        The FPSRing to which this FPS belongs.
+        The FormalPowerSeriesRing to which this FormalPowerSeries belongs.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(1).parent() == P
         True
         """
@@ -916,11 +921,11 @@ class FPS(RingElement):
 
     def base_ring(self):
         """
-        Returns the base ring of the FPSRing 
-        this FPS is contained in.
+        Returns the base ring of the FormalPowerSeriesRing 
+        this FormalPowerSeries is contained in.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ).by_constant(1).base_ring() == QQ
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).by_constant(1).base_ring() == QQ
         True
         """
         return self._parent.K
@@ -930,8 +935,8 @@ class FPS(RingElement):
 #         Returns always None, 
 #         as it is not decidable whether a powerseries is 0.
 
-#         sage: from sage.rings.formal_powerseries import FPSRing
-#         sage: FPSRing(QQ)(0).is_zero() == None
+#         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+#         sage: FormalPowerSeriesRing(QQ)(0).is_zero() == None
 #         """
 #         return None
 
@@ -950,8 +955,8 @@ class FPS(RingElement):
         For example one can define exp by taking the integral of its 
         derivative which is again exp: 
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: f = P.by_undefined()         
         sage: f.define(integral(f,1))      
         sage: f                            
@@ -973,8 +978,8 @@ class FPS(RingElement):
         Returns the n-th coefficient of this powerseries: self[n].
         This is the coefficient of x^n.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3])[1] == 2
         True
         """
@@ -988,8 +993,8 @@ class FPS(RingElement):
         """
         Returns the list of coefficients with indices in range(i,j).
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: n)[1:3]
         [1, 2]
         """
@@ -999,8 +1004,8 @@ class FPS(RingElement):
         """
         Returns the powerseries that has a[index] replaced by value.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3]).set_item(1,42)
         [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P([1,2]).set_item(0,0).min_index
@@ -1015,8 +1020,8 @@ class FPS(RingElement):
         """
         Replaces a[index] by value, returns None.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P([1,2,3])
         sage: p[1] = 42
         sage: p
@@ -1038,8 +1043,8 @@ class FPS(RingElement):
         """
         Returns the powerseries that has a[i:j] replaced by seq, returns None.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
         [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
         sage: P([1,2]).set_slice(0,1,[0]).min_index
@@ -1063,8 +1068,8 @@ class FPS(RingElement):
         """
         Replaces a[i:j] by seq.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P(lambda n: n)
         sage: p[5:10] = [42,43,44,45,46]
         sage: p
@@ -1095,8 +1100,8 @@ class FPS(RingElement):
         """
         Returns the powerseries with elements before min_index replaced by 0.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: n).set_min_index(5)
         [0, 0, 0, 0, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...]
         sage: P(lambda n: n).set_min_index(-5)
@@ -1113,19 +1118,19 @@ class FPS(RingElement):
         Reclass queries p[0] and p[1], so for the sake of a lazy `define'
         this is not automatically done on creation.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: type(P([0,1]).reclass())
-        <class 'sage.rings.formal_powerseries.FPS01'>
+        <class 'sage.rings.formal_powerseries.FormalPowerSeries01'>
         sage: type(P([0,2]).reclass())
-        <class 'sage.rings.formal_powerseries.FPS0'>
+        <class 'sage.rings.formal_powerseries.FormalPowerSeries0'>
         sage: type(P([1,1]).reclass())
-        <class 'sage.rings.formal_powerseries.FPS'>
+        <class 'sage.rings.formal_powerseries.FormalPowerSeries'>
         """
 
         if not decidable0(p.K):
             if p.min_index > 0:
-                p.__class__ = FPS0
+                p.__class__ = FormalPowerSeries0
             return p
 
         min_index = 2
@@ -1141,9 +1146,9 @@ class FPS(RingElement):
 
         if min_index > 0:
             if p[1] == 1:
-                p.__class__ = FPS01
+                p.__class__ = FormalPowerSeries01
                 return p
-            p.__class__ = FPS0
+            p.__class__ = FormalPowerSeries0
             return p
         return p
             
@@ -1151,8 +1156,8 @@ class FPS(RingElement):
         """
         The sequence of derivatives a[n]*n! of the powerseries a
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Exp.derivatives()                                   
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
@@ -1162,8 +1167,8 @@ class FPS(RingElement):
         """
         Returns the sequence a[n]/n!.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: 1).underivatives() - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1173,8 +1178,8 @@ class FPS(RingElement):
         """
         Increment: a + One. 
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Zero.inc()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Zero + P.One
@@ -1186,8 +1191,8 @@ class FPS(RingElement):
         """
         Decrement: a - One.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
 
         sage: P.Zero.dec()
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -1197,12 +1202,15 @@ class FPS(RingElement):
     def scalm(a,s):
         """
         Scalar multiplication with scalar s
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3]).scalm(2)
         [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.new(lambda n: a[n]*s,a.min_index)
+
+    _rmul_ = scalm
+    _lmul_ = scalm
 
     def add(a,b):
         """
@@ -1210,8 +1218,8 @@ class FPS(RingElement):
 
         Alternative expression: a.add(b) == a+b
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3]) + P([4,5,6])
         [5, 7, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1232,8 +1240,8 @@ class FPS(RingElement):
         """
         Subtraction of two powerseries: a-b.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: n) - P(lambda n: n)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P([0,1]).sub(P([1,0]))
@@ -1260,8 +1268,8 @@ class FPS(RingElement):
 
         Alternative expression a.neg() == -a.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: -P(lambda n: 1)
         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
         """
@@ -1282,8 +1290,8 @@ class FPS(RingElement):
 
         Alternative expression: a.mul(b) == a*b
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: 1) * P(lambda n:1)
         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, ...]
         """
@@ -1320,8 +1328,8 @@ class FPS(RingElement):
         This operation is not lazy in b, it retrieves values starting from 
         i=min_index until it finds b[i]!=0
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3])/P([2,3,4])
         [1/2, 1/4, 1/8, -11/16, 25/32, 13/64, -239/128, 613/256, 73/512, ...]
         sage: P.One/P(lambda n: (-1)**n)
@@ -1360,8 +1368,8 @@ class FPS(RingElement):
         a must not be Zero.
         If a[0] == 0 it returns a fromal Laurant series (min_index < 0).
         
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n:1).rcp()
         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1372,8 +1380,8 @@ class FPS(RingElement):
         Power with natural exponent n.
         This function is cached, it remembers the power for each n.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3]).npow(2)/P([1,2,3])
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1395,12 +1403,12 @@ class FPS(RingElement):
         a[0] must be nonzero and a[0]**t must be defined
         as well multiplication of t with all coefficients.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Exp.nipow(1/2)
         [1, 1/2, 1/8, 1/48, 1/384, 1/3840, 1/46080, 1/645120, 1/10321920, ...]
 
-        sage: PR = FPSRing(RealField(20))
+        sage: PR = FormalPowerSeriesRing(RealField(20))
         sage: PR.Exp.nipow(0.5)                       
         [1.0000, 0.50000, 0.12500, 0.020833, 0.0026041, 0.00026041, 0.000021577, ...]
         """
@@ -1428,16 +1436,16 @@ class FPS(RingElement):
 
         See also: npow, nipow
         
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: 1).pow(-1)
         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P = FPSRing(RealField(16))
+        sage: P = FormalPowerSeriesRing(RealField(16))
         sage: P([1,2,3])**(-0.37)
         [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.092, -9.079, 6.390, ...]
         """
 
-        if isinstance(t,FPS):
+        if isinstance(t,FormalPowerSeries):
             P = a._parent
             return ( a.log() * t ) | P.Exp
         if isinstance(t,Integer) or isinstance(t,int):
@@ -1452,8 +1460,8 @@ class FPS(RingElement):
         """
         Square root of a. a.sqrt() * a.sqrt() == a
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,1]).sqrt()
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1463,8 +1471,8 @@ class FPS(RingElement):
         """
         n-th root of a. a.rt(n)**n == a
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         
         sage: P([1,3,3,1]).rt(3)
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -1475,8 +1483,8 @@ class FPS(RingElement):
         """
         Logarithm of powerseries a with a[0]==1.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Exp.log()           
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1498,10 +1506,10 @@ class FPS(RingElement):
         The sequence of Bell polynomials (partial/of the second kind)
         [B_{0,k}(a[1],a[2],...),B_{1,k}(a[1],a[2],...),...]
 
-        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
         sage: c1 = P('c1'); c2= P('c2'); c3 = P('c3'); c4 = P('c4'); c5 = P('c5')
-        sage: c = FPSRing(QQ)([0,c1,c2,c3,c4,c5])
+        sage: c = FormalPowerSeriesRing(QQ)([0,c1,c2,c3,c4,c5])
         sage: c.bell_polynomials(2)[6] == 6*c5*c1 + 15*c4*c2 + 10*c3**2
         True
         """
@@ -1511,10 +1519,10 @@ class FPS(RingElement):
         """
         The Bell polynomial (partial/of the second kind).
 
-        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
         sage: c1 = P('c1'); c2= P('c2'); c3 = P('c3'); c4 = P('c4'); c5 = P('c5')
-        sage: c = FPSRing(QQ)([0,c1,c2,c3,c4,c5])
+        sage: c = FormalPowerSeriesRing(QQ)([0,c1,c2,c3,c4,c5])
         sage: c.bell_polynomial(6,3) == 15*c4*c1**2 + 60*c3*c2*c1 + 15*c2**3
         True
         sage: c.bell_polynomial(6,2) == 6*c5*c1 + 15*c4*c2 + 10*c3**2
@@ -1526,10 +1534,10 @@ class FPS(RingElement):
         """
         The complete Bell polynomial.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
         sage: c1 = P('c1');c2 = P('c2');c3 = P('c3');c4 = P('c4');c5 = P('c5')
-        sage: PS = FPSRing(P)
+        sage: PS = FormalPowerSeriesRing(P)
         sage: c = PS([0,c1,c2,c3,c4,c5])
         sage: (PS.Exp(c.underivatives()) - c.bell_complete(5).underivatives())[1:6]
         [0, 0, 0, 0, 0]
@@ -1548,8 +1556,8 @@ class FPS(RingElement):
         Returns the generating function of this powerseries up to term
         a[n-1]*x**(n-1).
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: f = P.by_list([1,2,3],-2).polynomial(5)                  
         sage: g = P.by_list([1,2,3],-2).genfunc(5)
         sage: f(3.7)==g(3.7)
@@ -1568,8 +1576,8 @@ class FPS(RingElement):
         
         You can adjust the variable by setting x.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.by_list([0,1,2]).polynomial(5).padded_list()
         [0, 1, 2]
         """
@@ -1590,14 +1598,14 @@ class FPS(RingElement):
 #             if a[n] == 1:
 #                 return 1
 #             return a[n].subs(*args,**kwargs)
-#         return FPS(f,a.min_index)
+#         return FormalPowerSeries(f,a.min_index)
 
     def _assertp0(a):
         """
         Asserts a[0]==0.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,2])._assertp0()
         """
         assert a.min_index > 0, "min_index must be > 0, but is " + repr(a.min_index) + ". Use reclass() if necessary."
@@ -1609,12 +1617,12 @@ class FPS(RingElement):
         If it is a formal Laurant series 
         the coefficients before index 0 are seperated by ";"
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: FPSRing(QQ).by_list([1,2,3],-2)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ).by_list([1,2,3],-2)
         [1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: FPSRing(QQ).by_list([1,2,3],2) 
+        sage: FormalPowerSeriesRing(QQ).by_list([1,2,3],2) 
         [0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: FPSRing(QQ).by_list([1,2,3],-2)._repr_()
+        sage: FormalPowerSeriesRing(QQ).by_list([1,2,3],-2)._repr_()
         '[1, 2; 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]'
         """
 #         res = ""
@@ -1677,8 +1685,8 @@ class FPS(RingElement):
         Satisfies:
             a(b).polynomial(m*n,x) == a.polynomial(m,b.polynomial(n,x)) 
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,3]).compose(P([0,1,2]))
         [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P([1,2,3])(P([0,1,2]))
@@ -1702,8 +1710,8 @@ class FPS(RingElement):
         Returns the first index i such that a[i] != 0
         Does not terminate if a == 0
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,0,42]).val()
         2
         sage: P.by_list([1],-42).val()
@@ -1719,31 +1727,31 @@ class FPS(RingElement):
         Returns the powerseries with coefficients shiftet to the left by m.
         The coefficients a[0],...,a[m-1] get lost.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: (P.Exp.derivatives() << 1).underivatives() - P.Exp  
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return FPS(lambda n: a[n+m],parent=a._parent)
+        return a.new(lambda n: a[n+m])
 
     def __rshift__(a,m=1):
         """
         Returns the powerseries with coefficients shifted to the right by m.
         The resulting coefficients b[0],...,b[m-1] are zero.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: (P.Exp.derivatives() >> 1).underivatives() - P.Exp
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return FPS(lambda n: 0 if n<m else a[n-m],parent=a._parent)
+        return a.new(lambda n: 0 if n<m else a[n-m])
 
     def diff(a,m=1): 
         """
         Differentiates the powerseries m times.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Exp.diff(3) - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.by_list([1],5).diff(5)[0] == factorial(5)
@@ -1762,7 +1770,7 @@ class FPS(RingElement):
                 return max(v-m,0)
             return v-m
 
-        return FPS(f,deg(a.min_index,m),parent=a._parent)
+        return a.new(f,deg(a.min_index,m))
 
 #     def integral(a,c=0,m=1):
 #         """
@@ -1785,8 +1793,8 @@ class FPS(RingElement):
         """
         Integrates the powerseries with integration constant c
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Exp.integral(1) - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P.Exp.integral(0) + P.One - P.Exp  
@@ -1820,8 +1828,8 @@ class FPS(RingElement):
         It has N rows and N columns, except M specifies a different number of 
         rows.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,1]).carleman_matrix(4) == matrix([[1,0,0,0],[1,1,0,0],[1,2,1,0],[1,3,3,1]])                      
         True
         """
@@ -1836,8 +1844,8 @@ class FPS(RingElement):
         of the n-th power of the power series.
         The Bell matrix is the transpose of the Carleman matrix.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,1]).bell_matrix(4) == matrix([[1,1,1,1],[0,1,2,3],[0,0,1,3],[0,0,0,1]])                      
         True
         """
@@ -1845,27 +1853,27 @@ class FPS(RingElement):
             M=N
         return matrix([[a.npow(n)[m] for n in range(N)] for m in range(M)])
 
-class FPS0(FPS):
+class FormalPowerSeries0(FormalPowerSeries):
     """
     The formal powerseries f with f[0]==0.
     """
 #     def __init__(self,f=None,min_index=1,**kwargs):
 #         """
-#         Initializes this FPS0. 
-#         Should be called only from FPSRing.
+#         Initializes this FormalPowerSeries0. 
+#         Should be called only from FormalPowerSeriesRing.
 
 #         sage: None
 #         """
 #         assert min_index >= 1
-#         super(FPS0,self).__init__(f,min_index,**kwargs)
+#         super(FormalPowerSeries0,self).__init__(f,min_index,**kwargs)
         
     def __or__(a,b):
         """
         Composition (right after left): a|b.
         For documentation see: `compose'.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,1,2]) | P([1,2,3])
         [1, 2, 7, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1875,8 +1883,8 @@ class FPS0(FPS):
         """
         n times iteration (n times composition), n is a natural number.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P(1/(x+1)-1,x).nit(2)
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1901,8 +1909,8 @@ class FPS0(FPS):
 
         See also: nit, regit (for restrictions depending t's kind)
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,2]).it(-2)              
         [0, 1/4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1922,8 +1930,8 @@ class FPS0(FPS):
             Particularly a[1]!=0 and a[1]!=1.
             a[1]**t must be defined.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P([0,2]).regit(1/2)
         sage: (p[0],p[1],p[2])
         (0, sqrt(2), 0)
@@ -1958,8 +1966,8 @@ class FPS0(FPS):
         """
         Regular iteration via the schroeder function.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P([0,2]).regit_b(1/2)
         sage: (p[0],p[1],p[2])
         (0, sqrt(2), 0)
@@ -1974,8 +1982,8 @@ class FPS0(FPS):
         t-th (possibly non-integer) iteration: a&t.
         For documentation see: `it'.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P([0,2]).it(1/2)
         sage: (p[0],p[1],p[2])
         (0, sqrt(2), 0)
@@ -1988,8 +1996,8 @@ class FPS0(FPS):
         The inverse: ~a.
         For documentation see: `inv'.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: ~P.Inv_selfroot_inc.dec().reclass() - P.Selfroot_inc.dec() 
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -2003,8 +2011,8 @@ class FPS0(FPS):
         Satisfies: a.inv()(a)=Id
         Alternative expression: a.inv() == ~a
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P.Xexp.inv() - P.Lambert_w   
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -2030,7 +2038,7 @@ class FPS0(FPS):
 #         a._assertp0()
         
 #         Poly=PolynomialRing(a.K,'x')
-#         b = FPSRing(Poly)()
+#         b = FormalPowerSeriesRing(Poly)()
 #         b.min_index = 1
 
 #         def f(n):
@@ -2073,8 +2081,8 @@ class FPS0(FPS):
         Eri Jabotinsky, Analytic iteration (1963), p 464
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: a = P([0,2,1])               
         sage: j = a.julia()                   
         sage: j(a) - a.diff()*j            
@@ -2083,7 +2091,7 @@ class FPS0(FPS):
         
         ap = a.diff()
         
-        j = FPS()
+        j = FormalPowerSeries01(a._parent)
         def f(n):
             """ sage: None #indirect doctest """
 
@@ -2130,15 +2138,15 @@ class FPS0(FPS):
         s(a(z))=a[1]*s(z)
 
         Let f(x) = 2*x + x**2, let s(x)=log(1+x), then s(f(x))=2*s(x):
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,2,1]).schroeder() - P.Log_inc
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         a._assertp0()
 
         q = a[1]
-        s = FPS01(parent=a._parent)
+        s = FormalPowerSeries01(a._parent)
         s.min_index = 1
         def f(n):
             """ sage: None   # indirect doctest """
@@ -2153,6 +2161,29 @@ class FPS0(FPS):
             return sum([s[m]*a.npow(m)[n] for m in range(1,n)])/(q - q**n)
         s.f = f
         return s
+
+    def inv_schroeder(a):
+        """
+        Returns the inverse Schroeder powerseries.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([0,2,3])               
+        sage: p.inv_schroeder() | p.schroeder()
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        """
+        q = a[1]
+        s = FormalPowerSeries01(a._parent,min_index=1)
+        def f(n):
+            """sage: None #indirect doctest"""
+            if n <= 0:
+                return 0
+            if n == 1:
+                return 1
+            return sum([a[m]*s.npow(m)[n] for m in range(2,n+1)])/(q**n-q)
+            
+        s.f = f
+        return s
         
     def abel(f):
         """
@@ -2162,9 +2193,9 @@ class FPS0(FPS):
         
         This method returns ps.
 
-        sage: from sage.rings.formal_powerseries import FPSRing,FPS0
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing,FormalPowerSeries0
         sage: a = var('a')
-        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
+        sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: pah = p.abel()
         sage: pac = p.abel2()
         sage: pah
@@ -2182,9 +2213,9 @@ class FPS0(FPS):
         A different implementation of the regular Abel function via
         integration of 1/julia(a).
 
-        sage: from sage.rings.formal_powerseries import FPSRing, FPS0
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries0
         sage: a = var('a')
-        sage: p = FPSRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
+        sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: p.abel2()
         [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
         
@@ -2193,17 +2224,17 @@ class FPS0(FPS):
         return a.new(a.julia().rcp().f,min_index=0,complies=False).integral()
 
 
-class FPS01(FPS0):
+class FormalPowerSeries01(FormalPowerSeries0):
     """
-    The FPSs p with p[0]==0 and p[1]==1.
+    The FormalPowerSeriess p with p[0]==0 and p[1]==1.
     """
 
     def valit(a):
         """
         Returns the first index i such that a[i] != Id[i]
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,1,0,0,1]).valit()
         4
         """
@@ -2249,8 +2280,8 @@ class FPS01(FPS0):
         but at least have a defined multiplication with the elements 
         of the base ring.
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P.Dec_exp.regit(1/2)  
         sage: (p | p) - P.Dec_exp    
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -2296,8 +2327,8 @@ class FPS01(FPS0):
         Eri Jabotinsky, Analytic iteration (1963), p 464
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
 
-        sage: from sage.rings.formal_powerseries import FPSRing
-        sage: P = FPSRing(QQ)
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: j = P.Dec_exp.julia()
         sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -2345,7 +2376,7 @@ class FPS01(FPS0):
 
         
         sage: from sage.rings.formal_powerseries import *
-        sage: P = FPSRing(QQ)
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,1,0,2]).abel_coeffs()
         [3/2, [-1/4, 0; 0, 0, -5/4, 0, 21/8, 0, -35/4, 0, 2717/80, 0, -13429/100, 0, ...]]
         sage: p = P([0,1,0,0,1,2,3])
