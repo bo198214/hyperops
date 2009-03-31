@@ -1111,9 +1111,9 @@ class FormalPowerSeries(RingElement):
 
     def reclass(p):
         """
-        Recalculates the class of this object which 
-        possibly changes to a subclass having more operations available.
-        Returns p.
+        Recalculates the class of this object which possibly changes 
+        to a subclass having more (and possibly different) operations 
+        available. Returns p.
 
         Reclass queries p[0] and p[1], so for the sake of a lazy `define'
         this is not automatically done on creation.
@@ -1375,6 +1375,45 @@ class FormalPowerSeries(RingElement):
         """
         return a._parent.One/a
 
+    def _s(a,k,m,n):
+        """
+        Computes the sum of m!/(m_0!...m_k!) * f_0^(m_0)*...*f_k^(m_k) with
+        m_0 + ... + m_k = n and 1m_1 + 2m_2 + ... + km_k = n.
+        """
+        if k == 0:
+            if n == 0:
+                return a[0]**m
+            return 0
+        #if m == 1:
+        #    if k==n:
+        #        return a[n]
+        #    return 0
+        #n-k*i>=0
+        imax1 = int(n)/int(k)
+        #m-i>=0
+        imax2 = m
+        imax = min(imax1,imax2)
+        #print 'imax',imax
+        r = 0
+        for i in range(a.min_index,imax+1):
+            #print 'i',i,'k-1',k-1,'m-i',m-i,'n-k*i',n-k*i,'=',a._s(k-1,m-i,n-k*i)
+            r += binomial(m,i)*a[k]**i * a._s(k-1,m-i,n-k*i)
+        return r
+
+    def npow2(a,m):
+        b = a.new(min_index=a.min_index*m)
+        def f(n):
+            return sum([ a._s(k,m,n) for k in range(0,n+1)])
+        b.f = f
+        return b
+
+    def npow3(a,m):
+        b = a.new(min_index=a.min_index*m)
+        def f(n):
+            return sum([ (m+1)*a[k]*a.npow(m-1)[n-k] for k in range(n+1)])
+        b.f = f
+        return b
+            
     def npow(a,n):
         """
         Power with natural exponent n.
