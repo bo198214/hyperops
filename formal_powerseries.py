@@ -101,7 +101,7 @@ class FormalPowerSeriesRing(Ring):
                 return g.next()
             x = res[n-1] #dummy to compute the prev value
             return g.next()
-        res.f = f
+        res.coeffs = f
         return res
         
     def by_undefined(self,min_index=0):
@@ -558,7 +558,7 @@ class FormalPowerSeriesRing(Ring):
                 res = self.by_lambda(lambda k: g[k-1]-(n-1)*g[k],1)
         
             return res
-        self.Stirling1.f = f
+        self.Stirling1.coeffs = f
         self.Stirling1.__doc__ = """
         Returns the sequence of Stirling numbers of the first kind.
         These are the coefficients of the polynomial x(x-1)(x-2)...(x-n+1).
@@ -869,9 +869,9 @@ class FormalPowerSeries(RingElement):
 
         self.min_index = min_index
         if complies:
-            self.f = f
+            self.coeffs = f
         else:
-            self.f = lambda n: f(n) if n >= min_index else 0
+            self.coeffs = lambda n: f(n) if n >= min_index else 0
 
         if self.min_index > 0:
             self.__class__ = FormalPowerSeries0
@@ -971,7 +971,7 @@ class FormalPowerSeries(RingElement):
         sage: g - (f | P.Exp)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        self.f = p.f
+        self.coeffs = p.coeffs
         
     def __getitem__(self,n):
         """
@@ -985,8 +985,8 @@ class FormalPowerSeries(RingElement):
         """
 
         if not self._memo.has_key(n):
-            #self._memo[n] = simplify(expand(self.f(n)))
-            self._memo[n] = self.f(n)
+            #self._memo[n] = simplify(expand(self.coeffs(n)))
+            self._memo[n] = self.coeffs(n)
         return self._memo[n]
 
     def __getslice__(self,i,j): # [i:j]
@@ -1036,8 +1036,8 @@ class FormalPowerSeries(RingElement):
             min_index += 1
         
         a.min_index = min_index
-        f = a.f
-        a.f = lambda n: value if n == index else f(n)
+        f = a.coeffs
+        a.coeffs = lambda n: value if n == index else f(n)
 
     def set_slice(a,i,j,seq):
         """
@@ -1093,8 +1093,8 @@ class FormalPowerSeries(RingElement):
             min_index = min(min_index,i+min_s)
 
         a.min_index = min_index
-        f = a.f
-        a.f = lambda n: seq[n-i] if i<=n and n<j else f(n)
+        f = a.coeffs
+        a.coeffs = lambda n: seq[n-i] if i<=n and n<j else f(n)
 
     def set_min_index(a,min_index):
         """
@@ -1107,7 +1107,7 @@ class FormalPowerSeries(RingElement):
         sage: P(lambda n: n).set_min_index(-5)
         [-5, -4, -3, -2, -1; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, ...]
         """
-        return a.new(a.f,min_index,complies=False)
+        return a.new(a.coeffs,min_index,complies=False)
 
     def reclass(p):
         """
@@ -1357,7 +1357,7 @@ class FormalPowerSeries(RingElement):
                 r -= ab(k,n+b.min_index-k) 
             return r/b[b.min_index]
 
-        a.f = f
+        a.coeffs = f
         return a
 
     _div_ = div
@@ -1404,14 +1404,14 @@ class FormalPowerSeries(RingElement):
         b = a.new(min_index=a.min_index*m)
         def f(n):
             return sum([ a._s(k,m,n) for k in range(0,n+1)])
-        b.f = f
+        b.coeffs = f
         return b
 
     def npow3(a,m):
         b = a.new(min_index=a.min_index*m)
         def f(n):
             return sum([ (m+1)*a[k]*a.npow(m-1)[n-k] for k in range(n+1)])
-        b.f = f
+        b.coeffs = f
         return b
             
     def npow(a,n):
@@ -1682,7 +1682,7 @@ class FormalPowerSeries(RingElement):
 #             else: res += s
 
 #         res += "O(x^" + repr(n) + ")"
-        if a.f == None:
+        if a.coeffs == None:
             return "Undefined"
         res = "["
         if a.min_index < 0:
@@ -1998,7 +1998,7 @@ class FormalPowerSeries0(FormalPowerSeries):
             res /= a[1]**n - a[1]
             #print ")"
             return res
-        b.f = f
+        b.coeffs = f
         return b
 
     def regit_b(a,t):
@@ -2066,7 +2066,7 @@ class FormalPowerSeries0(FormalPowerSeries):
                 return 1/a[1]
             if n>1:
                 return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)])/a[1]**n
-        b.f = f
+        b.coeffs = f
         return b
 
 
@@ -2093,7 +2093,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 #             res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
 #             res /= a[1]**n - a[1]
 #             return res
-#         b.f = f
+#         b.coeffs = f
 
 #         def h(p):
 #             """ sage: None # indirect doctest """
@@ -2149,7 +2149,7 @@ class FormalPowerSeries0(FormalPowerSeries):
                 r-=j[k]*a.npow(k)[n]
 
             return r/(a[1]**n-a[1])
-        j.f = f
+        j.coeffs = f
         return j
             
         
@@ -2198,7 +2198,7 @@ class FormalPowerSeries0(FormalPowerSeries):
             if n == 1:
                 return 1
             return sum([s[m]*a.npow(m)[n] for m in range(1,n)])/(q - q**n)
-        s.f = f
+        s.coeffs = f
         return s
 
     def inv_schroeder(a):
@@ -2221,7 +2221,7 @@ class FormalPowerSeries0(FormalPowerSeries):
                 return 1
             return sum([a[m]*s.npow(m)[n] for m in range(2,n+1)])/(q**n-q)
             
-        s.f = f
+        s.coeffs = f
         return s
         
     def abel(f):
@@ -2260,7 +2260,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         
         """
         
-        return a.new(a.julia().rcp().f,min_index=0,complies=False).integral()
+        return a.new(a.julia().rcp().coeffs,min_index=0,complies=False).integral()
 
 
 class FormalPowerSeries01(FormalPowerSeries0):
@@ -2308,7 +2308,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
 #                 r+=sum([p[m]*(q**m)[n] - q[m]*(p**m)[n] for m in range(N,n)])
 #                 return r
             
-#         q.f = f
+#         q.coeffs = f
 #         return q
 
     def regit(a,t):
