@@ -1246,12 +1246,18 @@ class FormalPowerSeries(RingElement):
         [0, 0, 0, 0, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...]
         """
         class M(FormalPowerSeries):
-            def coeffs(self,n):
-               if n < min_index:
-                   return 0
-               return a[n]
+            def __init__(self,a,min_index):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent)
+                self.a=a
+                self.min_index=min_index
 
-        return M(a._parent)
+            def coeffs(self,n):
+                if n < self.min_index:
+                    return 0
+                return self.a[n]
+
+        return M(a,min_index)
 
     def reclass(p):
         """
@@ -1367,8 +1373,14 @@ class FormalPowerSeries(RingElement):
         """
 
         class Add(FormalPowerSeries):
+            def __init__(self,a,b):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=min(a.min_index,b.min_index))
+                self.a = a; self.b = b
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a; b = self.b 
                 if n < a.min_index:
                     if n < b.min_index:
                         return 0
@@ -1377,8 +1389,7 @@ class FormalPowerSeries(RingElement):
                     return a[n]
                 return a[n]+b[n]
 
-
-        return Add(a._parent,min_index=min(a.min_index,b.min_index))
+        return Add(a,b)
 
     _add_ = add
 
@@ -1394,8 +1405,14 @@ class FormalPowerSeries(RingElement):
         [-1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         class Sub(FormalPowerSeries):
+            def __init__(self,a,b):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=min(a.min_index,b.min_index))
+                self.a = a; self.b = b
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a; b = self.b
                 if n < a.min_index:
                     if n < b.min_index:
                         return 0
@@ -1406,7 +1423,7 @@ class FormalPowerSeries(RingElement):
                     return a[n]
                 return a[n]-b[n]
 
-        return Sub(a._parent,min_index=min(a.min_index,b.min_index))
+        return Sub(a,b)
 
     _sub_ = sub
 
@@ -1422,12 +1439,19 @@ class FormalPowerSeries(RingElement):
         [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, ...]
         """
         class Neg(FormalPowerSeries):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=a.min_index)
+                self.a = a
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a
                 if n < a.min_index:
                     return 0
                 return -a[n]
-        return Neg(a._parent,min_index=a.min_index)
+
+        return Neg(a)
 
     _neg_ = neg
 
@@ -1446,21 +1470,27 @@ class FormalPowerSeries(RingElement):
         """
         #multiplication of two powerseries
 
-        def ab(m,n):
-            """
-            Lazy product of a[m] and b[n]
-            sage: None # indirect doctest
-            """
-            if a[m] == 0:
-                return 0
-            return a[m]*b[n]
-
         class Mul(FormalPowerSeries):
+            def __init__(self,a,b):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=a.min_index+b.min_index)
+                self.a,self.b = a,b
+
+            def ab(self,m,n):
+                """
+                Lazy product of a[m] and b[n]
+                sage: None # indirect doctest
+                """
+                if a[m] == 0:
+                    return 0
+                return a[m]*b[n]
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
-                return sum([ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)])
+                a,b = self.a,self.b
+                return sum([self.ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)])
 
-        return Mul(a._parent,min_index=a.min_index+b.min_index)
+        return Mul(a,b)
 
     _mul_ = mul
 
@@ -1487,6 +1517,12 @@ class FormalPowerSeries(RingElement):
         b.min_index = b.val()
 
         class Div(FormalPowerSeries):
+            def __init__(self,c,b):
+                si = FormalPowerSeries.__init__
+                si(self,c._parent,min_index=c.min_index - b.min_index)
+                self.c=c
+                self.b=b
+
             def _ab(a,m,n):
                 """
                 Lazy product of b[n] and a[m].
@@ -1498,6 +1534,8 @@ class FormalPowerSeries(RingElement):
 
             def coeffs(a,n):
                 """ sage: None   # indirect doctest """
+                c = a.c
+                b = a.b
                 if n<a.min_index:
                     return 0
                 r = c[n+b.min_index]
@@ -1505,7 +1543,7 @@ class FormalPowerSeries(RingElement):
                     r -= a._ab(k,n+b.min_index-k) 
                 return r/b[b.min_index]
 
-        return Div(c._parent,min_index=c.min_index - b.min_index)
+        return Div(c,b)
 
     _div_ = div
 
@@ -1602,13 +1640,21 @@ class FormalPowerSeries(RingElement):
         da = a.set_item(0,0)
 
         class Nipow(FormalPowerSeries):
+            def __init__(self,a,t):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent)
+                self.a = a
+                self.t = t
+
             def coeffs(s,n):
                 """ sage: None   # indirect doctest """
+                a = s.a
+                t = s.t
                 if decidable0(a.K):
                     assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
     
                 return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K(0))
-        return Nipow(a._parent)
+        return Nipow(a,t)
 
     def pow(a,t):
         """
@@ -1687,14 +1733,22 @@ class FormalPowerSeries(RingElement):
         a._assertp0()
 
         class Compose(FormalPowerSeries):
+            def __init__(self,b,a):
+                si = FormalPowerSeries.__init__
+                si(self,b._parent,min_index=b.min_index*a.min_index)
+                self.b = b 
+                self.a = a
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                b = self.b
+                a = self.a
                 res = sum([b[k]*(a.npow(k)[n]) for k in range(n+1)])
                 if b.min_index < 0:
                     bi = a.rcp()
                     res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)],b.K(0))
                 return res
-        return Compose(b._parent,min_index=b.min_index*a.min_index)
+        return Compose(b,a)
 
     __call__ = compose
 
@@ -1924,8 +1978,15 @@ class FormalPowerSeries(RingElement):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         class Lshift(FormalPowerSeries):
-            def coeffs(self,n): return a[n+m]
-        return Lshift(a._parent)
+            def __init__(self,a,m=1):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent)
+                self.a = a 
+                self.m = m
+
+            def coeffs(self,n): return self.a[n+self.m]
+
+        return Lshift(a,m)
 
     def __rshift__(a,m=1):
         """
@@ -1938,11 +1999,19 @@ class FormalPowerSeries(RingElement):
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         class Rshift(FormalPowerSeries):
+            def __init__(self,a,m=1):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent)
+                self.a = a 
+                self.m = m
+
             def coeffs(self,n):
+                a = self.a
+                m = self.m
                 if n < m:
                     return 0
                 return a[n-m]
-        return Rshift(a._parent)
+        return Rshift(a,m)
 
     def diff(a,m=1): 
         """
@@ -1956,20 +2025,28 @@ class FormalPowerSeries(RingElement):
         True
         """
         class Diff(FormalPowerSeries):
+            def deg(self,v,m):
+                """ sage: None # indirect doctest """
+                if v >= 0:
+                    return max(v-m,0)
+                return v-m
+
+            def __init__(self,a,m=1):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=self.deg(a.min_index,m))
+                self.a = a 
+                self.m = m
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a
+                m = self.m
                 if -m <= n and n < 0:
                     return 0
                 else:
                     return a[n+m]*prod(k for k in range(n+1,n+m+1))
 
-        def deg(v,m):
-            """ sage: None # indirect doctest """
-            if v >= 0:
-                return max(v-m,0)
-            return v-m
-
-        return Diff(a._parent,min_index=deg(a.min_index,m))
+        return Diff(a,m)
 
 #     def integral(a,c=0,m=1):
 #         """
@@ -2001,8 +2078,20 @@ class FormalPowerSeries(RingElement):
         """
 
         class Integral(FormalPowerSeries):
+            def __init__(self,a,c=0):
+                si = FormalPowerSeries.__init__
+                if c == 0:
+                    si(self,a._parent,min_index=a.min_index+1)
+                else:
+                    si(self,a._parent)
+
+                self.a = a 
+                self.c = c
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a
+                c = self.c
     
                 if n == 0:
                     return c
@@ -2015,10 +2104,7 @@ class FormalPowerSeries(RingElement):
                     assert a[-1] == 0, "Coefficient at -1 must be 0, but it is: " + repr(a[-1])
                 return a[n-1]/Integer(n)
             
-        if c == 0:
-            return Integral(a._parent,min_index=a.min_index+1)
-        else:
-            return Integral(a._parent)
+        return Integral(a,c)
 
     ### finite approximate operations
 
@@ -2141,8 +2227,16 @@ class FormalPowerSeries0(FormalPowerSeries):
         a._assertp0()
 
         class Regit(FormalPowerSeries0): 
+            def __init__(self,a,t):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a = a 
+                self.t = t
+
             def coeffs(b,n):
                 """ sage: None   # indirect doctest """
+                a = b.a
+                t = b.t
                 if decidable0(a.K):
                     assert a[1]!=1, a[1]
                     assert a[1]!=0, a[1]
@@ -2163,7 +2257,7 @@ class FormalPowerSeries0(FormalPowerSeries):
                 #print ")"
                 return res
 
-        return Regit(a._parent,min_index=1)
+        return Regit(a,t)
 
     def regit_b(a,t):
         """
@@ -2222,15 +2316,21 @@ class FormalPowerSeries0(FormalPowerSeries):
         a._assertp0()
 
         class Inv(FormalPowerSeries0):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a=a
+
             def coeffs(b,n):
                 """ sage: None # indirect doctest """
+                a = b.a
                 if n==0:
                     return 0
                 if n==1:
                     return 1/a[1]
                 if n>1:
                     return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)])/a[1]**n
-        return Inv(a._parent,min_index=1)
+        return Inv(a)
 
 
 #     def julia_b(a):
@@ -2294,9 +2394,15 @@ class FormalPowerSeries0(FormalPowerSeries):
         ap = a.diff()
         
         class Julia(FormalPowerSeries01):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a=a
+
             def coeffs(j,n):
                 """ sage: None #indirect doctest """
     
+                a = j.a
                 if n < 0:
                     return 0
     
@@ -2313,7 +2419,7 @@ class FormalPowerSeries0(FormalPowerSeries):
     
                 return r/(a[1]**n-a[1])
 
-        return Julia(a._parent,min_index=1)
+        return Julia(a)
             
         
 #     def itlog(a):
@@ -2350,8 +2456,14 @@ class FormalPowerSeries0(FormalPowerSeries):
         q = a[1]
 
         class Schroeder(FormalPowerSeries01):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a=a
+
             def coeffs(s,n):
                 """ sage: None   # indirect doctest """
+                a = s.a
                 if decidable0(a.K):
                     assert a[1] != 0, a[1]
                     assert a[1] != 1, a[1]
@@ -2362,7 +2474,7 @@ class FormalPowerSeries0(FormalPowerSeries):
                     return 1
                 return sum([s[m]*a.npow(m)[n] for m in range(1,n)])/(q - q**n)
 
-        return Schroeder(a._parent,min_index=1)
+        return Schroeder(a)
 
     def inv_schroeder(a):
         """
@@ -2377,15 +2489,21 @@ class FormalPowerSeries0(FormalPowerSeries):
         q = a[1]
 
         class InvSchroeder(FormalPowerSeries01):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a=a
+
             def coeffs(s,n):
                 """sage: None #indirect doctest"""
+                a = s.a
                 if n <= 0:
                     return 0
                 if n == 1:
                     return 1
                 return sum([a[m]*s.npow(m)[n] for m in range(2,n+1)])/(q**n-q)
             
-        return InvSchroeder(a._parent,min_index=1)
+        return InvSchroeder(a)
         
     def abel(f):
         """
@@ -2490,8 +2608,16 @@ class FormalPowerSeries01(FormalPowerSeries0):
         """
 
         class Regit(FormalPowerSeries01):
+            def __init__(self,a,t):
+                si = FormalPowerSeries.__init__
+                si(self,a._parent,min_index=1)
+                self.a = a 
+                self.t = t
+
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
+                a = self.a
+                t = self.t
                 if decidable0(a.K):
                     assert a[0] == 0, "The index of the lowest non-zero coefficient must be 1, but is " + repr(a.min_index)
                     assert a[1] == 1, "The first coefficient must be 1, but is " + repr(a[1])
@@ -2511,7 +2637,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
                     r += s
                 return r
 
-        return Regit(a._parent,min_index=1)
+        return Regit(a,t)
 
     def julia(a):
         """
@@ -2541,8 +2667,14 @@ class FormalPowerSeries01(FormalPowerSeries0):
         P = a._parent
         
         class Julia(FormalPowerSeries01):
+            def __init__(self,a):
+                si = FormalPowerSeries.__init__
+                si(self,P,min_index=1)
+                self.a=a
+
             def coeffs(self,n):
                 """ sage: None # indirect doctest """
+                a = self.a
                 r = a.K(0)
                 
                 for m in range(n):
@@ -2553,7 +2685,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
                     r += s
     
                 return r
-        res = Julia(P,min_index=1)
+        res = Julia(a)
         #res.min_index = res.val()
         return res
         
