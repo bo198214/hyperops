@@ -433,7 +433,7 @@ class FormalPowerSeriesRing(Ring):
             """
             The powerseries of the exponential function.
             """
-            def coeffs(self,n): return K1/factorial(n)
+            def coeffs(self,n): return self.K1/factorial(n)
                 
         self.Exp = Exp(self)
         
@@ -443,7 +443,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n): 
                 if n == 0: return 0
-                return K1/factorial(n)
+                return self.K1/factorial(n)
                     
         self.Dec_exp = Dec_exp(self,min_index=1)
 
@@ -454,7 +454,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n == 0: return 0
-                return K((-1)**(n+1)/Integer(n))
+                return self.K((-1)**(n+1)/Integer(n))
 
         self.Log_inc = Log_inc(self,min_index=1)
 
@@ -464,7 +464,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 0: return 0
-                return K((-1)**((n-1)/2)/factorial(n))
+                return self.K((-1)**((n-1)/2)/factorial(n))
 
         self.Sin = Sin(self,min_index=1)
 
@@ -474,7 +474,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 1: return 0
-                return K((-1)**(n/2)/factorial(n))
+                return self.K((-1)**(n/2)/factorial(n))
 
         self.Cos = Cos(self)
 
@@ -494,7 +494,7 @@ class FormalPowerSeriesRing(Ring):
                         evenprod *= k
                     else:
                         oddprod *=k
-                return K(oddprod/evenprod/n)
+                return self.K(oddprod/evenprod/n)
                             
         self.Arcsin = Arcsin(self,min_index=1)
 
@@ -504,7 +504,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 0: return 0
-                return K((-1)**(n/2)/Integer(n))
+                return self.K((-1)**(n/2)/Integer(n))
 
         self.Arctan = Arctan(self,min_index=1)
 
@@ -514,7 +514,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 0: return 0
-                return K(1/factorial(n))
+                return self.K(1/factorial(n))
 
         self.Sinh = Sinh(self,min_index=1)
 
@@ -524,7 +524,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 1: return 0
-                return K(1/factorial(n))
+                return self.K(1/factorial(n))
 
         self.Cosh = Cosh(self)
 
@@ -543,7 +543,7 @@ class FormalPowerSeriesRing(Ring):
                         evenprod *= k
                     else:
                         oddprod *= k
-                return K((-1)**(n/2)*oddprod/evenprod/n)
+                return self.K((-1)**(n/2)*oddprod/evenprod/n)
 
         self.Arcsinh = Arcsinh(self,min_index=1)
 
@@ -553,7 +553,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n % 2 == 0: return 0
-                return K(1/Integer(n))
+                return self.K(1/Integer(n))
 
         self.Arctanh = Arctanh(self,min_index=1)
 
@@ -567,24 +567,26 @@ class FormalPowerSeriesRing(Ring):
             """
             The powerseries of tan.
             """
-            def coeffs(s,N):
+            def coeffs(self,N):
                 """ sage: None   # indirect doctest """
                 if N % 2 == 0:
                     return 0
                 n = (N + 1) / 2
-                return K(self.Bernoulli[2*n] * (-4)**n * (1-4**n) / factorial(2*n))
+                P = self._parent
+                return P.K(P.Bernoulli[2*n] * (-4)**n * (1-4**n) / factorial(2*n))
         self.Tan = Tan(self,min_index=1)
 
         class Tanh(FormalPowerSeries01):
             """
             The powerseries of tanh.
             """
-            def coeffs(s,N):
+            def coeffs(self,N):
                 """ sage: None   # indirect doctest """
                 if N % 2 == 0:
                     return 0
                 n = (N+1)/2
-                return K(self.Bernoulli[2*n] * (-1)**(2*n) * 4**n * (4**n-1) / factorial(2*n))
+                P = self._parent
+                return P.K(P.Bernoulli[2*n] * (-1)**(2*n) * 4**n * (4**n-1) / factorial(2*n))
 
         self.Tanh = Tanh(self,min_index=1)
         
@@ -594,7 +596,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n==0: return 0
-                return K(1/factorial(n-1))
+                return self.K(1/factorial(n-1))
 
         self.Xexp = Xexp(self,min_index=1)
 
@@ -604,7 +606,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 if n==0: return 0
-                return K((-n)**(n-1)/factorial(n))
+                return self.K((-n)**(n-1)/factorial(n))
 
         self.Lambert_w = Lambert_w(self,min_index=1)
 
@@ -621,7 +623,7 @@ class FormalPowerSeriesRing(Ring):
                         evenprod *= k
                     else:
                         oddprod *= k
-                return K((-1)**n *oddprod/evenprod/(1-2*n))
+                return self.K((-1)**n *oddprod/evenprod/(1-2*n))
 
         self.Sqrt_inc = Sqrt_inc(self)
 
@@ -635,14 +637,14 @@ class FormalPowerSeriesRing(Ring):
             These are the coefficients of the polynomial x(x-1)(x-2)...(x-n+1).
             stirling1[n][k] is the coefficient of x^k in the above polynomial.
             """
-            def coeffs(s,n):
+            def coeffs(self,n):
                 """ sage: None   # indirect doctest """
-                
+                P = self._parent
                 if n==0:
-                    res = self.by_lambda(lambda k: 1 if k==0 else 0)
+                    res = P.by_lambda(lambda k: 1 if k==0 else 0)
                 else:
-                    g = s[n-1]
-                    res = self.by_lambda(lambda k: g[k-1]-(n-1)*g[k],1)
+                    g = self[n-1]
+                    res = P.by_lambda(lambda k: g[k-1]-(n-1)*g[k],1)
             
                 return res
 
@@ -661,7 +663,7 @@ class FormalPowerSeriesRing(Ring):
             See Sloane A008296.
             """
             def coeffs(self,n):
-                return K(sum([k**(n-k)*binomial(n,k) for k in range(n+1)]))
+                return self.K(sum([k**(n-k)*binomial(n,k) for k in range(n+1)]))
 
         self.Lehmer_comtet = Lehmer_comtet(self)
         self.A000248  = self.Lehmer_comtet
@@ -671,8 +673,9 @@ class FormalPowerSeriesRing(Ring):
             """
             The powerseries of x^x at 1.
             """
-            def coeffs(s,n):
-                return K(sum([ self.Stirling1[n][k]*self.A000248[k] for k in range(n+1)]))/factorial(n)
+            def coeffs(self,n):
+                P = self._parent
+                return P.K(sum([P.Stirling1[n][k]*P.A000248[k] for k in range(n+1)]))/factorial(n)
 
         self.Selfpower_inc = Selfpower_inc(self)
 
@@ -680,8 +683,9 @@ class FormalPowerSeriesRing(Ring):
             """
             The powerseries of the inverse of x^x developed at 1.
             """
-            def coeffs(s,n):
-                return K(sum([ self.Stirling1[n][k]*Integer(1-k)**(k-1) for k in range(n+1)]))/factorial(n)
+            def coeffs(self,n):
+                P = self._parent
+                return P.K(sum([P.Stirling1[n][k]*Integer(1-k)**(k-1) for k in range(n+1)]))/factorial(n)
         self.Superroot_inc = Superroot_inc(self)
 
         class A003725(FormalPowerSeries):
@@ -690,7 +694,7 @@ class FormalPowerSeriesRing(Ring):
             """
             def coeffs(self,n):
                 """ sage: None   # indirect doctest """
-                return K(sum([ (-k)**(n-k)*binomial(n, k) for k in range(n+1)]))
+                return self.K(sum([ (-k)**(n-k)*binomial(n, k) for k in range(n+1)]))
 
         self.A003725 = A003725(self)
 
@@ -698,8 +702,9 @@ class FormalPowerSeriesRing(Ring):
             """
             The powerseries of x^(1/x) at 1.
             """
-            def coeffs(s,n):
-                return K(sum([ self.Stirling1[n][k]*self.A003725[k] for k in range(n+1)]))/factorial(n)
+            def coeffs(self,n):
+                P = self._parent 
+                return P.K(sum([P.Stirling1[n][k]*P.A003725[k] for k in range(n+1)]))/factorial(n)
 
         self.Selfroot_inc = Selfroot_inc(self)
         
@@ -708,17 +713,18 @@ class FormalPowerSeriesRing(Ring):
             The inverse of the self root x^(1/x) at 1.
             The inverse of the self root for x=b is the fixed point of f(y)=b^y.
             """
-            def coeffs(s,n):
-                 """ sage: None   # indirect doctest """
-                 if n<0:
-                     return 0
-                 if n==0:
-                     return K1
-                 r = 0
-                 for k in range(1,n+1):
-                     r += self.Stirling1[n][k]*K((k+1))**(k-1) 
-    
-                 return K(r)/factorial(n)
+            def coeffs(self,n):
+                """ sage: None   # indirect doctest """
+                P = self._parent 
+                if n<0:
+                    return 0
+                if n==0:
+                    return P.K1
+                r = 0
+                for k in range(1,n+1):
+                    r += P.Stirling1[n][k]*K((k+1))**(k-1) 
+
+                return P.K(r)/factorial(n)
             
         self.Inv_selfroot_inc = Inv_selfroot_inc(self)
 
@@ -984,6 +990,7 @@ class FormalPowerSeries(RingElement):
         self._itMemo = {}
 
         self.K = self._parent.K
+        self.K1 = self._parent.K1
 
         self.min_index = min_index
 
