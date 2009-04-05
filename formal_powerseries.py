@@ -131,7 +131,7 @@ class FormalPowerSeriesRing(Ring):
         """
         return FormalPowerSeries(self,min_index=min_index)
     
-    def by_list(self,list,start=0,**kwargs):
+    def by_list(self,list,start=0):
         """
         Returns the powerseries with coefficients p[n] where
         p[n]==0 for 0<=n<start, p[m+start]==list[m] for all list indices m,
@@ -149,28 +149,34 @@ class FormalPowerSeriesRing(Ring):
         sage: P.by_list([1,2,3],5)
         [0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        l = len(list)
-        M=0
-        for M in range(l):
-            if list[M] != 0:
-                break
-        N=-1
-        for i in range(l):
-            N = l-i-1
-            if list[N] != 0:
-                break
-
-        min_index = start + M
-        max_index = start + N
-
         class List(FormalPowerSeries):
+            def __init__(self,parent,list,start):
+                FormalPowerSeries.__init__(self,parent)
+
+                l = len(list)
+                M=0
+                for M in range(l):
+                    if list[M] != 0:
+                        break
+                N=-1
+                for i in range(l):
+                    N = l-i-1
+                    if list[N] != 0:
+                        break
+        
+                self.min_index = start + M
+                self.max_index = start + N
+                self.start = start
+                self.list = list
+
+
             def coeffs(self,k):
                 """ sage: None   # indirect doctest """
-                if k<min_index or k>max_index:
+                if k<self.min_index or k>self.max_index:
                     return 0
-                return list[k-start]
+                return self.list[k-self.start]
 
-        return List(self,min_index=min_index,**kwargs).reclass() 
+        return List(self,list,start).reclass() 
 
     def by_polynomial(self,p):
         """
@@ -216,21 +222,27 @@ class FormalPowerSeriesRing(Ring):
         sage: f
         [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
         """
-        assert not v == None
-        assert isinstance(v,SymbolicVariable)
 
-        def f(n):
-            """ sage: None   # indirect doctest """
-            #too slow
-            #if not at == 0 and n==0:
-            #    return expr({v:at})-at
-            #return simplify(diff(expr,v,n).substitute({v:at})/factorial(n))
-            return self.K(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
+        class Taylor(FormalPowerSeries):
+            def __init__(self,parent,expr,v,at):
+                assert not v == None
+                assert isinstance(v,SymbolicVariable)
 
-        #coeffs always returns non-empty list, at least [0,0] is contained
-        min_index = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
+                si = FormalPowerSeries.__init__
+                #coeffs always returns non-empty list, at least [0,0] is contained
+                min_index = expr.taylor(v,at,2).substitute({v:v+at}).coeffs(v)[0][1]
+                si(self,parent,min_index=min_index)
+
+            def coeffs(self,n):
+                """ sage: None   # indirect doctest """
+                #too slow
+                #if not at == 0 and n==0:
+                #    return expr({v:at})-at
+                #return simplify(diff(expr,v,n).substitute({v:at})/factorial(n))
+                return self.K(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
+
         #print "after",min_index
-        return self.by_lambda(f,min_index,**kwargs).reclass()
+        return Taylor(self,expr,v,at).reclass()
 
     def by_constant(self,c,**kwargs):
         """
@@ -1280,10 +1292,10 @@ class FormalPowerSeries(RingElement):
 
         if not decidable0(p.K):
             if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
-                p.__class__ = FormalPowerSeries0
+                p._subclass2(FormalPowerSeries0)
             return p
 
-        min_index = 2
+        min_index = max(2,p.min_index)
         for n in range(p.min_index,2):
             if not p[n] == 0:
                 min_index = n
