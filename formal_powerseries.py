@@ -2403,8 +2403,6 @@ class M(FormalPowerSeries):
             return 0
         return self.a[n]
 
-### Operation Classes
-
 class MulFact(FormalPowerSeries):
     def __init__(self,a):
         FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
