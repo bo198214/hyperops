@@ -372,7 +372,7 @@ class FormalPowerSeriesRing(Ring):
         self.Cosh = Cosh(self)
         self.Arcsinh = Arcsinh(self,min_index=1)
         self.Arctanh = Arctanh(self,min_index=1)
-        self.Bernoulli = (self.Id / self.Exp.dec()).derivatives()
+        self.Bernoulli = (self.Id / self.Exp.dec()).mul_fact()
         self.Bernoulli.__doc__ = """
         The n-th Bernoulli number is equal to 
         the n-th derivative of 1/(exp(x)-1) at 0.
@@ -974,27 +974,27 @@ class FormalPowerSeries(RingElement):
             return p._subclass2(FormalPowerSeries0)
         return p
             
-    def derivatives(a):
+    def mul_fact(a):
         """
-        The sequence of derivatives a[n]*n! of the powerseries a
+        The sequence a[n]*n! 
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.Exp.derivatives()                                   
+        sage: P.Exp.mul_fact()                                   
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
-        return a.new(lambda n: a[n]*a.K(factorial(n)))
+        return MulFact(a)
 
-    def underivatives(a):
+    def div_fact(a):
         """
         Returns the sequence a[n]/n!.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P(lambda n: 1).underivatives() - P.Exp
+        sage: P(lambda n: 1).div_fact() - P.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.new(lambda n: a[n]/a.K(factorial(n)))
+        return DivFact(a)
 
     def inc(a):
         """
@@ -1007,7 +1007,7 @@ class FormalPowerSeries(RingElement):
         sage: P.Zero + P.One
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.new(lambda n: a[0]+a.K(1) if n==0 else a[n])
+        return IncMethod(a)
 
     def dec(a):
         """
@@ -1019,7 +1019,7 @@ class FormalPowerSeries(RingElement):
         sage: P.Zero.dec()
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.new(lambda n: a[0]-a.K(1) if n==0 else a[n])
+        return DecMethod(a)
 
     def scalm(a,s):
         """
@@ -1029,7 +1029,7 @@ class FormalPowerSeries(RingElement):
         sage: P([1,2,3]).scalm(2)
         [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return a.new(lambda n: a[n]*s,a.min_index)
+        return Scalm(a,s)
 
     _rmul_ = scalm
     _lmul_ = scalm
@@ -1331,7 +1331,7 @@ class FormalPowerSeries(RingElement):
         sage: c.bell_polynomials(2)[6] == 6*c5*c1 + 15*c4*c2 + 10*c3**2
         True
         """
-        return (a.underivatives()**k).derivatives().scalm(Integer(1)/factorial(k))
+        return (a.div_fact()**k).mul_fact().scalm(Integer(1)/factorial(k))
 
     def bell_polynomial(a,n,k):
         """
@@ -1357,7 +1357,7 @@ class FormalPowerSeries(RingElement):
         sage: c1 = P('c1');c2 = P('c2');c3 = P('c3');c4 = P('c4');c5 = P('c5')
         sage: PS = FormalPowerSeriesRing(P)
         sage: c = PS([0,c1,c2,c3,c4,c5])
-        sage: (PS.Exp(c.underivatives()) - c.bell_complete(5).underivatives())[1:6]
+        sage: (PS.Exp(c.div_fact()) - c.bell_complete(5).div_fact())[1:6]
         [0, 0, 0, 0, 0]
         """
         if n <= 0:
@@ -1519,7 +1519,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: (P.Exp.derivatives() << 1).underivatives() - P.Exp  
+        sage: (P.Exp.mul_fact() << 1).div_fact() - P.Exp  
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return Lshift(a,m)
@@ -1531,7 +1531,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: (P.Exp.derivatives() >> 1).underivatives() - P.Exp
+        sage: (P.Exp.mul_fact() >> 1).div_fact() - P.Exp
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return Rshift(a,m)
@@ -2356,6 +2356,7 @@ class Superroot_inc(FormalPowerSeries):
     def coeffs(self,n):
         P = self._parent
         return P.K(sum([P.Stirling1[n][k]*Integer(1-k)**(k-1) for k in range(n+1)]))/factorial(n)
+
 class A003725(FormalPowerSeries):
     """
     The derivatives of exp(x*e^(-x)) at 0.
@@ -2402,6 +2403,45 @@ class M(FormalPowerSeries):
             return 0
         return self.a[n]
 
+### Operation Classes
+
+class MulFact(FormalPowerSeries):
+    def __init__(self,a):
+        FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
+        self.a = a
+    def coeffs(self,n): return self.a[n]*self.K(factorial(n))
+
+class DivFact(FormalPowerSeries):
+    def __init__(self,a):
+        FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
+        self.a = a
+    def coeffs(self,n): return self.a[n]/self.K(factorial(n))
+        
+class IncMethod(FormalPowerSeries):
+    def __init__(self,a):
+        FormalPowerSeries.__init__(self,a._parent)
+        self.a = a
+    def coeffs(self,n):
+        if n == 0:
+            return self.a[0] + self.K1
+        return self.a[n]
+        
+class DecMethod(FormalPowerSeries):
+    def __init__(self,a):
+        FormalPowerSeries.__init__(self,a._parent)
+        self.a = a
+    def coeffs(self,n):
+        if n == 0:
+            return self.a[0] - self.K1
+        return self.a[n]
+        
+class Scalm(FormalPowerSeries):
+    def __init__(self,a,s):
+        FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
+        self.a = a
+        self.s = s
+    def coeffs(self,n): return self.a[n] * self.s
+            
 class Add(FormalPowerSeries):
     def __init__(self,a,b):
         si = FormalPowerSeries.__init__
