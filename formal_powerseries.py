@@ -356,62 +356,31 @@ class FormalPowerSeriesRing(Ring):
         K1 = K.one_element()
         self.K1 = K1
 
-        self.Zero = PSS([])
-        self.Zero.__doc__ = """ 
-        The zero element power series.
-        """
-        self.One = PSS([K1])
-        self.One.__doc__ = """
-        The one element power series.
-        """
-        self.Id = self.by_list([K1],start=1)
-        self.Id.__doc__ = """
-        The powerseries of the identity function id(x)=x.
-        """
-        self.Inc = PSS([K1,K1])
-        self.Inc.__doc__ = """
-        The powerseries of the increment function inc(x)=x+1.
-        """
-        self.Dec = PSS([K(-1),K1])
-        self.Dec.__doc__ = """
-        The powerseries of the decrement function dec(x)=x-1.
-        """
+        self.Zero = Zero(self)
+        self.One = One(self)
+        self.Id = Id(self,min_index=1)
+        self.Inc = Inc(self)
+        self.Dec = Dec(self)
         self.Exp = Exp(self)
-        
         self.Dec_exp = Dec_exp(self,min_index=1)
-
         self.Log_inc = Log_inc(self,min_index=1)
-
         self.Sin = Sin(self,min_index=1)
-
         self.Cos = Cos(self)
-
         self.Arcsin = Arcsin(self,min_index=1)
-
         self.Arctan = Arctan(self,min_index=1)
-
         self.Sinh = Sinh(self,min_index=1)
-
         self.Cosh = Cosh(self)
-
         self.Arcsinh = Arcsinh(self,min_index=1)
-
         self.Arctanh = Arctanh(self,min_index=1)
-
         self.Bernoulli = (self.Id / self.Exp.dec()).derivatives()
         self.Bernoulli.__doc__ = """
         The n-th Bernoulli number is equal to 
         the n-th derivative of 1/(exp(x)-1) at 0.
         """
-
         self.Tan = Tan(self,min_index=1)
-
         self.Tanh = Tanh(self,min_index=1)
-        
         self.Xexp = Xexp(self,min_index=1)
-
         self.Lambert_w = Lambert_w(self,min_index=1)
-
         self.Sqrt_inc = Sqrt_inc(self)
 
         #dont go into a recursion defining stirling1
@@ -2133,6 +2102,50 @@ class Taylor(FormalPowerSeries):
         at = self.at
         return self.K(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
 
+class Zero(FormalPowerSeries):
+    """
+    The zero element power series.
+    """
+    def coeffs(self,n): return 0
+
+class One(FormalPowerSeries):
+    """
+    The one element power series.
+    """
+    def coeffs(self,n):
+        if n == 0:
+            return self.K1
+        return 0
+
+class Id(FormalPowerSeries01):
+    """
+    The powerseries of the identity function id(x)=x.
+    """
+    def coeffs(self,n):
+        if n == 1:
+            return self.K1
+        return 0
+
+class Inc(FormalPowerSeries):
+    """
+    The powerseries of the increment function inc(x)=x+1.
+    """
+    def coeffs(self,n):
+        if n == 0 or n == 1:
+            return self.K1
+        return 0
+
+class Dec(FormalPowerSeries):
+    """
+    The powerseries of the decrement function dec(x)=x-1.
+    """
+    def coeffs(self,n):
+        if n == 0:
+            return -K1
+        if n == 1:
+            return K1
+        return 0
+            
 class Exp(FormalPowerSeries):
     """
     The powerseries of the exponential function.
