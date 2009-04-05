@@ -2303,12 +2303,22 @@ class Stirling1(FormalPowerSeries):
         """ sage: None   # indirect doctest """
         P = self._parent
         if n==0:
-            res = P.by_lambda(lambda k: 1 if k==0 else 0)
-        else:
-            g = self[n-1]
-            res = P.by_lambda(lambda k: g[k-1]-(n-1)*g[k],1)
-    
+            return P.One
+
+        res = Stirling1_Succ(P,self[n-1],n)
         return res
+
+class Stirling1_Succ(FormalPowerSeries):
+    def __init__(self,parent,g,n):
+        FormalPowerSeries.__init__(self,parent,min_index=1)
+        self.g = g
+        self.n = n
+        
+    def coeffs(self,k): 
+        g = self.g
+        n = self.n
+        return g[k-1]-(n-1)*g[k]
+        
 
 class Lehmer_comtet(FormalPowerSeries):
     """
