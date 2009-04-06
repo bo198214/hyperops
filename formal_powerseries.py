@@ -106,6 +106,10 @@ class FormalPowerSeriesRing(Ring):
         Note that functions can not be serialized/pickled.
         If you want to have a serializable/picklable object, you can derive
         from FormalPowerSeries and define the method coeffs.
+        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeries
+        sage: #class F(FormalPowerSeries):^J    def coeffs(self,n): return n 
+        sage: #F(P)
         """
         return FormalPowerSeries(self,f,min_index)
 
@@ -934,6 +938,9 @@ class FormalPowerSeries(RingElement):
         Reclass queries p[0] and p[1], so for the sake of a lazy `define'
         this is not automatically done on creation.
 
+        Due to implementation effort a reclassed object can not be 
+        pickled/serialized with dumps.
+
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries, FormalPowerSeries0, FormalPowerSeries01
         sage: P = FormalPowerSeriesRing(QQ)
         sage: isinstance(P([0,1]).reclass(),FormalPowerSeries01)
@@ -1130,45 +1137,6 @@ class FormalPowerSeries(RingElement):
         """
         return a._parent.One/a
 
-    def _s(a,k,m,n):
-        """
-        Computes the sum of m!/(m_0!...m_k!) * f_0^(m_0)*...*f_k^(m_k) with
-        m_0 + ... + m_k = n and 1m_1 + 2m_2 + ... + km_k = n.
-        """
-        if k == 0:
-            if n == 0:
-                return a[0]**m
-            return 0
-        #if m == 1:
-        #    if k==n:
-        #        return a[n]
-        #    return 0
-        #n-k*i>=0
-        imax1 = int(n)/int(k)
-        #m-i>=0
-        imax2 = m
-        imax = min(imax1,imax2)
-        #print 'imax',imax
-        r = 0
-        for i in range(a.min_index,imax+1):
-            #print 'i',i,'k-1',k-1,'m-i',m-i,'n-k*i',n-k*i,'=',a._s(k-1,m-i,n-k*i)
-            r += binomial(m,i)*a[k]**i * a._s(k-1,m-i,n-k*i)
-        return r
-
-    def npow2(a,m):
-        b = a.new(min_index=a.min_index*m)
-        def f(n):
-            return sum([ a._s(k,m,n) for k in range(0,n+1)])
-        b.coeffs = f
-        return b
-
-    def npow3(a,m):
-        b = a.new(min_index=a.min_index*m)
-        def f(n):
-            return sum([ (m+1)*a[k]*a.npow(m-1)[n-k] for k in range(n+1)])
-        b.coeffs = f
-        return b
-            
     def npow(a,n):
         """
         Power with natural exponent n.
@@ -1191,6 +1159,31 @@ class FormalPowerSeries(RingElement):
                 res = a.npow(n-1) * a
             a._powMemo[n] = res
         return a._powMemo[n]
+
+#    def _s(a,k,m,n):
+#        """
+#        Computes the sum of m!/(m_0!...m_k!) * f_0^(m_0)*...*f_k^(m_k) with
+#        m_0 + ... + m_k = n and 1m_1 + 2m_2 + ... + km_k = n.
+#        """
+#        if k == 0:
+#            if n == 0:
+#                return a[0]**m
+#            return 0
+#        #if m == 1:
+#        #    if k==n:
+#        #        return a[n]
+#        #    return 0
+#        #n-k*i>=0
+#        imax1 = int(n)/int(k)
+#        #m-i>=0
+#        imax2 = m
+#        imax = min(imax1,imax2)
+#        #print 'imax',imax
+#        r = 0
+#        for i in range(a.min_index,imax+1):
+#            #print 'i',i,'k-1',k-1,'m-i',m-i,'n-k*i',n-k*i,'=',a._s(k-1,m-i,n-k*i)
+#            r += binomial(m,i)*a[k]**i * a._s(k-1,m-i,n-k*i)
+#        return r
 
     def nipow(a,t):
         """
@@ -1251,6 +1244,8 @@ class FormalPowerSeries(RingElement):
         sage: P = FormalPowerSeriesRing(QQ)
         sage: P([1,2,1]).sqrt()
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: (P.One - P.Sin ** 2).sqrt() - P.Cos
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return a.rt(2)
 
@@ -1688,9 +1683,8 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P([0,2]).regit(1/2)
-        sage: (p[0],p[1],p[2])
-        (0, sqrt(2), 0)
+        sage: P([0,2]).regit(1/2)[:3]
+        [0, sqrt(2), 0]
         """
 
         a._assertp0()
@@ -1703,6 +1697,9 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([0,2])
+        sage: p.regit_b(1/2)[0:3]
+        [0, sqrt(2), 0]
         """
         s = a.schroeder()
         return s.inv()(s.scalm(a[1]**t))
@@ -2014,8 +2011,14 @@ class FormalPowerSeries01(FormalPowerSeries0):
         #juli[-1]=0
         return [resit,juli.set_item(-1,0).integral()]
 
+### Constructors ###
+
 class Constant(FormalPowerSeries):
     def __init__(self,parent,c):
+        """
+        Description and tests at FormalPowerSeriesRing.by_constant
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,parent)
         self.c = parent.K(c)
 
@@ -2028,6 +2031,10 @@ class Constant(FormalPowerSeries):
 
 class Iterated(FormalPowerSeries):
     def __init__(self,parent,g,min_index):
+        """
+        Description and tests at FormalPowerSeriesRing.by_generator
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,parent,min_index=min_index)
         self.g = g
         
@@ -2044,6 +2051,10 @@ class Iterated(FormalPowerSeries):
 
 class List(FormalPowerSeries):
     def __init__(self,parent,list,start):
+        """
+        Description and tests at FormalPowerSeriesRing.by_list
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,parent)
 
         l = len(list)
@@ -2071,6 +2082,10 @@ class List(FormalPowerSeries):
 
 class Taylor(FormalPowerSeries):
     def __init__(self,parent,expr,v,at):
+        """
+        Description and tests at FormalPowerSeriesRing.by_taylor
+        sage: None   # indirect doctest
+        """
         assert not v == None
         assert isinstance(v,SymbolicVariable)
 
@@ -2093,6 +2108,8 @@ class Taylor(FormalPowerSeries):
         v = self.v
         at = self.at
         return self.K(expr.taylor(v,at,n).substitute({v:v+at}).coeff(v,n))
+
+### Constants ###
 
 class Zero(FormalPowerSeries):
     """
@@ -2438,7 +2455,12 @@ class Stirling1(FormalPowerSeries):
         return res
 
 class Stirling1_Succ(FormalPowerSeries):
+    """
+    Constructs the sequence of Stirling numbers stirling1[n]
+    from g = stirling1[n-1]
+    """
     def __init__(self,parent,g,n):
+        """ sage: None   # indirect doctest """
         FormalPowerSeries.__init__(self,parent,min_index=1)
         self.g = g
         self.n = n
@@ -2541,9 +2563,15 @@ class Inv_selfroot_inc(FormalPowerSeries):
             r += P.Stirling1[n][k]*P.K((k+1))**(k-1) 
 
         return P.K(r)/factorial(n)
+
+### Methods ###
     
 class ExtinctBefore(FormalPowerSeries):
     def __init__(self,a,min_index):
+        """
+        Description and tests at FormalPowerSeries.extinct_before
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.extinct_before.__doc__
 
         si = FormalPowerSeries.__init__
@@ -2559,6 +2587,10 @@ class ExtinctBefore(FormalPowerSeries):
 
 class MulFact(FormalPowerSeries):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.mul_fact
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
         self.a = a
     def coeffs(self,n): 
@@ -2567,6 +2599,10 @@ class MulFact(FormalPowerSeries):
 
 class DivFact(FormalPowerSeries):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.div_fact
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
         self.a = a
     def coeffs(self,n): 
@@ -2575,6 +2611,10 @@ class DivFact(FormalPowerSeries):
         
 class IncMethod(FormalPowerSeries):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.inc
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,a._parent)
         self.a = a
     def coeffs(self,n):
@@ -2585,6 +2625,10 @@ class IncMethod(FormalPowerSeries):
         
 class DecMethod(FormalPowerSeries):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.dec
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,a._parent)
         self.a = a
     def coeffs(self,n):
@@ -2595,6 +2639,10 @@ class DecMethod(FormalPowerSeries):
         
 class Scalm(FormalPowerSeries):
     def __init__(self,a,s):
+        """
+        Description and tests at FormalPowerSeries.scalm
+        sage: None   # indirect doctest
+        """
         FormalPowerSeries.__init__(self,a._parent,min_index=a.min_index)
         self.a = a
         self.s = s
@@ -2604,6 +2652,10 @@ class Scalm(FormalPowerSeries):
             
 class Add(FormalPowerSeries):
     def __init__(self,a,b):
+        """
+        Description and tests at FormalPowerSeries.add
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=min(a.min_index,b.min_index))
         self.a = a; self.b = b
@@ -2621,6 +2673,10 @@ class Add(FormalPowerSeries):
 
 class Sub(FormalPowerSeries):
     def __init__(self,a,b):
+        """
+        Description and tests at FormalPowerSeries.sub
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=min(a.min_index,b.min_index))
         self.a = a; self.b = b
@@ -2640,6 +2696,10 @@ class Sub(FormalPowerSeries):
 
 class Neg(FormalPowerSeries):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.neg
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=a.min_index)
         self.a = a
@@ -2653,6 +2713,10 @@ class Neg(FormalPowerSeries):
 
 class Mul(FormalPowerSeries):
     def __init__(self,a,b):
+        """
+        Description and tests at FormalPowerSeries.mul
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=a.min_index+b.min_index)
         self.a,self.b = a,b
@@ -2675,6 +2739,10 @@ class Mul(FormalPowerSeries):
 
 class Div(FormalPowerSeries):
     def __init__(self,c,b):
+        """
+        Description and tests at FormalPowerSeries.div
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,c._parent,min_index=c.min_index - b.min_index)
         self.c=c
@@ -2701,8 +2769,27 @@ class Div(FormalPowerSeries):
             r -= a._ab(k,n+b.min_index-k) 
         return r/b[b.min_index]
 
+class Npow2(FormalPowerSeries):
+    def __init__(self,a,m):
+        """
+        Description and tests at FormalPowerSeries.pow2
+        sage: None   # indirect doctest
+        """
+        si = FormalPowerSeries.__init__
+        si(self,a._parent,min_index=a.min_index*m)
+        self.a = a
+        self.m = m
+        
+    def coeffs(b,n):
+        """ sage: None   # indirect doctest """
+        return sum([ self.a._s(k,m,n) for k in range(0,n+1)])
+
 class Nipow(FormalPowerSeries):
     def __init__(self,a,t):
+        """
+        Description and tests at FormalPowerSeries.nipow
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent)
         self.a = a
@@ -2720,6 +2807,10 @@ class Nipow(FormalPowerSeries):
 
 class Compose(FormalPowerSeries):
     def __init__(self,b,a):
+        """
+        Description and tests at FormalPowerSeries.compose
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,b._parent,min_index=b.min_index*a.min_index)
         self.b = b 
@@ -2736,6 +2827,10 @@ class Compose(FormalPowerSeries):
         return res
 class Lshift(FormalPowerSeries):
     def __init__(self,a,m=1):
+        """
+        Description and tests at FormalPowerSeries.__lshift__
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent)
         self.a = a 
@@ -2747,6 +2842,10 @@ class Lshift(FormalPowerSeries):
 
 class Rshift(FormalPowerSeries):
     def __init__(self,a,m=1):
+        """
+        Description and tests at FormalPowerSeries.__rshift__
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent)
         self.a = a 
@@ -2761,17 +2860,21 @@ class Rshift(FormalPowerSeries):
         return a[n-m]
 
 class Diff(FormalPowerSeries):
+    def __init__(self,a,m=1):
+        """
+        Description and tests at FormalPowerSeries.diff
+        sage: None   # indirect doctest
+        """
+        si = FormalPowerSeries.__init__
+        si(self,a._parent,min_index=self.deg(a.min_index,m))
+        self.a = a 
+        self.m = m
+
     def deg(self,v,m):
         """ sage: None # indirect doctest """
         if v >= 0:
             return max(v-m,0)
         return v-m
-
-    def __init__(self,a,m=1):
-        si = FormalPowerSeries.__init__
-        si(self,a._parent,min_index=self.deg(a.min_index,m))
-        self.a = a 
-        self.m = m
 
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
@@ -2784,6 +2887,10 @@ class Diff(FormalPowerSeries):
 
 class Integral(FormalPowerSeries):
     def __init__(self,a,c=0):
+        """
+        Description and tests at FormalPowerSeries.integral
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         if c == 0:
             si(self,a._parent,min_index=a.min_index+1)
@@ -2811,6 +2918,10 @@ class Integral(FormalPowerSeries):
     
 class Regit(FormalPowerSeries0): 
     def __init__(self,a,t):
+        """
+        Description and tests at FormalPowerSeries.regit
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a = a 
@@ -2842,6 +2953,10 @@ class Regit(FormalPowerSeries0):
 
 class Inv(FormalPowerSeries0):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.inv
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a=a
@@ -2858,6 +2973,10 @@ class Inv(FormalPowerSeries0):
 
 class Julia(FormalPowerSeries01):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.julia
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a=a
@@ -2886,6 +3005,10 @@ class Julia(FormalPowerSeries01):
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.schroeder
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a=a
@@ -2907,6 +3030,10 @@ class Schroeder(FormalPowerSeries01):
 
 class InvSchroeder(FormalPowerSeries01):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.inv_schroeder
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a=a
@@ -2924,6 +3051,10 @@ class InvSchroeder(FormalPowerSeries01):
     
 class Regit01(FormalPowerSeries01):
     def __init__(self,a,t):
+        """
+        Description and tests at FormalPowerSeries01.regit
+        sage: None   # indirect doctest
+        """
         si = FormalPowerSeries.__init__
         si(self,a._parent,min_index=1)
         self.a = a 
@@ -2954,6 +3085,10 @@ class Regit01(FormalPowerSeries01):
 
 class Julia01(FormalPowerSeries01):
     def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries01.julia
+        sage: None   # indirect doctest
+        """
         P = a._parent
         si = FormalPowerSeries.__init__
         si(self,P,min_index=1)
