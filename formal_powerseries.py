@@ -446,6 +446,24 @@ class FormalPowerSeriesRing(Ring):
         return "FormalPowerSeriesRing over " + repr(self.K)
 
     def _coerce_map_from_(self,T):
+        """
+        Returns true if type T can be coerced to a FormalPowerSeries
+        with self as parent. This can be done always when 
+        T can be coerced to self.base_ring().
+        This is used for operations like lmul and rmul.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(RR)
+        sage: P._coerce_map_from_(QQ)
+        True
+        sage: P._coerce_map_from_(int)
+        True
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P._coerce_map_from_(int)                      
+        True
+        sage: P._coerce_map_from_(RR)      
+        False
+        """
         #print self.K, T,not self.K.coerce_map_from(T) == None
         return not self.K.coerce_map_from(T) == None
            
