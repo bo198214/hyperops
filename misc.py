@@ -1,7 +1,7 @@
 #does not really belong to a powerseries package but there is currently no
 #other place for it
 
-from sage.rings.formal_powerseries import FPSRing
+from sage.rings.formal_powerseries import FormalPowerSeriesRing
 def msexp(n,digits):
     #sexp(z)=exp^z(1)=exp^{z+1}(0)
     x=var('x')
@@ -175,6 +175,31 @@ def sexpa(a,prec=167,N=64):
     sip = si.polynomial(N)
     f = lambda x: a+sip(c**x * d)
     return f
+
+def sexp_eta(prec=53,x0=0.5):
+    """
+    The superexponential to base e^(1/e)
+    """
+    R = RealField(prec)
+    eta = R(e**(1/e))
+    f = lambda x: eta**x
+    fi = lambda x: log(x)/log(eta)
+    def super(x,t,N=20):
+        xn = x
+        x0n = x0
+        x0n1 = x0
+        for n in range(N):
+            xn = f(xn)
+        for n in range(N):
+            x0n = f(x0n)
+        x0n1 = f(x0n)
+        y = (x0n1-x0n)*t + xn
+        for n in range(N):
+            y = fi(y)
+        return y
+    return super
+            
+    
     
 def symm(N,prec=167):
     R = RealField(prec)
@@ -219,3 +244,133 @@ def symm(N,prec=167):
             xp = x
     
     return line([[x,n(fa[x])] for x in args])
+
+def laguerre_weights(N):
+    v = PolynomialRing(QQ,'v').gen()
+    p = laguerre(N,v)
+    q = laguerre(N+1,v)
+    x = []
+    prec = 53
+    while len(x) < N:
+        x = p.roots(multiplicities=False,ring=RealField(prec))
+        prec *= 2
+    w = [x[i]*exp(x[i])/((N+1)*q(x[i]))**2 for i in range(0,N)]
+    return (x,w)
+
+def legendre_weights(N):
+    v = PolynomialRing(QQ,'v').gen()
+    p = legendre_P(N,v)
+    prec = 53
+    x = []
+    while len(x) < N:
+        x = p.roots(multiplicities=False,ring=RealField(prec))
+        prec *= 2
+    q = diff(p)
+    w = [2/(1-x[i]**2)/q(x[i])**2 for i in range(N)]
+    return (x,w)
+
+def hermite_weights(M):
+    v = PolynomialRing(QQ,'v').gen()
+    N = 2*M - 1
+    p = hermite(N,v)
+    prec = 53
+    x = []
+    while len(x) < M:
+        x = p.roots(multiplicities=False,ring=RealField(prec))[M-1:]
+        prec *= 2
+    q = hermite(N-1,v)
+    c = 2**(N-1) * factorial(N)/ N**2 * n(sqrt(pi),prec) 
+    w = [ exp(x[i]**2) * c / q(x[i])**2 for i in range(M) ]
+    return (x,w)
+
+def test_laguerre(lw):
+    (x,w)=lw
+    N = len(x)
+    prec = x[0].prec()
+    C = ComplexField(prec)
+    f = exp
+    s = 0
+    for i in range(N):
+        t = x[i]
+        z = C(-1,t)
+        s += w[i] * f(z)/z/(z-1)
+        s += w[i] * (f(z)/z/(z-1)).conjugate()
+        s /= C(0,2*pi)
+    print s
+    print exp(f(0.0))-f(.0) - s
+
+def cauchy_super_odd(lw):
+    (x,w)= lw
+    M = len(x)
+    prec = x[0].prec()
+    C = ComplexField(prec)
+    R = RealField(prec)
+    fo = [ C(0.5) ] * M
+    fo[0] = 1
+    f = [0] * M
+    f[0] = 1
+    while True:
+        for n in range(1,M):
+            f[n] = w[0] * exp(1.0)/(1-C(0,x[n]))
+            for k in range(1,M):
+                z = C(0,x[n])
+                it = C(0,x[k])
+            
+                y  = exp(fo[k]) / (+1+it-z)
+                y -= log(fo[k]).conjugate() / (-1-it-z)
+                y += exp(fo[k]).conjugate() / (+1-it-z)
+                y -= log(fo[k]) / (-1+it-z)
+                f[n] += w[k] * y
+    
+        print f[1]
+        for i in range(M):
+            fo[i] = f[i]
+
+def cauchy_super_even(lw):
+    (x,w)= lw
+    M = len(x)
+    prec = x[0].prec()
+    C = ComplexField(prec)
+    R = RealField(prec)
+    fo = [ C(0.5) ] * M
+    f = [0] * M
+    while True:
+        for n in range(M):
+            f[n] = 0
+            for k in range(M):
+                z = C(0,x[n])
+                it = C(0,x[k])
+            
+                y  = exp(fo[k]) / (+1+it-z)
+                y -= log(fo[k]).conjugate() / (-1-it-z)
+                y += exp(fo[k]).conjugate() / (+1-it-z)
+                y -= log(fo[k]) / (-1+it-z)
+                f[n] += w[k] * y
+    
+        print f[0]
+        for i in range(M):
+            fo[i] = f[i]
+
+def cauchy_super_even_test(lw,F=exp):
+    (x,w)= lw
+    M = len(x)
+    prec = x[0].prec()
+    C = ComplexField(prec)
+    R = RealField(prec)
+    fo = [ F(C(0,x[i])) for i in range(M) ] 
+    f = [0] * M
+    for n in range(M):
+        f[n] = 0
+        for k in range(M):
+            z = C(0,x[n])
+            it = C(0,x[k])
+        
+            y  = F(+1+it) #/ (+1+it-z)
+            y -= F(-1-it) #/ (-1-it-z)
+            y += F(+1-it) #/ (+1-it-z)
+            y -= F(-1+it) #/ (-1+it-z)
+            print y
+            f[n] += w[k] * y
+    op = 20
+    for k in range(M):
+        print fo[k].n(op),f[k].n(op),(f[k] - fo[k]).n(op)

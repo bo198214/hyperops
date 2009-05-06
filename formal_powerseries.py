@@ -19,6 +19,7 @@ from sage.rings.complex_field import ComplexField_class
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
 from sage.misc.misc_c import prod
+from sage.misc.functional import n
 from sage.rings.infinity import Infinity
 from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.polynomial.polynomial_element import Polynomial
@@ -1157,9 +1158,10 @@ class FormalPowerSeries(RingElement):
         """
         return a.parent().One/a
 
-    def npow(a,n):
+    def npow_mult(a,n):
         """
-        Power with natural exponent n.
+        Power with natural exponent n computed in the most primitive way by
+        multiplying the powerseries n times.
         This function is cached, it remembers the power for each n.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
@@ -1170,40 +1172,67 @@ class FormalPowerSeries(RingElement):
 
         _assert_nat(n)
 
+        if n==0:
+            return a.parent().One
+        if n==1:
+            return a
         if not a._powMemo.has_key(n):
-            if n==0:
-                res = a.parent().One
-            elif n==1:
-                res = a
-            else:
-                res = a.npow(n-1) * a
-            a._powMemo[n] = res
+            n1 = int(n) / 2
+            n2 = int(n) / 2 + n % 2
+            a._powMemo[n] = a.npow_mult(n1) * a.npow_mult(n2)
         return a._powMemo[n]
 
-#    def _s(a,k,m,n):
-#        """
-#        Computes the sum of m!/(m_0!...m_k!) * f_0^(m_0)*...*f_k^(m_k) with
-#        m_0 + ... + m_k = n and 1m_1 + 2m_2 + ... + km_k = n.
-#        """
-#        if k == 0:
-#            if n == 0:
-#                return a[0]**m
+    def _s(f,k,m,n):
+        """
+        Returns the sum over 
+        m_1+2*m_2+...+k*m_k = n, m_0+m_1+...+m_k = m
+        of 
+        (m over m_1,m_2,...,m_k)* f[0]^{m_0} ... f[k]^{m_k}
+        """
+#        print k,m,n
+        if f._powMemo.has_key((k,m,n)):
+            return f._powMemo[(k,m,n)]
+
+        if m == 0:
+            if n == 0:
+                return 1
+            return 0
+        if k < f.min_index:
+            return 0
+#        if n < f.min_index*m: #case only for speed optimizing
 #            return 0
-#        #if m == 1:
-#        #    if k==n:
-#        #        return a[n]
-#        #    return 0
-#        #n-k*i>=0
-#        imax1 = int(n)/int(k)
-#        #m-i>=0
-#        imax2 = m
-#        imax = min(imax1,imax2)
-#        #print 'imax',imax
-#        r = 0
-#        for i in range(a.min_index,imax+1):
-#            #print 'i',i,'k-1',k-1,'m-i',m-i,'n-k*i',n-k*i,'=',a._s(k-1,m-i,n-k*i)
-#            r += binomial(m,i)*a[k]**i * a._s(k-1,m-i,n-k*i)
-#        return r
+#         if k == f.min_index: #case only for speed optimizing
+#             if n == k*m:
+#                 return f[k]**m
+#             return 0
+#        print 'p'
+        res = 0
+        mk = 0
+        while min(f.min_index*m,0)+k*mk <= n and mk <= m:
+            v = f._s(k-1,m-mk,n-k*mk)
+            if not v == 0: #be lazy in evaluating f[k]
+                if not mk == 0: #be lazy in evaluating f[k]
+                    v *= f[k]**mk
+                res +=  v * binomial(m,mk)
+            mk+=1
+
+        f._powMemo[(k,m,n)] = res
+        return res
+        
+    def npow_combin(f,m):
+        """
+        Power with natural exponent m.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([1,2,3]).npow(2)/P([1,2,3])
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        """
+
+        _assert_nat(m)
+        return Npow(f,m)
+
+    npow = npow_combin
 
     def nipow(a,t):
         """
@@ -1216,9 +1245,9 @@ class FormalPowerSeries(RingElement):
         sage: P.Exp.nipow(1/2)
         [1, 1/2, 1/8, 1/48, 1/384, 1/3840, 1/46080, 1/645120, 1/10321920, ...]
 
-        sage: PR = FormalPowerSeriesRing(RealField(20))
-        sage: PR.Exp.nipow(0.5)                       
-        [1.0000, 0.50000, 0.12500, 0.020833, 0.0026041, 0.00026041, 0.000021577, ...]
+        sage: PR = FormalPowerSeriesRing(RR)
+        sage: PR.Exp.nipow(0.5).n(20)                       
+        [1.0000, 0.50000, 0.12500, 0.020833, 0.0026041, 0.00026041, 0.000021636, ...]
         """
         return Nipow(a,t)
 
@@ -1501,6 +1530,17 @@ class FormalPowerSeries(RingElement):
 #         x0=real(fp)
 #         y0=imag(fp)
 #         return contour_plot(lambda x,y: real(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false) + contour_plot(lambda x,y: imag(f(CC(x+i*y-fp))),(x0-l,x0+l),(y0-l,y0+l),fill=false)       
+
+    def n(a,*args,**kwargs):
+        """
+        Applies n to the coefficients
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.Exp.n(digits=3)
+        [1.00, 1.00, 0.500, 0.167, 0.0417, 0.00833, 0.00139, 0.000198, 0.0000248, ...]
+        """
+        return N(a,*args,**kwargs)
                     
     def val(a):
         """
@@ -1587,6 +1627,20 @@ class FormalPowerSeries(RingElement):
 
         return Integral(a,c)
 
+    def indefinite_sum(f,c=0):
+        def ids(n,m):
+            N = m+1
+            if n > N:
+                return 0
+            if n < 0:
+                return 0
+            if n == 0:
+                return c
+            if n == N:
+                return 1/QQ(n)
+            return - sum([ f[k]*binomial(k,n) for k in range(n+1,N+1)])/QQ(n)
+        print ids(1,2), ids(2,2), ids(3,2)
+
     ### finite approximate operations
 
     def carleman_matrix(p,N,M=None):
@@ -1657,11 +1711,14 @@ class FormalPowerSeries0(FormalPowerSeries):
         """
         _assert_nat(n)
 
+        if n == 0:
+            return a.parent().Id
+        if n == 1:
+            return a
         if not a._itMemo.has_key(n):
-            res = a.parent().Id
-            for k in range(n):
-                res = res.compose(a)
-            a._itMemo[n] = res
+            n1 = int(n) / 2
+            n2 = int(n) / 2 + n % 2
+            a._itMemo[n] = a.nit(n1).compose(a.nit(n2))
         return a._itMemo[n]
 
     def it(a,t):
@@ -2019,7 +2076,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: (((p << 1).log().rmul(a[0]) + (p | a[1]) - a[1])).reclass()
+        sage: ((p << 1).log().rmul(a[0]) + (p | a[1]) - a[1]).reclass()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         
@@ -2459,6 +2516,23 @@ class Sqrt_inc(FormalPowerSeries):
                 oddprod *= k
         return self.K((-1)**n *oddprod/evenprod/(1-2*n))
 
+# class BernoulliVar(FormalPowerSeries):
+#     """
+#     The variant of the Bernoulli numbers where B[1]=1/2
+#     instead of B[1]=-1/2
+#     """
+#     def coeffs(self,n):
+#         if n == 1:
+#             return self.K(1)/self.K(2)
+#         return self.Bernoulli[n]
+
+# class Faulhaber(FormalPowerSeries):
+#     """
+#     Faulhaber's formula.
+#     """
+#   def coeffs(self,n):
+        
+
 class Stirling1(FormalPowerSeries):
     """
     Returns the sequence of Stirling numbers of the first kind.
@@ -2804,20 +2878,23 @@ class Div(FormalPowerSeries):
             r -= a._ab(k,n+b.min_index-k) 
         return r/b[b.min_index]
 
-class Npow2(FormalPowerSeries):
-    def __init__(self,a,m):
+class Npow(FormalPowerSeries):
+    def __init__(self,f,m):
         """
-        Description and tests at FormalPowerSeries.pow2
+        Description and tests at FormalPowerSeries.npow
         sage: None   # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=a.min_index*m)
-        self.a = a
+        si(self,f.parent(),min_index=f.min_index*m)
+        self.f = f
         self.m = m
-        
-    def coeffs(b,n):
+
+    def coeffs(self,n):
         """ sage: None   # indirect doctest """
-        return sum([ self.a._s(k,m,n) for k in range(0,n+1)])
+        m = self.m
+        if n<self.min_index:
+            return 0
+        return self.f._s(n-self.f.min_index*(m-1),m,n) 
 
 class Nipow(FormalPowerSeries):
     def __init__(self,a,t):
@@ -2951,6 +3028,23 @@ class Integral(FormalPowerSeries):
             assert a[-1] == 0, "Coefficient at -1 must be 0, but it is: " + repr(a[-1])
         return a[n-1]/Integer(n)
     
+class N(FormalPowerSeries):
+    def __init__(self,a,*args,**kwargs):
+        """
+        Description and tests at FormalPowerSeries.n
+        sage: None # indirect doctest
+        """
+        si = FormalPowerSeries.__init__
+        si(self,a.parent())
+
+        self.a = a
+        self.args = args
+        self.kwargs = kwargs
+
+    def coeffs(self,k):
+        """ sage: None # indirect doctest """
+        return n(self.a[k],*self.args,**self.kwargs)
+        
 class Regit(FormalPowerSeries0): 
     def __init__(self,a,t):
         """
@@ -3143,3 +3237,4 @@ class Julia01(FormalPowerSeries01):
             r += s
 
         return r
+
