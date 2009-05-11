@@ -466,7 +466,11 @@ class FormalPowerSeriesRing(Ring):
         False
         """
         #print self.K, T,not self.K.coerce_map_from(T) == None
-        return not self.K.coerce_map_from(T) == None
+        if not self.K.coerce_map_from(T) == None:
+            return True
+        if isinstance(T,FormalPowerSeriesRing):
+            return not self.K.coerce_map_from(T.K) == None
+        return False
            
 
     def base_ring(self):
@@ -1160,7 +1164,7 @@ class FormalPowerSeries(RingElement):
 
     def npow_mult(a,n):
         """
-        Power with natural exponent n computed in the most primitive way by
+        Power with natural exponent n computed in the most simple way by
         multiplying the powerseries n times.
         This function is cached, it remembers the power for each n.
 
@@ -1188,6 +1192,11 @@ class FormalPowerSeries(RingElement):
         m_1+2*m_2+...+k*m_k = n, m_0+m_1+...+m_k = m
         of 
         (m over m_1,m_2,...,m_k)* f[0]^{m_0} ... f[k]^{m_k}
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P.Exp._s(3,5,2)
+        25/2
         """
 #        print k,m,n
         if f._powMemo.has_key((k,m,n)):
@@ -1222,17 +1231,18 @@ class FormalPowerSeries(RingElement):
     def npow_combin(f,m):
         """
         Power with natural exponent m.
+        Computed via the cominatorial way similar to Faa di Bruno's formula.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P([1,2,3]).npow(2)/P([1,2,3])
+        sage: P([1,2,3]).npow_combin(2)/P([1,2,3])
         [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
 
         _assert_nat(m)
         return Npow(f,m)
 
-    npow = npow_combin
+    npow = npow_mult
 
     def nipow(a,t):
         """
@@ -1247,7 +1257,7 @@ class FormalPowerSeries(RingElement):
 
         sage: PR = FormalPowerSeriesRing(RR)
         sage: PR.Exp.nipow(0.5).n(20)                       
-        [1.0000, 0.50000, 0.12500, 0.020833, 0.0026041, 0.00026041, 0.000021636, ...]
+        [1.0000, 0.50000, 0.12500, 0.020833, 0.0026042, 0.00026042, 0.000021701, ...]
         """
         return Nipow(a,t)
 
@@ -1627,19 +1637,19 @@ class FormalPowerSeries(RingElement):
 
         return Integral(a,c)
 
-    def indefinite_sum(f,c=0):
-        def ids(n,m):
-            N = m+1
-            if n > N:
-                return 0
-            if n < 0:
-                return 0
-            if n == 0:
-                return c
-            if n == N:
-                return 1/QQ(n)
-            return - sum([ f[k]*binomial(k,n) for k in range(n+1,N+1)])/QQ(n)
-        print ids(1,2), ids(2,2), ids(3,2)
+#     def indefinite_sum(f,c=0):
+#         def ids(n,m):
+#             N = m+1
+#             if n > N:
+#                 return 0
+#             if n < 0:
+#                 return 0
+#             if n == 0:
+#                 return c
+#             if n == N:
+#                 return 1/QQ(n)
+#             return - sum([ f[k]*binomial(k,n) for k in range(n+1,N+1)])/QQ(n)
+#         print ids(1,2), ids(2,2), ids(3,2)
 
     ### finite approximate operations
 
@@ -2915,6 +2925,10 @@ class Nipow(FormalPowerSeries):
             assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
 
         da = a.set_item(0,0)
+        
+        if n>=0 and a[0] == 1: 
+            #dont use symbolic arithmetic for ratonal powers of 1
+            return sum([binomial(t,k) * da.npow(k)[n] for k in range(n+1)],a.K(0))
         return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K(0))
 
 class Compose(FormalPowerSeries):
@@ -3035,7 +3049,7 @@ class N(FormalPowerSeries):
         sage: None # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,a.parent())
+        si(self,FormalPowerSeriesRing(n(0,*args,**kwargs).parent()))
 
         self.a = a
         self.args = args
