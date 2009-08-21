@@ -8,7 +8,8 @@ from sage.structure.sage_object import SageObject
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
 from sage.rings.integer import Integer
-from sage.calculus.calculus import SymbolicExpression, SymbolicVariable, var, log
+from sage.calculus.calculus import var
+from sage.symbolic.expression import Expression
 from sage.calculus.functional import diff
 from sage.rings.ring import Ring
 from sage.rings.ring_element import RingElement
@@ -269,7 +270,7 @@ class FormalPowerSeriesRing(Ring):
                 return self.by_list(p1,**kwargs)
             return self.by_list(p1,p2,**kwargs)
 
-        if isinstance(p1,SymbolicExpression):
+        if isinstance(p1,Expression):
             if p3 == None:
                 return self.by_taylor(p1,p2,**kwargs)
             return self.by_taylor(p1,p2,p3,**kwargs)
@@ -632,8 +633,8 @@ class FormalPowerSeries(RingElement):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
 
         sage: #symbolic (parabolic) iteration                                                 
-        sage: dexp.it(x)[5].expand()
-        x^4/16 - 13*x^3/144 + x^2/24 - x/180
+        sage: dexp.it(x)[5].coefficients()
+        [[-1/180, 1], [1/24, 2], [-13/144, 3], [1/16, 4]]
         sage: q = dexp.it(1/x).it(x)
 
         sage: expand(q[3])
@@ -653,8 +654,8 @@ class FormalPowerSeries(RingElement):
         sage: #Sage is not able to simplify 
         sage: #simplify(dbsrt2[3])
         sage: #but numerically we can verify equality
-        sage: RR(dbsrt2[3](x=0.73)-dbsrt[3])
-        -8.67361737988404e-19
+        sage: RR(dbsrt2[3](x=0.73)-dbsrt[3]) < 10**(-18)
+        True
     """
 
     def __init__(self,parent,f=None,min_index=None,base_ring=None):
@@ -953,10 +954,10 @@ class FormalPowerSeries(RingElement):
         True
         """
 
-        if not decidable0(p.K):
-            if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
-                p._subclass(FormalPowerSeries0)
-            return p
+#         if not decidable0(p.K):
+#             if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
+#                 p._subclass(FormalPowerSeries0)
+#             return p
 
         min_index = max(2,p.min_index)
         for n in range(p.min_index,2):
@@ -2174,7 +2175,7 @@ class Taylor(FormalPowerSeries):
         sage: None   # indirect doctest
         """
         assert not v == None
-        assert isinstance(v,SymbolicVariable)
+        assert isinstance(v,Expression) #this should be Variable
 
         si = FormalPowerSeries.__init__
         #coeffs always returns non-empty list, at least [0,0] is contained
