@@ -1,6 +1,6 @@
 from sage.symbolic.constants import e
 from sage.functions.other import sqrt,real,imag,ceil,floor
-from sage.functions.log import log
+from sage.functions.log import log, ln
 from sage.functions.trig import tan
 from sage.matrix.constructor import Matrix, identity_matrix
 from sage.misc.persist import save
@@ -15,7 +15,7 @@ from sage.rings.integer import Integer
 from sage.rings.rational_field import QQ
 from sage.rings.complex_field import ComplexField
 from sage.symbolic.ring import SR
-from mpmath import lambertw
+import mpmath
 
 
 class IntuitiveSlog:
@@ -65,12 +65,12 @@ class IntuitiveSlog:
 	#Carleman matrix
         if x0 == 0:
             #C = Matrix([[ m**n*log(b)**n/factorial(n) for n in range(N)] for m in range(N)])
-            coeffs = [log(b)**n/factorial(n) for n in xrange(N)]
+            coeffs = [ln(b)**n/factorial(n) for n in xrange(N)]
         else:
             #too slow
-            #C = Matrix([ [log(b)**n/factorial(n)*sum([binomial(m,k)*k**n*(b**x0)**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
+            #C = Matrix([ [ln(b)**n/factorial(n)*sum([binomial(m,k)*k**n*(b**x0)**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
 
-            coeffs = [b**x0-x0]+[b**x0*log(b)**n/factorial(n) for n in xrange(1,N)]
+            coeffs = [b**x0-x0]+[b**x0*ln(b)**n/factorial(n) for n in xrange(1,N)]
         def psmul(A,B):
             N = len(B)
             return [sum([A[k]*B[n-k] for k in xrange(n+1)]) for n in xrange(N)]
@@ -104,14 +104,15 @@ class IntuitiveSlog:
         print "slog reversed."
 
         #the primary or the upper fixed point
-        L = lambertw(-log(b),-1)/(-log(b))
+	mpmath.mp.dps = ceil(iprec/ln(10.0)*ln(2.0))
+        L = mpmath.lambertw(-mpmath.ln(b),-1)/(-mpmath.ln(b))
         L = ComplexField(iprec)(L.real,L.imag)
         self.L = L
 
         #lower fixed point
         bL = None
         if b <= R(e**(1/e)):
-             bL = lambertw(-log(b),0)/(-log(b))
+             bL = mpmath.lambertw(-mpmath.ln(b),0)/(-mpmath.ln(b))
              bL = RealField(iprec)(bL)
         self.bL = bL
 
