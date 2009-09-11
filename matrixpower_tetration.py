@@ -10,7 +10,7 @@ from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeri
 from sage.rings.complex_field import ComplexField
 from sage.rings.integer import Integer
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.real_mpfr import RR, RealField
+from sage.rings.real_mpfr import RR, RealField, RealNumber
 from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 
@@ -43,7 +43,7 @@ class MatrixPowerSexp:
         self.b = b
         x0 = x0.n(iprec)
         self.x0 = x0
-        if isinstance(x0,sage.rings.real_mpfr.RealNumber):
+        if isinstance(x0,RealNumber):
             R = RealField(iprec)
 	else:
             R = ComplexField(iprec)    
