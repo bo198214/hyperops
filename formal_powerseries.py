@@ -1851,14 +1851,16 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     def logit(a):
         """
-        Iterative logarithm (a[0]==0 required).
+        Iterative logarithm (a[0]==0 and 
+        a[1]==1 or a[1] not being a primitive root of unit required).
 
         It has different equivalent definitions:
-        1. j = diff(f.it(t),t)(t=0)
+        1. j = diff(a.it(t),t)(t=0)
         2. Solution j of Julia equation j o a = a' * j, with j[1]==log(a[1]) 
-           and additionally j[valit(a)+1]=a[valit(a)+1] in the case a[1]==1 
+           and in the case a[1]==1 additionally:
+            j[0]=...=j[m]=0, j[m+1]=a[m+1], m = valit(a)
 
-        It starts with j[0]=...=j[valit(a)]=0. (As the Julia equation
+        It starts with  (As the Julia equation
         is also satisfied by c*j for any constant c the additional
         condition in 2, where j[1]=0, is necessary to determine j.)
 
@@ -1874,28 +1876,14 @@ class FormalPowerSeries0(FormalPowerSeries):
         Marek Kuczma, Iterative functional equations, 8.5A
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
 
-        #The case |a[1]|!=1
+        #The case a not being a primitive root of unit, e.g. |a[1]|!=1
+        sage: P = FormalPowerSeriesRing(QQ)
         sage: a = P([0,2,1])               
         sage: j = a.logit()                   
         sage: j(a) - a.diff()*j            
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-
-        #The case a[1]==1
-        sage: j = P.Dec_exp.logit()
-        sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-
         sage: P = FormalPowerSeriesRing(SR)
-
-        #The case a[1] being a primitive root of unity.
-        sage: j = P.Dec_exp.compose(P([0,-1])).logit()
-        sage: vector(j[:10]) - vector([0, I*pi, 1/4*I*pi, -7/24*I*pi, 0, 209/2160*I*pi, 0, -3607/36288*I*pi, 0, 602653/3175200*I*pi])
-        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-
-        #Comparing with derivative of the regular iteration
-        #The case |a[1]|!=1
         sage: a = P([0,2,1])
         sage: j = a.logit()
         sage: t = var('t')
@@ -1904,21 +1892,34 @@ class FormalPowerSeries0(FormalPowerSeries):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         #The case a[1]==1
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: a = P([0,1,0,2])
+        sage: vector(a.logit()[:10]) - vector(a.logit_jabotinsky()[:10])
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: a = P.Dec_exp
+        sage: j = a.logit()
+        sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: P = FormalPowerSeriesRing(SR)
         sage: de = P.Dec_exp
-        sage: j = de.logit_jabotinsky()
+        sage: j = de.logit()
         sage: t = var('t')
         sage: ait = de.it(t)
         sage: [j[n] - diff(ait[n],t)(t=0) for n in range(15)]
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
         """
+
         
         return Logit(a)
 
-    def julia(a):
+    def julia(a,scale=1):
         """
         The Julia function of a.
         
-        It is the same as logit() except that j[1]=1 in the case a[1]==1 
+        It is the same as logit() except that j[1]=scale in the case a[1]!=1 
         It can be used instead of logit() to avoid introducing logarithms 
         into the coefficients. 
         E.g. if you work in a polynomial ring for the coefficients.
@@ -1931,7 +1932,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: j(a) - a.diff()*j            
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return Logit(a,a.K1)
+        return Logit(a,scale)
             
 #     def logit(a):
 #         """
@@ -3223,20 +3224,14 @@ class Logit(FormalPowerSeries0):
 
         #compute the maximum m such that j_m has non-zero coefficient
         
-        N = n
-        while True:
-            d = a.npow(n)[N] - ap[N-n] 
-
-            if d != 0: break
-
-            N+=1
-
+        N = n + j.min_index - 1
+        #print n,N
         r = a.K(0)
 
         for k in range(1,n):
             r-=j[k]*(a.npow(k)[N]-ap[N-k])
         
-        return r/d
+        return r/(a.npow(n)[N]-ap[N-n])
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
