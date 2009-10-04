@@ -2285,7 +2285,9 @@ class Exp(FormalPowerSeries):
     """
     def coeffs(self,n): 
         """ sage: None   # indirect doctest """
-        return self.K1/factorial(n)
+        if n == 0:
+            return self.K1
+        return self[n-1]/n
         
 class Dec_exp(FormalPowerSeries01):
     """
@@ -2299,7 +2301,8 @@ class Dec_exp(FormalPowerSeries01):
     def coeffs(self,n): 
         """ sage: None   # indirect doctest """
         if n == 0: return 0
-        return self.K1/factorial(n)
+        if n == 1: return self.K1
+        return self[n-1]/n
             
 class Log_inc(FormalPowerSeries01):
     """
@@ -2328,7 +2331,9 @@ class Sin(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 0: return 0
-        return self.K((-1)**((n-1)/2)/factorial(n))
+        if n == 1:
+            return self.K1
+        return self[n-2]/(-n*(n-1))
 
 class Cos(FormalPowerSeries):
     """
@@ -2342,7 +2347,9 @@ class Cos(FormalPowerSeries):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 1: return 0
-        return self.K((-1)**(n/2)/factorial(n))
+        if n == 0:
+            return self.K1
+        return self[n-2]/(-n*(n-1))
 
 class Arcsin(FormalPowerSeries01):
     """
@@ -2358,14 +2365,11 @@ class Arcsin(FormalPowerSeries01):
         
         if n % 2 == 0:
             return 0
-        evenprod = Integer(1)
-        oddprod = Integer(1)
-        for k in range(2,n):
-            if k % 2 == 0:
-                evenprod *= k
-            else:
-                oddprod *=k
-        return self.K(oddprod/evenprod/n)
+
+        if n == 1:
+            return self.K1
+
+        return self[n-2]*(n-2)*(n-2)/(n-1)/n
                     
 class Arctan(FormalPowerSeries01):
     """
@@ -2393,7 +2397,9 @@ class Sinh(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 0: return 0
-        return self.K(1/factorial(n))
+        if n == 1:
+            return self.K1
+        return self[n-2]/(n*(n-1))
 
 class Cosh(FormalPowerSeries):
     """
@@ -2407,7 +2413,9 @@ class Cosh(FormalPowerSeries):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 1: return 0
-        return self.K(1/factorial(n))
+        if n == 0:
+            return self.K1
+        return self[n-2]/(n*(n-1))
 
 class Arcsinh(FormalPowerSeries01):
     """
@@ -2422,14 +2430,10 @@ class Arcsinh(FormalPowerSeries01):
         """ sage: None   # indirect doctest """
         if n % 2 == 0:
             return 0
-        evenprod = Integer(1)
-        oddprod = Integer(1)
-        for k in range(2,n):
-            if k % 2 == 0:
-                evenprod *= k
-            else:
-                oddprod *= k
-        return self.K((-1)**(n/2)*oddprod/evenprod/n)
+        if n == 1:
+            return self.K1
+        
+        return -self[n-2]*(n-2)*(n-2)/(n-1)/n
 
 class Arctanh(FormalPowerSeries01):
     """
@@ -2443,7 +2447,7 @@ class Arctanh(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 0: return 0
-        return self.K(1/Integer(n))
+        return self.K1/n
 
 class Tan(FormalPowerSeries01):
     """
@@ -2491,7 +2495,8 @@ class Xexp(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n==0: return 0
-        return self.K(1/factorial(n-1))
+        if n==1: return self.K1
+        return self[n-1]/(n-1)
 
 class Lambert_w(FormalPowerSeries01):
     """
@@ -2505,6 +2510,7 @@ class Lambert_w(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n==0: return 0
+        if n==1: return self.K1
         return self.K((-n)**(n-1)/factorial(n))
 
 class Sqrt_inc(FormalPowerSeries):
@@ -2518,14 +2524,9 @@ class Sqrt_inc(FormalPowerSeries):
     """
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
-        evenprod=Integer(1)
-        oddprod=Integer(1)
-        for k in range(2,2*n+1):
-            if k%2 == 0:
-                evenprod *= k
-            else:
-                oddprod *= k
-        return self.K((-1)**n *oddprod/evenprod/(1-2*n))
+        if n==0:
+            return self.K1
+        return -self[n-1]*(2*n-3)/(2*n)
 
 # class BernoulliVar(FormalPowerSeries):
 #     """
