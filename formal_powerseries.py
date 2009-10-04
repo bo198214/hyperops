@@ -1849,14 +1849,18 @@ class FormalPowerSeries0(FormalPowerSeries):
 
 #         return a.new(lambda n: h(b[n]))
 
-    def julia(a):
+    def logit(a):
         """
-        Iterative logarithm or Julia function for the case 
-        a[0]==0 and a[1]**n != a[1] for n>=2.
+        Iterative logarithm (a[0]==0 required).
 
-        Has different equivalent definitions:
-        1. Solution j of: j o a = a' * j, j[1]==1
-        2. j = diff(f.it(t),t)(t=0)
+        It has different equivalent definitions:
+        1. j = diff(f.it(t),t)(t=0)
+        2. Solution j of Julia equation j o a = a' * j, with j[1]==log(a[1]) 
+           and additionally j[valit(a)+1]=a[valit(a)+1] in the case a[1]==1 
+
+        It starts with j[0]=...=j[valit(a)]=0. (As the Julia equation
+        is also satisfied by c*j for any constant c the additional
+        condition in 2, where j[1]=0, is necessary to determine j.)
 
         It has similar properties like the logarithm:
         logit(f^t) == t*logit(f)
@@ -1867,6 +1871,58 @@ class FormalPowerSeries0(FormalPowerSeries):
         Refs:
         Eri Jabotinsky, Analytic iteration (1963), p 464
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
+        Marek Kuczma, Iterative functional equations, 8.5A
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+
+        #The case |a[1]|!=1
+        sage: a = P([0,2,1])               
+        sage: j = a.logit()                   
+        sage: j(a) - a.diff()*j            
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
+        #The case a[1]==1
+        sage: j = P.Dec_exp.logit()
+        sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
+        sage: P = FormalPowerSeriesRing(SR)
+
+        #The case a[1] being a primitive root of unity.
+        sage: j = P.Dec_exp.compose(P([0,-1])).logit()
+        sage: vector(j[:10]) - vector([0, I*pi, 1/4*I*pi, -7/24*I*pi, 0, 209/2160*I*pi, 0, -3607/36288*I*pi, 0, 602653/3175200*I*pi])
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+        #Comparing with derivative of the regular iteration
+        #The case |a[1]|!=1
+        sage: a = P([0,2,1])
+        sage: j = a.logit()
+        sage: t = var('t')
+        sage: ait = a.it(t)
+        sage: [j[n] - diff(ait[n],t)(t=0) for n in range(10)]
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        #The case a[1]==1
+        sage: de = P.Dec_exp
+        sage: j = de.logit_jabotinsky()
+        sage: t = var('t')
+        sage: ait = de.it(t)
+        sage: [j[n] - diff(ait[n],t)(t=0) for n in range(15)]
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        """
+        
+        return Logit(a)
+
+    def julia(a):
+        """
+        The Julia function of a.
+        
+        It is the same as logit() except that j[1]=1 in the case a[1]==1 
+        It can be used instead of logit() to avoid introducing logarithms 
+        into the coefficients. 
+        E.g. if you work in a polynomial ring for the coefficients.
+
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1875,23 +1931,8 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: j(a) - a.diff()*j            
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        
-        return Julia(a)
+        return Logit(a,a.K1)
             
-    def julia_gen(a,j1=None):
-        """
-        Iterative logarithm or Julia function with j[1]=j1 
-        for any powerseries with a[0]==0.
-        For a description see julia().
-
-        If j1 is unspecified then 
-        j1 = a[a.order()] for a.order()>1
-        j1 = 1 for a.order()==1
-        
-        """ 
-
-        return Julia_gen(a)
-        
 #     def logit(a):
 #         """
 #         """
@@ -2043,18 +2084,22 @@ class FormalPowerSeries01(FormalPowerSeries0):
 
         return Regit01(a,t)
 
-    def julia(a):
+    def logit_jabotinsky(a):
         """
-        Iterative logarithm or Julia function for a[0]==0, a[1]==1.
-        Has different equivalent definitions:
-        1. Solution j of: j o a = a' * j, j[1]=1
-        2. j = diff(f.it(t),t)(t=0)
+        Iterative logarithm for the case a[0]==0 and a[1]==1.
+        Following an early method of Jabotinsky.
+        It is considered to be quite slow but maybe used for comparison.
+
+
+        It satisfies j := logit(a) = diff(a.it(t),t)(t=0)
+        and it is also the solution of j of 
+        j o a = a' * j, j[0]=...=j[valit(a)]=0, j[valit(a)+1]=a[valit(a)+1]
+
+        It can be used to obtain the regular Abel function abel(f) by
+        abel(f)' = 1/logit(f)
 
         It has similar properties like the logarithm:
         logit(f^t) == t*logit(f)
-
-        It can be used to define the regular Abel function abel(f) by
-        abel(f)' = 1/logit(f)
 
         Refs:
         Eri Jabotinsky, Analytic iteration (1963), p 464
@@ -2063,18 +2108,21 @@ class FormalPowerSeries01(FormalPowerSeries0):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: j = P.Dec_exp.julia()
+        sage: j = P.Dec_exp.logit_jabotinsky()
         sage: j(P.Dec_exp) - P.Dec_exp.diff() * j
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        #diff(,t)(t=0) is the first coefficient of binomial(t,m)
-        #Stirling1(m)[k] is the kth coefficient of m!*binomial(t,m)
-        
-        res = Julia01(a)
-        #res.min_index = res.order()
-        return res
-        
 
+        sage: P = FormalPowerSeriesRing(SR)
+        sage: de = P.Dec_exp
+        sage: j = de.logit_jabotinsky()
+        sage: t = var('t')
+        sage: ait = de.it(t)
+        sage: [j[n] - diff(ait[n],t)(t=0) for n in range(15)]
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        """
+        
+        return Logit_Jabotinsky(a)
+  
     def abel_coeffs(a):
         """
         The Abel function a of a power series f with f[0]=0 and f[1]=1
@@ -2084,8 +2132,8 @@ class FormalPowerSeries01(FormalPowerSeries0):
         and p is a powerseries (with positive indices only)
 
         ji[-1] is called the iterative residue (Ecalle)
-        ji is the reciprocal of the Julia function
-        (also called iterative logarithm) -which is meromorphic- of f
+        ji is the reciprocal of the iterative logarithm
+        -which is meromorphic- of f
 
         The method returns the sequence [ji[-1],[F[-m+1],...,F[-1],p[0],p[1],p[2],...]
 
@@ -2108,7 +2156,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         
-        juli = a.julia().rcp()
+        juli = a.logit().rcp()
 #         m = jul.order()
 #         juli = (jul << m).rcp() 
 #         return [[ juli[m+i]/(i+1) for i in range(-m,-1) ],juli[m-1], (juli<<m).integral()]
@@ -3133,65 +3181,26 @@ class Inv(FormalPowerSeries0):
         if n>1:
             return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)])/a[1]**n
 
-class Julia(FormalPowerSeries0):
-    def __init__(self,a):
-        """
-        Description and tests at FormalPowerSeries.julia
-        sage: None   # indirect doctest
-        """
-        si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=1)
-
-        self.a=a
-
-        self.ap = a.diff()
-
-
-    def coeffs(j,n):
-        """ sage: None #indirect doctest """
-
-        a = j.a
-        ap = j.ap
-
-        if n < 0:
-            return 0
-
-        if n == 1:
-            return j.K1
-        
-        r = a.K(0)
-
-        for k in range(1,n):
-            r-=j[k]*(a.npow(k)[n]-ap[n-k])
-
-        return r/(a[1]**n-a[1])
-
-class Julia_gen(FormalPowerSeries):
-    def __init__(self,a):
+class Logit(FormalPowerSeries0):
+    def __init__(self,a,j1=None):
         """
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
         """
-        si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=1)
         self.a=a
 
         self.ap = a.diff()
 
-        self.min_index = None
+        min_index = a.valit()+1
 
-        N = 0
-        while True: 
-            for n in range(1,N):
-                if a.npow(n)[N] - self.ap[N-n] == 0:
-                    self.min_index = n
+        si = FormalPowerSeries.__init__
+        si(self,a.parent(),min_index=min_index)
 
-            if self.min_index != None:
-                break
+        if j1 == None:
+            self.j1 = log(a[1])
+        else:
+            self.j1 = j1
 
-            N+=1
-
-        assert self.min_index == a.valit()+1, repr(self.min_index) + ":" + repr(a.valit())
 
     def coeffs(j,n):
         """ sage: None #indirect doctest """
@@ -3199,16 +3208,27 @@ class Julia_gen(FormalPowerSeries):
         a = j.a
         ap = j.ap
 
-        if n < j.min_index:
-            return 0
 
-        if n == j.min_index:
-            return a[j.min_index]
+        if a[1] == j.K1:
+            if n < j.min_index:
+                return 0
+            if n == j.min_index:
+                return a[j.min_index]
+
+        else:
+            if n < 1:
+                return 0
+            if n == 1:
+                return j.j1
 
         #compute the maximum m such that j_m has non-zero coefficient
         
         N = n
-        while  a.npow(n)[N] - ap[N-n] == 0:
+        while True:
+            d = a.npow(n)[N] - ap[N-n] 
+
+            if d != 0: break
+
             N+=1
 
         r = a.K(0)
@@ -3216,7 +3236,7 @@ class Julia_gen(FormalPowerSeries):
         for k in range(1,n):
             r-=j[k]*(a.npow(k)[N]-ap[N-k])
         
-        return    r/(a.npow(n)[N]-ap[N-n])
+        return r/d
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
@@ -3298,7 +3318,7 @@ class Regit01(FormalPowerSeries01):
             r += s
         return r
 
-class Julia01(FormalPowerSeries01):
+class Logit_Jabotinsky(FormalPowerSeries01):
     def __init__(self,a):
         """
         Description and tests at FormalPowerSeries01.julia
