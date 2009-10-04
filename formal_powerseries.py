@@ -4,27 +4,28 @@ Cached formal powerseries and formal Laurant series in one variable.
 Author: Henryk Trappmann
 """
 
-from sage.structure.sage_object import SageObject
+from sage.calculus.calculus import var
+from sage.calculus.functional import diff
+from sage.functions.log import log
+from sage.matrix.constructor import matrix
+from sage.misc.misc_c import prod
+from sage.misc.functional import n
+from sage.rings.complex_field import ComplexField_class
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial
+from sage.rings.infinity import Infinity
 from sage.rings.integer import Integer
-from sage.calculus.calculus import var
-from sage.symbolic.expression import Expression
-from sage.calculus.functional import diff
-from sage.rings.ring import Ring
-from sage.rings.ring_element import RingElement
 from sage.rings.rational_field import QQ, RationalField
 from sage.rings.rational import Rational
 from sage.rings.real_mpfr import RR, RealField
-from sage.rings.complex_field import ComplexField_class
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
-from sage.misc.misc_c import prod
-from sage.misc.functional import n
-from sage.rings.infinity import Infinity
-from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.polynomial.polynomial_element import Polynomial
-from sage.matrix.constructor import matrix
+from sage.rings.power_series_ring_element import PowerSeries
+from sage.rings.ring import Ring
+from sage.rings.ring_element import RingElement
+from sage.structure.sage_object import SageObject
+from sage.symbolic.expression import Expression
 
 def decidable0(K): 
     """
@@ -1144,7 +1145,7 @@ class FormalPowerSeries(RingElement):
         sage: P.One/P(lambda n: (-1)**n)
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        b.min_index = b.val()
+        b.min_index = b.order()
 
         return Div(c,b)
 
@@ -1553,16 +1554,16 @@ class FormalPowerSeries(RingElement):
         """
         return N(a,*args,**kwargs)
                     
-    def val(a):
+    def order(a):
         """
         Returns the first index i such that a[i] != 0
         Does not terminate if a == 0
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P([0,0,42]).val()
+        sage: P([0,0,42]).order()
         2
-        sage: P.by_list([1],-42).val()
+        sage: P.by_list([1],-42).order()
         -42
         """
         n = a.min_index
@@ -1850,18 +1851,18 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     def julia(a):
         """
-        Iterative logarithm or Julia function.
+        Iterative logarithm or Julia function for the case 
+        a[0]==0 and a[1]**n != a[1] for n>=2.
+
         Has different equivalent definitions:
-        1. Solution j of: j o a = a' * j, j[1]=1
+        1. Solution j of: j o a = a' * j, j[1]==1
         2. j = diff(f.it(t),t)(t=0)
 
-        Precondition: a[1]**n!=a[1] for all n>1
-
         It has similar properties like the logarithm:
-        itlog(f^t) == t*itlog(f)
+        logit(f^t) == t*logit(f)
 
         It can be used to define the regular Abel function abel(f) by
-        abel(f)' = 1/itlog(f)
+        abel(f)' = 1/logit(f)
 
         Refs:
         Eri Jabotinsky, Analytic iteration (1963), p 464
@@ -1877,8 +1878,21 @@ class FormalPowerSeries0(FormalPowerSeries):
         
         return Julia(a)
             
+    def julia_gen(a,j1=None):
+        """
+        Iterative logarithm or Julia function with j[1]=j1 
+        for any powerseries with a[0]==0.
+        For a description see julia().
+
+        If j1 is unspecified then 
+        j1 = a[a.order()] for a.order()>1
+        j1 = 1 for a.order()==1
         
-#     def itlog(a):
+        """ 
+
+        return Julia_gen(a)
+        
+#     def logit(a):
 #         """
 #         """
 
@@ -1889,7 +1903,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 #             """ sage: None   # indirect doctest """
 #             return diff(g[n],_t)(_t=0)
 #         res = a.new(f)
-#         res.min_index = res.val()
+#         res.min_index = res.order()
 #         return res
 
     def schroeder(a):
@@ -1926,8 +1940,8 @@ class FormalPowerSeries0(FormalPowerSeries):
     def abel(f):
         """
         The regular Abel function of a powerseries f (f[1]**n != f[1]) 
-        has the form a(x)=(ln(x)+ps(x))/ln(q)
-        where q=f[1]!=0,1 and ps is a powerseries
+        has the form a(x)=(ln(x)+ps(x))/ln(f[1])
+        where ps is a powerseries
         
         This method returns ps.
 
@@ -1948,7 +1962,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     def abel2(a):
         """
-        A different implementation of the regular Abel function via
+        A different implementation of abel(f) via
         integration of 1/julia(a).
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries0
@@ -1961,29 +1975,31 @@ class FormalPowerSeries0(FormalPowerSeries):
         
         return a.julia().rcp().extinct_before(0).integral()
 
+    def valit(a):
+        """
+        Returns the last index i such that a[j] == Id[j] for j<=i.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: P([0,1,0,0,1]).valit()
+        3
+        """
+        assert a[0] == 0 , a[0]
+
+        if not a[1] == 1:
+            return 0
+
+        n = 2
+        while a[n] == 0:
+            n+=1
+
+        return n-1
+
 
 class FormalPowerSeries01(FormalPowerSeries0):
     """
     The FormalPowerSeriess p with p[0]==0 and p[1]==1.
     """
-
-    def valit(a):
-        """
-        Returns the first index i such that a[i] != Id[i]
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P([0,1,0,0,1]).valit()
-        4
-        """
-        if not a[0] == 0:
-            return 0
-        if not a[1] == 1:
-            return 1
-        n = 2
-        while a[n] == 0:
-            n+=1
-        return n
 
 #     def it_b(p,t):
 #         """
@@ -2029,20 +2045,21 @@ class FormalPowerSeries01(FormalPowerSeries0):
 
     def julia(a):
         """
-        Iterative logarithm or Julia function.
+        Iterative logarithm or Julia function for a[0]==0, a[1]==1.
         Has different equivalent definitions:
         1. Solution j of: j o a = a' * j, j[1]=1
         2. j = diff(f.it(t),t)(t=0)
 
         It has similar properties like the logarithm:
-        itlog(f^t) == t*itlog(f)
+        logit(f^t) == t*logit(f)
 
         It can be used to define the regular Abel function abel(f) by
-        abel(f)' = 1/itlog(f)
+        abel(f)' = 1/logit(f)
 
         Refs:
         Eri Jabotinsky, Analytic iteration (1963), p 464
         Jean Ecalle, Theorie des Invariants Holomorphes (1974), p 19
+        Marek Kuczma, Iterative functional equations, 8.5A
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -2054,7 +2071,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         #Stirling1(m)[k] is the kth coefficient of m!*binomial(t,m)
         
         res = Julia01(a)
-        #res.min_index = res.val()
+        #res.min_index = res.order()
         return res
         
 
@@ -2092,7 +2109,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         """
         
         juli = a.julia().rcp()
-#         m = jul.val()
+#         m = jul.order()
 #         juli = (jul << m).rcp() 
 #         return [[ juli[m+i]/(i+1) for i in range(-m,-1) ],juli[m-1], (juli<<m).integral()]
         resit = juli[-1]
@@ -3116,7 +3133,7 @@ class Inv(FormalPowerSeries0):
         if n>1:
             return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)])/a[1]**n
 
-class Julia(FormalPowerSeries01):
+class Julia(FormalPowerSeries0):
     def __init__(self,a):
         """
         Description and tests at FormalPowerSeries.julia
@@ -3124,29 +3141,82 @@ class Julia(FormalPowerSeries01):
         """
         si = FormalPowerSeries.__init__
         si(self,a.parent(),min_index=1)
+
         self.a=a
+
+        self.ap = a.diff()
+
 
     def coeffs(j,n):
         """ sage: None #indirect doctest """
 
         a = j.a
+        ap = j.ap
+
         if n < 0:
             return 0
 
         if n == 1:
-            return 1
+            return j.K1
         
-        ap = a.diff()
+        r = a.K(0)
+
+        for k in range(1,n):
+            r-=j[k]*(a.npow(k)[n]-ap[n-k])
+
+        return r/(a[1]**n-a[1])
+
+class Julia_gen(FormalPowerSeries):
+    def __init__(self,a):
+        """
+        Description and tests at FormalPowerSeries.julia_gen
+        sage: None   # indirect doctest
+        """
+        si = FormalPowerSeries.__init__
+        si(self,a.parent(),min_index=1)
+        self.a=a
+
+        self.ap = a.diff()
+
+        self.min_index = None
+
+        N = 0
+        while True: 
+            for n in range(1,N):
+                if a.npow(n)[N] - self.ap[N-n] == 0:
+                    self.min_index = n
+
+            if self.min_index != None:
+                break
+
+            N+=1
+
+        assert self.min_index == a.valit()+1, repr(self.min_index) + ":" + repr(a.valit())
+
+    def coeffs(j,n):
+        """ sage: None #indirect doctest """
+
+        a = j.a
+        ap = j.ap
+
+        if n < j.min_index:
+            return 0
+
+        if n == j.min_index:
+            return a[j.min_index]
+
+        #compute the maximum m such that j_m has non-zero coefficient
+        
+        N = n
+        while  a.npow(n)[N] - ap[N-n] == 0:
+            N+=1
 
         r = a.K(0)
 
         for k in range(1,n):
-            r+=ap[n-k]*j[k]
-
-        for k in range(1,n):
-            r-=j[k]*a.npow(k)[n]
-
-        return r/(a[1]**n-a[1])
+            r-=j[k]*(a.npow(k)[N]-ap[N-k])
+        
+        return    r/(a.npow(n)[N]-ap[N-n])
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
@@ -3253,4 +3323,5 @@ class Julia01(FormalPowerSeries01):
             r += s
 
         return r
+
 
