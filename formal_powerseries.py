@@ -381,7 +381,9 @@ class FormalPowerSeriesRing(Ring):
             self.K = Integer
 
         K = self.K
+        K0 = K.zero_element()
         K1 = K.one_element()
+        self.K0 = K0
         self.K1 = K1
 
         self.Zero = Zero(self)
@@ -689,6 +691,7 @@ class FormalPowerSeries(RingElement):
         self._itMemo = {}
 
         self.K = self.parent().K
+        self.K0 = self.parent().K0
         self.K1 = self.parent().K1
 
         self.min_index = min_index
@@ -1430,9 +1433,9 @@ class FormalPowerSeries(RingElement):
         True
         """
         m = a.min_index
-        return lambda x: sum([a[k]*x**k for k in range(m,n)],a.K(0))
+        return lambda x: sum([a[k]*x**k for k in range(m,n)],a.K0)
         
-    def polynomial(a,n,x=var('x')):
+    def polynomial(a,n,x='x'):
         """
         Returns the associated polynomial for the first n coefficients.
         f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
@@ -1446,14 +1449,20 @@ class FormalPowerSeries(RingElement):
         sage: P = FormalPowerSeriesRing(QQ)
         sage: P.by_list([0,1,2]).polynomial(5).padded_list()
         [0, 1, 2]
+        sage: P.Exp.polynomial(5,'y')
+        1/24*y^4 + 1/6*y^3 + 1/2*y^2 + y + 1
+        sage: (1/P.Dec_exp).polynomial(5,'y')
+        (-1/720*y^4 + 1/12*y^2 - 1/2*y + 1)/y
         """
 
-#        return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K(0)))
+#        return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K0))
         P = PolynomialRing(a.K,x)
         m = a.min_index
         if m >= 0:
             return P(a[:n])
-        return P(a[m:n])/P(x**(-m))
+
+        xp = P.gen()
+        return P(a[m:n])/P(xp**(-m))
 
 #     def subs(a,*args,**kwargs):
 #         def f(n):
@@ -1838,14 +1847,14 @@ class FormalPowerSeries0(FormalPowerSeries):
 #             if n == 1:
 #                 return Poly([0,1])
 #             res = a[n]*(b[1]**n)-b[1]*a[n]
-#             res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K(0))
+#             res += sum([a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n] for m in range(2,n)],a.K0)
 #             res /= a[1]**n - a[1]
 #             return res
 #         b.coeffs = f
 
 #         def h(p):
 #             """ sage: None # indirect doctest """
-#             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K(0))
+#             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K0)
 
 #         return a.new(lambda n: h(b[n]))
 
@@ -2084,6 +2093,18 @@ class FormalPowerSeries01(FormalPowerSeries0):
         """
 
         return Regit01(a,t)
+
+    def selfit(a,ie=None):
+        """
+        Regular iteration to the argument (if iteration exponent `ie' is not given):
+        a.it(x)(x) as powerseries in x.
+        
+        If given `ie' must be a polynomial.
+        
+        Requires a[0]==0 and a[1]==0.
+        """
+
+        return Selfit01(a,ie)
 
     def logit_jabotinsky(a):
         """
@@ -2941,8 +2962,8 @@ class Div(FormalPowerSeries):
         sage: None # indirect doctest
         """
         b = a.b
-        if b[n] == b.K(0):
-            return b.K(0)
+        if b[n] == 0:
+            return 0
         return a[m]*b[n]
 
     def coeffs(a,n):
@@ -2996,8 +3017,8 @@ class Nipow(FormalPowerSeries):
         
         if n>=0 and a[0] == 1: 
             #dont use symbolic arithmetic for ratonal powers of 1
-            return sum([binomial(t,k) * da.npow(k)[n] for k in range(n+1)],a.K(0))
-        return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K(0))
+            return sum([binomial(t,k) * da.npow(k)[n] for k in range(n+1)],a.K0)
+        return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K0)
 
 class Compose(FormalPowerSeries):
     def __init__(self,b,a):
@@ -3017,7 +3038,7 @@ class Compose(FormalPowerSeries):
         res = sum([b[k]*(a.npow(k)[n]) for k in range(n+1)])
         if b.min_index < 0:
             bi = a.rcp()
-            res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)],b.K(0))
+            res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)],b.K0)
         return res
 class Lshift(FormalPowerSeries):
     def __init__(self,a,m=1):
@@ -3153,12 +3174,18 @@ class Regit(FormalPowerSeries0):
         if n == 1:
             #print ")"
             return a[1]**t
-        res = a[n]*(b[1]**n)-b[1]*a[n]
 
-        for m in range(2,n):
-            res += a[m]*b.npow(m)[n] - b[m]*a.npow(m)[n]
+        D = 0
+        N = n + D
 
-        res /= a[1]**n - a[1]
+        res = b.K0
+        for d in range(D+1):
+            res -= b[1+d]*a.npow(1+d)[N] - a[N-d]*(b.npow(N-d)[N])
+
+        for m in range(2+D,n):
+            res -= b[m]*a.npow(m)[N] - a[m]*b.npow(m)[N] 
+
+        res /= a.npow(n)[N] - a[1+D]
         #print ")"
         return res
 
@@ -3226,7 +3253,7 @@ class Logit(FormalPowerSeries0):
         
         N = n + j.min_index - 1
         #print n,N
-        r = a.K(0)
+        r = a.K0
 
         for k in range(1,n):
             r-=j[k]*(a.npow(k)[N]-ap[N-k])
@@ -3286,7 +3313,7 @@ class Regit01(FormalPowerSeries01):
         sage: None   # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=1)
+        si(self,a.parent(),min_index=a.min_index)
         self.a = a 
         self.t = t
 
@@ -3298,15 +3325,15 @@ class Regit01(FormalPowerSeries01):
             assert a[0] == 0, "The index of the lowest non-zero coefficient must be 1, but is " + repr(a.min_index)
             assert a[1] == 1, "The first coefficient must be 1, but is " + repr(a[1])
 
-        if n == 1: return 1
+        if n == 1: return self.K1
         #def c(m):
         #    return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-        #res = sum([c(m)*a.nit(m)[n] for m in range(n)],a.K(0))
+        #res = sum([c(m)*a.nit(m)[n] for m in range(n)],a.K0)
         #return res
 
-        r = a.K(0)
+        r = self.K0
         for m in range(n):
-            s = a.K(0)
+            s = self.K0
             for k in range(m+1):
                 s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
             s *= binomial(t,m)
@@ -3327,11 +3354,11 @@ class Logit_Jabotinsky(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None # indirect doctest """
         a = self.a
-        r = a.K(0)
+        r = a.K0
         P = a.parent()
 
         for m in range(n):
-            s = a.K(0)
+            s = a.K0
             for k in range(m+1):
                 s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
             s *= P.Stirling1[m][1]/factorial(m)
@@ -3339,4 +3366,27 @@ class Logit_Jabotinsky(FormalPowerSeries01):
 
         return r
 
+class Selfit01(FormalPowerSeries01):
+    def __init__(self,a,ie=None):
+        """
+        Description and tests at FormalPowerSeries01.selfit
+        sage: None   # indirect doctest
+        """
+        if ie == None:
+            P = PolynomialRing(a.K,'x')
+            ie = P.gen()
+        else:
+            P = ie.parent()
 
+        si = FormalPowerSeries.__init__
+        si(self,FormalPowerSeriesRing(P),min_index=1)
+
+        self.a=a
+        self.P = P
+        self.ie = ie
+
+    def coeffs(self,n):
+        P = self.P
+        b = self.a.regit(self.ie)
+
+        return sum([ P(b[k])[n-k] for k in range(n+1)])
