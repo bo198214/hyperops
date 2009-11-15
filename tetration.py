@@ -7,7 +7,8 @@ def mpc2C(z,prec=53):
   C = ComplexField(prec)
   return C(R(z.real),R(z.imag))
   
-def expit(b,t,z,prec=500,n=50):
+
+def expit(b,t,z,prec=100,n=10,r=None):
   N = n
   oprec = (b+t).prec()
 
@@ -23,13 +24,19 @@ def expit(b,t,z,prec=500,n=50):
   # print 'a',a,'|lna|',abs(lna)
   a2 = mpc2C( mpmath.exp(-mpmath.lambertw(-lnb,-1)))
   # print 'a',a2
-  r = abs(a2-a)
+  if r == None:
+    #r = abs(a2-a)
+
+    r = 1 - abs(lna)
+    #print 'lna',lna,'r',r,'dist',abs(lna-log(z))
+    assert r>0
+    
   zn = z
   n=0
-  while abs(zn-a) > r:
+  while abs(log(zn)-lna) > r:
     zn = b**zn
     n+=1
-    print 'zn',n,zn
+  #  print 'zn',n,zn
   # print zn
   h = FC.Dec_exp.rmul(lna)
   # w = ComplexField(oprec)(a+h.it(t).polynomial(N)(lnb*(1-a))/lnb)
@@ -40,12 +47,17 @@ def expit(b,t,z,prec=500,n=50):
     # print 'wn',k,wn
   return wn
 
-def d(b,prec=100,n=10): 
-  f = lambda z: expit(b,0.5,z,prec=prec,n=n)
+#the circle with center (0.84,0.801), radius 1.2 
+#lies inside the tsr for y > 0.7
+#the circle with center (1.22,0.77), radius 0.8,
+#lies inside the tsr for 0<y<0.7
+
+def d(b,**kwargs): 
+  f = lambda z: expit(b,0.5,z,**kwargs)
   return f(f(1.0))-b
 
-def tet(b,t,prec=500,n=50):
-  return expit(b,t,1,prec=prec,n=n)
+def tet(b,t,**kwargs):
+  return expit(b,t,1,**kwargs)
 
 circ = lambda t: exp(CC(0,pi*float(t)))
 #Shell Thron boundary
@@ -54,6 +66,7 @@ stb = lambda t: st(circ(t))
 stbtymax = fmin(lambda t: -stb(t).imag(), 0.5)[0] 
 stbtxmax = fmin(lambda t: -stb(t).real(), 0.1)[0] 
 stbtxmin = fmin(lambda t: stb(t).real(), 0.6)[0]
+
 
 def shrinked_circ(t):
   r = 0.85
