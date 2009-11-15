@@ -19,19 +19,15 @@ def expit(b,t,z,prec=100,n=10,r=None):
   FC = FormalPowerSeriesRing(C)
   lnb = log(C(b))
   mpmath.mp.prec = prec
-  lna = mpc2C(- mpmath.lambertw( - lnb))
+  lna = mpc2C(-mpmath.lambertw(-lnb))
+  if abs(lna)>1:
+    print 'b:',b,'abs(lna):',abs(lna)
+    return None
   a = exp(lna)
   # print 'a',a,'|lna|',abs(lna)
   if r == None:
-
     r = 1 - abs(lna)
 
-    if not r>0: 
-      print 'lna',lna,'r',r,'dist','z',z,'|lna-lnz|',abs(lna-log(z))
-      a2 = mpc2C( mpmath.exp(-mpmath.lambertw(-lnb,-1)))
-      # print 'a',a2
-      r = abs(a2-a)
-    
   zn = z
   n=0
   while abs(log(zn)-lna) > r:
