@@ -91,6 +91,58 @@ class MatrixPowerSexp:
        
         self.L = None
 
+    def iteration_raw(self,x,t):
+        x0 = self.x0
+        N = self.N
+        coeffs = self.IM * vector([1]+[(x-x0)**n for n in range(1,N)])
+        return x0+vector([ v**t for v in self.eigenvalues ]) * coeffs
+
+    def matrix_power(self,t):
+        eigenvalues = self.eigenvalues
+        iprec = self.iprec
+        CM = self.CM
+        
+        ev = [ e.n(iprec) for e in eigenvalues]
+        n = len(ev)
+    
+        Char = [CM - ev[k] * identity_matrix(n) for k in range(n)]
+    
+        #product till k-1
+        prodwo = n * [0]
+        prod = identity_matrix(n)
+
+	#if we were to start here with prod = IdentityMatrix
+	#prodwo[k]/sprodwo[k] would be the component projector of ev[k]
+        #component projector of ev[k] is a matrix Z such that
+        #CM * Z = ev[k] * Z and Z*Z=Z
+        #then f(CM)=sum_k f(ev[k])*Z[k]
+        #as we are only interested in the first line we can start 
+        #left with (0,1,...) instead of the identity matrix
+        
+        for k in range(n):
+            prodwo[k] = prod
+            for i in range(k+1,n):
+                prodwo[k] = prodwo[k] * Char[i]
+    
+            if k == n:
+                break
+            prod = prod * Char[k]
+    
+        sprodwo = n * [0]
+        for k in range(n):
+            if k == 0:
+                sprodwo[k] = ev[k] - ev[1]
+                start = 2
+            else:
+                sprodwo[k] = ev[k] - ev[0]
+                start = 1
+            
+            for i in range(start,n):
+                if not i == k:
+                    sprodwo[k] = sprodwo[k] * (ev[k]-ev[i])
+    
+        return sum([ev[k]**t/sprodwo[k]*prodwo[k] for k in range(n)])
+
     def calc_IM(self):
         eigenvalues = self.eigenvalues
         iprec = self.iprec
@@ -104,6 +156,15 @@ class MatrixPowerSexp:
         #product till k-1
         prodwo = n * [0]
         prod = vector([0,1]+(n-2)*[0]);
+
+	#if we were to start here with prod = IdentityMatrix
+	#prodwo[k]/sprodwo[k] would be the component projector of ev[k]
+        #component projector of ev[k] is a matrix Z such that
+        #CM * Z = ev[k] * Z and Z*Z=Z
+        #then f(CM)=sum_k f(ev[k])*Z[k]
+        #as we are only interested in the first line we can start 
+        #left with (0,1,...) instead of the identity matrix
+        
         for k in range(n):
             prodwo[k] = prod
             for i in range(k+1,n):
@@ -243,6 +304,7 @@ class MatrixPowerSexp:
 
     def sexp_0_raw(self,t):
         x0 = self.x0
+        b = self.b
         return b**(x0+vector([ v**t for v in self.eigenvalues ])*self.coeffs_0)
 	
 
