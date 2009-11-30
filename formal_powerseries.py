@@ -12,7 +12,7 @@ from sage.misc.misc_c import prod
 from sage.misc.functional import n
 from sage.rings.complex_field import ComplexField_class
 from sage.rings.arith import factorial
-from sage.rings.arith import binomial
+from sage.rings.arith import binomial as buggybinomial
 from sage.rings.infinity import Infinity
 from sage.rings.integer import Integer
 from sage.rings.rational_field import QQ, RationalField
@@ -26,6 +26,10 @@ from sage.rings.ring import Ring
 from sage.rings.ring_element import RingElement
 from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
+
+def binomial(x,y):
+  if x == int(x): return buggybinomial(int(x),y)
+  return buggybinomial(x,y)
 
 def decidable0(K): 
     """
@@ -198,6 +202,14 @@ class FormalPowerSeriesRing(Ring):
         [0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return self.by_polynomial(p.polynomial())
+
+    def by_formal_powerseries(self,p,conv=lambda x: x):
+        """
+        Returns the FormalPowerseries converted from p by conv.
+        """
+        
+        return self.by_lambda(lambda n: conv(p[n]))
+        
         
     def by_taylor(self,expr,v,at=0,**kwargs):
         """
@@ -289,10 +301,13 @@ class FormalPowerSeriesRing(Ring):
                 return self.by_lambda(p1,**kwargs)
             return self.by_lambda(p1,p2,**kwargs)
 
+        if type(p1) is FormalPowerSeries:
+            return self.by_
+
         if p1 == None:
             return self.by_undefined(p2)
 
-        raise TypeError, "unrecognized initialization input" + repr(type(p1))
+        raise TypeError, "unrecognized initialization input " + repr(type(p1))
 
     def is_field(self):
         """
@@ -1648,6 +1663,9 @@ class FormalPowerSeries(RingElement):
 
         return Integral(a,c)
 
+    def root_test(self):
+        return self.parent().by_lambda(lambda n: 1/abs(self[n])**(1/Integer(n)) if n>0 else 0)
+
 #     def indefinite_sum(f,c=0):
 #         def ids(n,m):
 #             N = m+1
@@ -1694,6 +1712,9 @@ class FormalPowerSeries(RingElement):
         if M == None:
             M=N
         return matrix([[a.npow(n)[m] for n in range(N)] for m in range(M)])
+
+        
+        
 
 class FormalPowerSeries0(FormalPowerSeries):
     """
@@ -3317,6 +3338,7 @@ class Regit01(FormalPowerSeries01):
         """
         si = FormalPowerSeries.__init__
         si(self,a.parent(),min_index=a.min_index)
+        self.K = t.parent()
         self.a = a 
         self.t = t
 
