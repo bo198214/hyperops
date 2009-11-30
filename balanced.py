@@ -9,9 +9,8 @@ from sage.rings.real_mpfr import RR, RealField
 
 class Balanced:
 
-  def __init__(self,n,symbolic=False,iprec=53,prec=53,r=0.5):
-    self.n = n
-    self.r = r
+  def __init__(self,n,symbolic=False,iprec=53,prec=53,N=10):
+    self.N = N
     self.iprec = iprec
     self.prec = prec
     mp.prec = iprec
@@ -35,13 +34,13 @@ class Balanced:
       self.hp = FPL([1,1])
       self.hf = lambda x: x+1
       self.hfi = lambda x: x-1
-      #self.op = lambda x,y: x+y 
+      self.op = lambda x,y: x+y 
     elif n==2:
       self.hfop = lambda x,y: x + y
       self.hp = FPL([0,2])
       self.hf = lambda x: R(2)*x
       self.hfi = lambda x: x/R(2)
-      #self.op = lambda x,y: x*y # 2**(log2(x)+log2(y))
+      self.op = lambda x,y: x*y # 2**(log2(x)+log2(y))
     elif n==3:
       self.hfop = lambda x,y: x*(R(2)**y)
       self.hp = FPL.Exp(FPL([0,ln2])) * FPL([0,1])
@@ -50,6 +49,7 @@ class Balanced:
       self.hpr.reclass()
       self.hf = lambda x: R(x)*R(2)**R(x)
       self.hfi = lambda y: R(lambertw(R(y)*R(ln(2))))/R(ln(2))
+      self.op = lambda x,y: x**y
     else:
       self.G = Balanced(n-1,symbolic=symbolic,iprec=iprec)
       self.hpop = lambda y: self.G.hp.it(y)
@@ -69,12 +69,27 @@ class Balanced:
       self.hfop = self.f()
       self.hf = lambda x: self.hfop(x,x)
       #self.hfi = self.f(self.hp.inv())
-
-    self.op = lambda x,y: R(2)**(self.hfop(log2(x),log2(y)))
-  
+      self.op = lambda x,y: R(2)**(self.hfop(log2(x),log2(y)))
   
   def f(self):
-    r = self.r
+    op = self.approx()
+    def res(x,y):
+      n = floor(y)
+      yd = y - n
+      s = op(x,yd)
+      if n > 0:
+        for k in range(n):
+          s = self.G.hf(s)
+        return s
+      if n < 0:
+        for k in range(-n):
+          s = self.G.hfi(s)
+        return s
+      return s
+    return res
+  
+  def approx(self):
+    N = self.N
     err = 2.0**(-self.prec)
     g = self.G.hf
     gi = self.G.hfi
@@ -83,40 +98,25 @@ class Balanced:
       y = self.R(y)
       hpy = self.hprop(y)
       n = 0
-      while x > r:
+      while hpy[N]*x**N >= err or hpy[N+1]*x**(N+1) >= err or hpy[N+2]*x**(N+2) >= err:
         x = gi(x)
         n+=1
-        #print 'n',n,x
 
-      j = 1
+      #print 'n',n,x
+
       xtj = x
       s = 0
-      min = 1000000000000000 #todo
-      d = hpy[j]*xtj
-      mincount = 0
-      s1 = None
-      while mincount <= 1 and abs(d) > err/2:
-        #print 'j',j,s,'d',d,hpy[j],xtj
-        j+=1
-        if d == 0: continue
+      for j in range(1,N):
+        d = hpy[j]*xtj
         s += d
         xtj *= x
-        if abs(d) < min: 
-          min = abs(d)
-          mincount = 0
-        else: 
-          s1 = s
-          mincount += 1
-        d = hpy[j]*xtj
         
-      if s1 != None:
-        s=s1
-      print 'j',j,'s',s,'d',d,'mincount',mincount
+      #print 's',s,'d',d
     
     
       for k in range(n):
         s = g(s)
-        print 's',s
+        #print 's',s
 
       return s
     return res
