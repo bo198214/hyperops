@@ -104,7 +104,7 @@ class IntuitiveSlog:
         print "slog reversed."
 
         #the primary or the upper fixed point
-	mpmath.mp.dps = ceil(iprec/ln(10.0)*ln(2.0))
+	mpmath.mp.prec = iprec
         L = mpmath.lambertw(-mpmath.ln(b),-1)/(-mpmath.ln(b))
         L = ComplexField(iprec)(L.real,L.imag)
         self.L = L
