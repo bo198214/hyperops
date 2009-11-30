@@ -14,6 +14,6 @@ def matrixpower(A,t):
       jb = sum([binomial(t,n)*ev**(t-n)*D**n for n in range(N)])
     rblocks += [jb]
     
-  J = block_diagonal_matrix(*blocks)
+  J = block_diagonal_matrix(rblocks)
   return S * J * ~S
        
