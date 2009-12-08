@@ -9,7 +9,7 @@ from sage.rings.real_mpfr import RR, RealField
 
 class Balanced:
 
-  def __init__(self,n,symbolic=False,iprec=53,prec=53,N=10):
+  def __init__(self,n,symbolic=False,iprec=53,prec=53,N=10,pred=None):
     self.N = N
     self.iprec = iprec
     self.prec = prec
@@ -51,7 +51,9 @@ class Balanced:
       self.hfi = lambda y: R(lambertw(R(y)*R(ln(2))))/R(ln(2))
       self.op = lambda x,y: x**y
     else:
-      self.G = Balanced(n-1,symbolic=symbolic,iprec=iprec)
+      if pred != None: self.G = pred
+      else:
+        self.G = Balanced(n-1,symbolic=symbolic,iprec=iprec,prec=prec,N=N)
       self.hpop = lambda y: self.G.hp.it(y)
       self.hp = self.G.hp.selfit()
       self.hp.reclass()
@@ -98,7 +100,8 @@ class Balanced:
       y = self.R(y)
       hpy = self.hprop(y)
       n = 0
-      while hpy[N]*x**N >= err or hpy[N+1]*x**(N+1) >= err or hpy[N+2]*x**(N+2) >= err:
+      #take the 3 consecutive summands
+      while sum([abs(hpy[M]*x**M) for M in range(N,N+3)]) >= err:
         x = gi(x)
         n+=1
 
