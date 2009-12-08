@@ -22,13 +22,14 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
 from sage.rings.polynomial.polynomial_element import Polynomial
 from sage.rings.power_series_ring_element import PowerSeries
+from sage.rings.real_mpfr import RealLiteral
 from sage.rings.ring import Ring
 from sage.rings.ring_element import RingElement
 from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
 
 def binomial(x,y):
-  if x == int(x): return buggybinomial(int(x),y)
+  if type(x) is RealLiteral and x == int(x): return buggybinomial(int(x),y)
   return buggybinomial(x,y)
 
 def decidable0(K): 
