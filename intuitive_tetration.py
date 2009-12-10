@@ -3,6 +3,7 @@ from sage.functions.other import sqrt,real,imag,ceil,floor
 from sage.functions.log import log, ln
 from sage.functions.trig import tan
 from sage.matrix.constructor import Matrix, identity_matrix
+from sage.misc.functional import n as num
 from sage.misc.persist import save
 from sage.modules.free_module_element import vector
 from sage.rings.arith import factorial
@@ -46,9 +47,9 @@ class IntuitiveSlog:
         self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
 
         if iprec != None:
-            b = b.n(iprec)
+            b = num(b,iprec)
             self.b = b
-            x0 = x0.n(iprec)
+            x0 = num(x0,iprec)
             if x0.is_real():
                 R = RealField(iprec)
             else:
@@ -88,7 +89,7 @@ class IntuitiveSlog:
         print "A computed."
 
         if iprec != None:
-            A = A.n(iprec)
+            A = num(A,iprec)
 
         row = A.solve_left(vector([1] + (N-2)*[0]))[0]
 
