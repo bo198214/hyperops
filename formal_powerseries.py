@@ -456,6 +456,9 @@ class FormalPowerSeriesRing(Ring):
         
         self.Inv_selfroot_inc = Inv_selfroot_inc(self)
 
+        #Mittag-Leffler polynomial cache
+        self.mlpc = {}
+
     def _repr_(self):
         """
         Description of this FormalPowerSeriesRing.
@@ -1479,6 +1482,40 @@ class FormalPowerSeries(RingElement):
 
         xp = P.gen()
         return P(a[m:n])/P(xp**(-m))
+
+    def mittag_leffler_polynomial(self,n):
+        """
+        Returns the Mittag-Leffler polynomial which has degree
+        n^2 + n^4 + ... + n^(2n).
+        The sequence of Mittag-Leffler polynomials converges inside 
+        the Mittag-Leffler star to the continuation of the powerseries to it.
+        """
+        
+        P = PolynomialRing(QQ,'x')
+        x = P.gen()
+
+        mlpc = self.parent().mlpc
+
+        # index k from 1 to n
+        def s(k,n):
+            if mlpc.has_key((k,n)):
+               return mlpc[(k,n)]
+
+            if k == 0:
+                return P.one_element()
+            S = s(k-1,n)
+            R = P.zero_element()
+            for mk in range(n**(2*k)+1):
+                R += S.shift(mk)/Integer(factorial(mk))
+            #print k,R
+            mlpc[(k,n)] = R
+            return R  	               
+
+        coeffs = s(n,n).coefficients()
+        for N in range(len(coeffs)):
+            coeffs[N] *= self[N]*factorial(N)/n**N
+
+        return PolynomialRing(self.K,'x')(coeffs)
 
 #     def subs(a,*args,**kwargs):
 #         def f(n):
