@@ -1,26 +1,25 @@
-from sage.symbolic.constants import e
-from sage.functions.other import sqrt,real,imag,ceil,floor
 from sage.functions.log import log, ln
+from sage.functions.other import sqrt,real,imag,ceil,floor
 from sage.functions.trig import tan
 from sage.matrix.constructor import Matrix, identity_matrix
 from sage.misc.functional import n as num
 from sage.misc.persist import save
 from sage.modules.free_module_element import vector
-from sage.rings.arith import factorial
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.power_series_ring import PowerSeriesRing
-from sage.rings.arith import binomial
-from sage.rings.real_mpfr import RR, RealField
+from sage.rings.arith import factorial, binomial
+from sage.rings.complex_field import ComplexField
 from sage.rings.formal_powerseries import FormalPowerSeriesRing
 from sage.rings.integer import Integer
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.rational_field import QQ
-from sage.rings.complex_field import ComplexField
+from sage.rings.real_mpfr import RR, RealField
+from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 import mpmath
 
 
 class IntuitiveSlog:
-    def __init__(self,b,N,iprec=None,x0=0):
+    def __init__(self,b,N,iprec=512,x0=0):
         self.bsym = b
         self.N = N
         self.iprec = iprec
@@ -96,11 +95,13 @@ class IntuitiveSlog:
         print "A solved."
 
         self.slog0coeffs = [0]+[row[n] for n in range(N-1)]
+        self.slog0poly = PolynomialRing(R,'x')(self.slog0coeffs[:int(N)/2])
         
         slog0ps = FormalPowerSeriesRing(R)(self.slog0coeffs)
         sexp0ps = slog0ps.inv()
         #print self.slog0ps | self.sexp0ps
         self.sexp0coeffs = sexp0ps[:N]
+        self.sexp0poly = PolynomialRing(R,'x')(self.sexp0coeffs[:int(N)/2])
 
         print "slog reversed."
 
@@ -110,6 +111,7 @@ class IntuitiveSlog:
         L = ComplexField(iprec)(L.real,L.imag)
         self.L = L
 
+
         #lower fixed point
         bL = None
         if b <= R(e**(1/e)):
@@ -117,14 +119,17 @@ class IntuitiveSlog:
              bL = RealField(iprec)(bL)
         self.bL = bL
 
-        if bL == None or x0 < bL:
+        self.r = abs(x0-self.bL)
+
+        if bL == None or real(x0) < bL:
             #slog(0)==-1
 	    self.c = -1 - self.slog(0.0)                   
-        elif not bL == None and bL < x0 and x0 < L:
+        elif not bL == None and imag(x0)==0 and bL < x0 and x0 < L:
             #slog(e)==0
-	    self.c = -self.slog(R(e))
+	    self.c = -self.slog_real(R(e))
 	else:
             self.c = 0
+
        
 
     def slog_raw(self,z):
@@ -132,21 +137,22 @@ class IntuitiveSlog:
         The raw slog without continuation.
         """
         x0 = self.x0
-        a = self.slog0coeffs
-        N = self.N
         c = self.c
         
-        return c+sum([a[n]*(z-x0)**n for n in range(1,int(N)/2)])
+        return c+self.slog0poly(z-x0)
         
     def cmp_ir(self,z):
         """ 
         returns -1 for left, 0 for in, and 1 for right from initial region
         cut line is on the north ray from L.
+
+        Works only for real x0.
         """
         L = self.L
         x0 = self.x0
         if x0 > 0.5:
-            if real(z) > real(L) and abs(z) < abs(L):
+            print z,abs(z)
+            if real(z) >= real(L) and abs(z) < abs(L):
                 return 0
             if real(z) < real(L):
                 return -1
@@ -177,6 +183,7 @@ class IntuitiveSlog:
         b = self.b
         x0 = self.x0
         N = self.N
+        z = num(z,self.iprec)
 
         if self.cmp_ir(z) == -1:
             return slog(b**z)-1
@@ -188,22 +195,34 @@ class IntuitiveSlog:
         """
         In the complex plane continued slog for base <= eta
         """
-        if isinstance(z,float) and self.iprec != None:
-           z = RealField(self.iprec)(z)
         
         slog = self.slog1
         slog_raw = self.slog_raw
         b = self.b
         x0 = self.x0
         N = self.N
-
-        r = abs(x0-self.L)
+        z = num(z,self.iprec)
+        r = self.r
 
         if abs(z-x0) > r:
             return slog(b**z)-1
         return slog_raw(z)
 
-    def slog(self,x):
+    def slog(self,z):
+        """
+        slog continued into the complex plane where possible.
+        Should always be possible if the real part of the development point
+        is left from the lower fixed point
+        """
+
+        if self.bL == None:
+            #Only complex fixed points
+            return self.slog2(z)
+        else:
+            return self.slog1(z)
+   
+
+    def slog_real(self,x):
         """
         Development point is x0
         real continued slog
@@ -211,7 +230,7 @@ class IntuitiveSlog:
         if isinstance(x,float) and self.iprec != None:
            x = RealField(self.iprec)(x)
 
-        slog = self.slog
+        slog_real = self.slog_real
         slog_raw = self.slog_raw
         b = self.b
         x0 = self.x0
@@ -224,9 +243,9 @@ class IntuitiveSlog:
             sign = -1
 
         if sign*(x - self.x0 + 0.5) < 0:
-            return slog(b**x)-1
+            return slog_real(b**x)-1
         if sign*(x - b**(x0 - 0.5)) > 0:
-            return slog(log(x)/log(b))+1
+            return slog_real(log(x)/log(b))+1
         return slog_raw(x)
 
     def sexp_raw(self,x):
