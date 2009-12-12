@@ -2047,6 +2047,15 @@ class FormalPowerSeries0(FormalPowerSeries):
         """
         return InvSchroeder(a)
         
+    def abel_coeffs(f):
+        """
+        The regular Abel function of a powerseries f (f[1]**n != f[1])
+        has the form r*ln(x)+ps(x) where ps is a powerseries.
+
+        This method returns [r,ps].
+        """
+        return [1/log(f[1]),f.abel().rmul(1/log(f[1]))]
+
     def abel(f):
         """
         The regular Abel function of a powerseries f (f[1]**n != f[1]) 
