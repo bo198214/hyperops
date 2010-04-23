@@ -23,7 +23,7 @@ class MatrixPowerSexp:
         self.prec = None
 
 
-        bname = repr(b).replace('.',',')
+        bname = repr(b).strip('0').replace('.',',')
         if b == sqrt(2):
            bname = "sqrt2"
         if b == e**(1/e):
@@ -32,9 +32,9 @@ class MatrixPowerSexp:
         x0name = repr(x0)
         if x0name.find('.') > -1:
             if x0.is_real():
-                x0name = repr(float(real(x0))).replace('.',',')
+                x0name = repr(float(real(x0))).strip('0').replace('.',',')
             else:
-                x0name = repr(complex(x0)).replace('.',',')
+                x0name = repr(complex(x0)).strip('0').replace('.',',')
         # by some reason save does not work with additional . inside the path
 
         self.path = "savings/msexp_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name

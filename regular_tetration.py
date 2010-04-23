@@ -6,7 +6,7 @@ from sage.rings.real_mpfr import RR, RealField
 import mpmath
 
 class RegularTetration:
-    def __init__(self,b,N,fixpoint_number=0,iprec=512,prec=None):
+    def __init__(self,b,N,iprec=512,fixpoint_number=0,prec=None,angle_real=pi):
         """
 	Counting fixpoints as follows:
         For b<e^(1/e): 
@@ -26,7 +26,7 @@ class RegularTetration:
         self.prec = prec
         self.fixpoint_number = fixpoint_number
 
-        bname = repr(b).replace('.',',')
+        bname = repr(b).strip('0').replace('.',',')
         if b == sqrt(2):
            bname = "sqrt2"
         if b == e**(1/e):
@@ -46,17 +46,25 @@ class RegularTetration:
                 R = QQ
             else:
                 R = SR
-        self.R = RealField(iprec)
-        self.C = ComplexField(iprec)
+        R = RealField(iprec)
+        C = ComplexField(iprec)
+        self.R = R
+        self.C = C
 
 	mpmath.mp.prec = iprec
-        L = mpmath.lambertw(-mpmath.ln(b),-fixpoint_number)/(-mpmath.ln(b))
-        L = ComplexField(iprec)(L.real,L.imag)
+        L = self.fp(fixpoint_number)
         self.L = L
 
-        self.r = 0.5
 
+        if b <= e**(1/e) and fixpoint_number == 0:
+            r = abs(L-self.fp(1))
+        else:
+            r1 = abs(L-self.fp(fixpoint_number+1))
+            r2 = abs(L-self.fp(fixpoint_number-1))
+            r = min(r1,r2)
 
+        self.r = r
+        self.phi = angle_real
 
         R = RealField(iprec)
         FR = FormalPowerSeriesRing(R)
@@ -70,15 +78,23 @@ class RegularTetration:
             #slog(0)==-1
 	    self.c = -1 - self.slog(0.0)                   
 
+    def fp(self,k=1):
+        b=self.b
+        iprec = self.iprec
+        L = mpmath.lambertw(-mpmath.ln(b),-k)/(-mpmath.ln(b))
+        return ComplexField(iprec)(L.real,L.imag)
+
+    def log(self,z):
+        return log(z*exp(CC(0,-self.phi))) 
 
     def slog_raw(self,z): 
         z = num(z,self.iprec)
-        return self.c + self.rho*log(z-self.L) + self.slogpoly(z-self.L)
+        return self.c + self.rho*self.log(z-self.L) + self.slogpoly(z-self.L)
         
         
     def slog(self,z):
         z = num(z,self.iprec)
-        if abs(z-self.L) > self.r:
+        if abs(z-self.L) > self.r/2:
             if self.fixpoint_number == 0:
                 return self.slog(self.b**z)-1
             else:
