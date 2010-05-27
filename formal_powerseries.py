@@ -27,6 +27,7 @@ from sage.rings.ring import Ring
 from sage.rings.ring_element import RingElement
 from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
+from sage.symbolic.ring import SymbolicRing
 
 def binomial(x,y):
   if type(x) is RealLiteral and x == int(x): return buggybinomial(int(x),y)
@@ -397,11 +398,15 @@ class FormalPowerSeriesRing(Ring):
             self.K = Integer
 
         K = self.K
-        K0 = K.zero_element()
-        K1 = K.one_element()
-        self.K0 = K0
-        self.K1 = K1
+        if self.K == SymbolicRing:
+            self.K0=Integer(0)
+            self.K1=Integer(1)
+        else:
+            self.K0 = K.zero_element()
+            self.K1 = K.one_element()
 
+        K0 = self.K0
+        K1 = self.K1
         self.Zero = Zero(self)
         self.One = One(self)
         self.Id = Id(self,min_index=1)
@@ -1830,7 +1835,7 @@ class FormalPowerSeries0(FormalPowerSeries):
             return a.inv().nit(-t)
         return a.regit(t)
 
-    def regit(a,t):
+    def regit(a,t,pow=False):
         """
         Regular (non-integer) iteration (works also for integer t).
         Preconditions: 
@@ -1838,15 +1843,24 @@ class FormalPowerSeries0(FormalPowerSeries):
             Particularly a[1]!=0 and a[1]!=1.
             a[1]**t must be defined.
 
+        pow=True means that t is not the exponent but the whole power (a_1)^t
+
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         sage: P([0,2]).regit(1/2)[:3]
         [0, sqrt(2), 0]
+
+        sage: z,zt = PolynomialRing(QQ,'z,zt')
+        sage: PP = FormalPowerSeriesRing(z.parent())
+        sage: p.regit(zt,pow=True)[1]
+        zt
+        sage: p.regit(zt,pow=True)[3] - (-18*z*zt^2 + 18*zt^3 + 18*z*zt - 18*zt^2)/(z^3 - z^2 - z + 1)
+        0
         """
 
         a._assertp0()
 
-        return Regit(a,t)
+        return Regit(a,t,pow)
 
     def regit_b(a,t):
         """
@@ -3218,7 +3232,7 @@ class N(FormalPowerSeries):
         return n(self.a[k],*self.args,**self.kwargs)
         
 class Regit(FormalPowerSeries0): 
-    def __init__(self,a,t):
+    def __init__(self,a,t,pow=False):
         """
         Description and tests at FormalPowerSeries.regit
         sage: None   # indirect doctest
@@ -3227,6 +3241,7 @@ class Regit(FormalPowerSeries0):
         si(self,a.parent(),min_index=1)
         self.a = a 
         self.t = t
+        self.pow=pow
 
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
@@ -3243,6 +3258,8 @@ class Regit(FormalPowerSeries0):
             return self.K0
         if n == 1:
             #print ")"
+            if self.pow:
+              return t
             return a[1]**t
 
         D = 0
