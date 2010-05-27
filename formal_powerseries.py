@@ -17,7 +17,7 @@ from sage.rings.infinity import Infinity
 from sage.rings.integer import Integer
 from sage.rings.rational_field import QQ, RationalField
 from sage.rings.rational import Rational
-from sage.rings.real_mpfr import RR, RealField
+from sage.rings.real_mpfr import RR, RealField, RealNumber
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
 from sage.rings.polynomial.polynomial_element import Polynomial
@@ -49,7 +49,7 @@ def decidable0(K):
         return True
     if isinstance(K,RationalField):
         return True
-    if isinstance(K,RealField):
+    if isinstance(K,RealNumber):
         return True
     if isinstance(K,PolynomialRing_field):
         return True
