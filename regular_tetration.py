@@ -57,10 +57,18 @@ class RegularTetration:
         or -1 (real values when approaching from the left of the fixed point)
         """
 
+        if debug >= 1:
+            if b==sqrt(2): print 'b:',b
+            if fixpoint_number==0: print 'fixpoint_number:',fixpoint_number
+            if prec==53: print 'prec:',prec
+            if N==5: print 'N:',N
+            if direction==-1: print 'direction:',direction
+
         self.bsym = b
         self.N = N
         if iprec==None:
             iprec=prec+10
+            if debug>=1: print 'iprec:',iprec
         self.iprec = iprec
         self.prec = prec
         self.fixpoint_number = fixpoint_number
@@ -93,7 +101,7 @@ class RegularTetration:
             self.attracting = True
 
         self.parabolic = False
-        if b == eta and abs(fixpoint_number) <= 1:
+        if self.bsym == eta and abs(fixpoint_number) <= 1:
             self.parabolic = True
             if direction == +1:
                 self.attracting = False
@@ -117,16 +125,19 @@ class RegularTetration:
 
         FR = FormalPowerSeriesRing(R)
         fps = FR.Dec_exp(FR([0,log(b)])).rmul(fp)
-        if b == eta:
+        if self.parabolic:
             fps=fps.set_item(1,1).reclass()
             
-        print "fp:",fp
+        if debug>=1: print "fp:",fp
 
         [rho,ps] = fps.abel_coeffs()
+        if debug>=2: print 'fps:',fps
+        if debug>=2: print 'rho:',rho
+        if debug>=2: print 'abel_ps:',ps
             
         PR = PolynomialRing(R,'x')
         self.slogpoly = ps.polynomial(N)
-        if debug>=1: print self.slogpoly
+        if debug>=2: print self.slogpoly
 
         self.slog_raw0 = lambda z: rho*log(direction*(z-self.fp)) + self.slogpoly(z-self.fp)
 
@@ -134,6 +145,7 @@ class RegularTetration:
         self.c = 0
         if self.attracting and direction==-1 and u==None:
             u=1
+            if debug>=1: print 'u:',u
             
         if not u==None:
             self.c = -self.slog(u)                   
@@ -173,7 +185,8 @@ class RegularTetration:
         if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
         
         if xp == xn or d == 1:
-            print "iprec may be to low or prec maybe too high for x:",x,"b:",b
+            if debug>=0: 
+		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b
             return NaN
         
           
