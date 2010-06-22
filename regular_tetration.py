@@ -173,6 +173,7 @@ class RegularTetration:
         if self.attracting:
             xn = b**xn
         else:
+            #TODO logarithms branches should be chosen to converge to the fixed point
             xn = log(xn)/lnb
 
         yn = self.slog_raw0(xn)
