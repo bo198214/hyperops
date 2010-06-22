@@ -45,9 +45,12 @@ def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     return ComplexField(prec)(fp.real,fp.imag)
 
 class RegularTetration:
-    def __init__(self,b=sqrt(2),fixpoint_number=0,prec=53,iprec=None,N=5,angle_real=pi):
+    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,angle_real=pi):
         """
         for the numbering of fixed points see function exp_fixpoint
+        u is the initial value such that slog(u)=0 and sexp(0)=u
+        for the attracting fixed point it defaults to u=1
+        otherwise it is undetermined
         """
 
         self.bsym = b
@@ -103,16 +106,6 @@ class RegularTetration:
         self.fp = fp
         print "fp:",fp
 
-        if b <= eta and fixpoint_number == 0:
-            r = abs(fp-exp_fixpoint(b,1))
-        else:
-            r1 = abs(fp-exp_fixpoint(b,fixpoint_number+1))
-            #r2 = abs(fp-exp_fixpoint(b,fixpoint_number-1))
-            #r = min(r1,r2)
-            r = 0.5
-
-        self.r = r
-
         if angle_real == pi:
             self.direction = -1
         elif angle_real == 0:
@@ -130,29 +123,17 @@ class RegularTetration:
         self.slog_raw0 = lambda z: self.rho*self.log(z-self.fp) + self.slogpoly(z-self.fp)
 
         self.c = 0
-        if fixpoint_number == 0:
-            #slog(0)==-1
-	    #self.c = -1 - self.slog(0.0)                   
-            pass
+
+        if fixpoint_number == 0 and u==None:
+            u=1
+            #slog(u)==0
+            
+        if not u==None:
+            self.c = -self.slog(u)                   
         
 
     def log(self,z):
         return log(z*self.direction) 
-
-    def slog_raw(self,z): 
-        z = num(z,self.iprec)
-        return self.c + self.slog_raw0(z)
-        
-        
-    def slog_orig(self,z):
-        z = num(z,self.iprec)
-        if abs(z-self.fp) > self.r/2:
-            if self.attracting:
-                return self.slog(self.b**z)-1
-            else:
-                return self.slog(log(z)/log(self.b))+1
-
-        return self.slog_raw(z)
 
     def slog(self,x,debug=0):
       iprec=self.iprec
