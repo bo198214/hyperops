@@ -45,10 +45,15 @@ def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     return ComplexField(prec)(fp.real,fp.imag)
 
 class RegularTetration:
-    def __init__(self,b,N,fixpoint_number=0,iprec=512,prec=None,angle_real=pi):
+    def __init__(self,b=sqrt(2),fixpoint_number=0,prec=53,iprec=None,N=5,angle_real=pi):
+        """
+        for the numbering of fixed points see function exp_fixpoint
+        """
 
         self.bsym = b
         self.N = N
+        if iprec==None:
+            iprec=prec+10
         self.iprec = iprec
         self.prec = prec
         self.fixpoint_number = fixpoint_number
@@ -76,13 +81,25 @@ class RegularTetration:
             else:
                 R = SR
 
+        self.attracting = False
+        if b < eta and fixpoint_number == 0:
+            self.attracting = True
+
+        self.parabolic = False
+        if b == eta and fixpoint_number == 0:
+            self.parabolic == True
+            if angle_real == 0:
+                self.attracting = False
+            if angle_real == pi:
+                self.attracting = True
+
         if b <= eta and abs(fixpoint_number) <= 1:
             R = RealField(iprec)
         else:
             R = ComplexField(iprec)
         self.R = R
 
-        fp = exp_fixpoint(b,fixpoint_number,iprec=iprec)
+        fp = exp_fixpoint(b,fixpoint_number,prec=iprec)
         self.fp = fp
         print "fp:",fp
 
@@ -95,34 +112,94 @@ class RegularTetration:
             r = 0.5
 
         self.r = r
-        self.phi = angle_real
+
+        if angle_real == pi:
+            self.direction = -1
+        elif angle_real == 0:
+            self.direction = 1
+        else:
+            self.direction = exp(ComplexField(self.iprec)(0,angle_real))
+
 
         FR = FormalPowerSeriesRing(R)
-        print FR.Dec_exp(FR([0,log(b)])).rmul(fp)
         [rho,ps] = FR.Dec_exp(FR([0,log(b)])).rmul(fp).abel_coeffs()
         PR = PolynomialRing(R,'x')
         self.rho = rho
         self.slogpoly = ps.polynomial(N)
 
+        self.slog_raw0 = lambda z: self.rho*self.log(z-self.fp) + self.slogpoly(z-self.fp)
+
         self.c = 0
         if fixpoint_number == 0:
             #slog(0)==-1
-	    self.c = -1 - self.slog(0.0)                   
+	    #self.c = -1 - self.slog(0.0)                   
+            pass
+        
 
     def log(self,z):
-        return log(z*exp(CC(0,-self.phi))) 
+        return log(z*self.direction) 
 
     def slog_raw(self,z): 
         z = num(z,self.iprec)
-        return self.c + self.rho*self.log(z-self.fp) + self.slogpoly(z-self.fp)
+        return self.c + self.slog_raw0(z)
         
         
-    def slog(self,z):
+    def slog_orig(self,z):
         z = num(z,self.iprec)
         if abs(z-self.fp) > self.r/2:
-            if self.fixpoint_number == 0:
+            if self.attracting:
                 return self.slog(self.b**z)-1
             else:
                 return self.slog(log(z)/log(self.b))+1
 
         return self.slog_raw(z)
+
+    def slog(self,x,debug=0):
+      iprec=self.iprec
+      prec=self.prec
+      b = self.b
+      z0= self.fp
+      a = ln(z0)
+
+      xin = x
+      err=2.0**(-prec)
+      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'a:',a,'err:',err
+      lnb = ln(b)
+      n = 0
+      xn = num(x,iprec)
+      yn = self.slog_raw0(xn)
+      while True:
+        yp=yn
+        xp=x
+        n += 1
+
+        if self.attracting:
+            xn = b**xn
+        else:
+            xn = log(xn)/lnb
+
+        yn = self.slog_raw0(xn)
+  
+        if self.attracting:
+            d = abs(yn - (yp+1))
+        else:
+            d = abs(yn - (yp-1))
+
+        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+        
+        if xp == xn or d == 1:
+            print "iprec may be to low or prec maybe too high for x:",x,"b:",b
+            return NaN
+        
+          
+        if d<err: 
+            res = self.c + yn.n(prec)
+
+            if self.attracting:
+                res -= n
+            else:
+                res += n
+  
+            if debug>=1: print 'n:',n,'d:',d.n(20),'err:',err,'res:',res
+            return res
+
