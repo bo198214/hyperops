@@ -3221,7 +3221,7 @@ class N(FormalPowerSeries):
         sage: None # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,FormalPowerSeriesRing(n(0,*args,**kwargs).parent()))
+        si(self,FormalPowerSeriesRing(n(0,*args,**kwargs).parent()),min_index=a.min_index)
 
         self.a = a
         self.args = args
