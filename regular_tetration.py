@@ -5,7 +5,7 @@ from sage.rings.formal_powerseries import FormalPowerSeriesRing
 from sage.rings.real_mpfr import RR, RealField
 import mpmath
 
-def exp_fixpoint(b=e,k=1,iprec=53):
+def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     """
     Counting fixpoints as follows:
 
@@ -25,6 +25,8 @@ def exp_fixpoint(b=e,k=1,iprec=53):
 
     Fixpoint k mirrored into the lower halfplane gets index -k.
     """
+    if iprec==None:
+        iprec=prec+10
     b=num(b,iprec)
 
     if k==0:
@@ -39,11 +41,11 @@ def exp_fixpoint(b=e,k=1,iprec=53):
     mpmath.mp.prec = iprec
     fp = mpmath.lambertw(-mpmath.ln(b),branch)/(-mpmath.ln(b))
     if type(fp) == sage.libs.mpmath.ext_main.mpf:
-      return num(fp,iprec)
-    return ComplexField(iprec)(fp.real,fp.imag)
+      return num(fp,prec)
+    return ComplexField(prec)(fp.real,fp.imag)
 
 class RegularTetration:
-    def __init__(self,b,N,iprec=512,fixpoint_number=0,prec=None,angle_real=pi):
+    def __init__(self,b,N,fixpoint_number=0,iprec=512,prec=None,angle_real=pi):
 
         self.bsym = b
         self.N = N
@@ -51,10 +53,12 @@ class RegularTetration:
         self.prec = prec
         self.fixpoint_number = fixpoint_number
 
+        eta = e**(1/e)
+
         bname = repr(b).strip('0').replace('.',',')
         if b == sqrt(2):
            bname = "sqrt2"
-        if b == e**(1/e):
+        if b == eta:
            bname = "eta"
 
         b = num(b,iprec)
@@ -71,35 +75,34 @@ class RegularTetration:
                 R = QQ
             else:
                 R = SR
-        R = RealField(iprec)
-        C = ComplexField(iprec)
-        self.R = R
-        self.C = C
 
-        fp = fixpoint_exp(b,fixpoint_number,iprec=iprec)
+        if b <= eta and abs(fixpoint_number) <= 1:
+            R = RealField(iprec)
+        else:
+            R = ComplexField(iprec)
+        self.R = R
+
+        fp = exp_fixpoint(b,fixpoint_number,iprec=iprec)
         self.fp = fp
         print "fp:",fp
 
-        if b <= e**(1/e) and fixpoint_number == 0:
-            r = abs(fp-self.fixpoint(1))
+        if b <= eta and fixpoint_number == 0:
+            r = abs(fp-exp_fixpoint(b,1))
         else:
-            r1 = abs(fp-self.fixpoint(fixpoint_number+1))
-            #r2 = abs(fp-self.fixpoint(fixpoint_number-1))
+            r1 = abs(fp-exp_fixpoint(b,fixpoint_number+1))
+            #r2 = abs(fp-exp_fixpoint(b,fixpoint_number-1))
             #r = min(r1,r2)
             r = 0.5
 
         self.r = r
-        print "r:",r
         self.phi = angle_real
 
-        R = RealField(iprec)
         FR = FormalPowerSeriesRing(R)
         print FR.Dec_exp(FR([0,log(b)])).rmul(fp)
         [rho,ps] = FR.Dec_exp(FR([0,log(b)])).rmul(fp).abel_coeffs()
         PR = PolynomialRing(R,'x')
         self.rho = rho
         self.slogpoly = ps.polynomial(N)
-        print "rho:",rho
 
         self.c = 0
         if fixpoint_number == 0:
