@@ -45,12 +45,16 @@ def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     return ComplexField(prec)(fp.real,fp.imag)
 
 class RegularTetration:
-    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,angle_real=pi):
+    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
         """
         for the numbering of fixed points see function exp_fixpoint
+
         u is the initial value such that slog(u)=0 and sexp(0)=u
         for the attracting fixed point it defaults to u=1
         otherwise it is undetermined
+
+        direction can be +1 (real values when approaching from the right of the fixpoint) 
+        or -1 (real values when approaching from the left of the fixed point)
         """
 
         self.bsym = b
@@ -89,11 +93,11 @@ class RegularTetration:
             self.attracting = True
 
         self.parabolic = False
-        if b == eta and fixpoint_number == 0:
-            self.parabolic == True
-            if angle_real == 0:
+        if b == eta and abs(fixpoint_number) <= 1:
+            self.parabolic = True
+            if direction == +1:
                 self.attracting = False
-            if angle_real == pi:
+            if direction == -1:
                 self.attracting = True
 
         if b <= eta and abs(fixpoint_number) <= 1:
@@ -102,39 +106,39 @@ class RegularTetration:
             R = ComplexField(iprec)
         self.R = R
 
-        fp = exp_fixpoint(b,fixpoint_number,prec=iprec)
-        self.fp = fp
-        print "fp:",fp
-
-        if angle_real == pi:
-            self.direction = -1
-        elif angle_real == 0:
-            self.direction = 1
+        if self.parabolic:
+            fp = R(e) #just for not messing it into a complex number
         else:
-            self.direction = exp(ComplexField(self.iprec)(0,angle_real))
+            fp = exp_fixpoint(b,fixpoint_number,prec=iprec)
 
+        self.fp = fp
+
+        self.direction = direction
 
         FR = FormalPowerSeriesRing(R)
-        [rho,ps] = FR.Dec_exp(FR([0,log(b)])).rmul(fp).abel_coeffs()
+        fps = FR.Dec_exp(FR([0,log(b)])).rmul(fp)
+        if b == eta:
+            fps=fps.set_item(1,1).reclass()
+            
+        print "fp:",fp
+
+        [rho,ps] = fps.abel_coeffs()
+            
         PR = PolynomialRing(R,'x')
-        self.rho = rho
         self.slogpoly = ps.polynomial(N)
+        if debug>=1: print self.slogpoly
 
-        self.slog_raw0 = lambda z: self.rho*self.log(z-self.fp) + self.slogpoly(z-self.fp)
+        self.slog_raw0 = lambda z: rho*log(direction*(z-self.fp)) + self.slogpoly(z-self.fp)
 
+        #slog(u)==0
         self.c = 0
-
-        if fixpoint_number == 0 and u==None:
+        if self.attracting and direction==-1 and u==None:
             u=1
-            #slog(u)==0
             
         if not u==None:
             self.c = -self.slog(u)                   
+            pass
         
-
-    def log(self,z):
-        return log(z*self.direction) 
-
     def slog(self,x,debug=0):
       iprec=self.iprec
       prec=self.prec
