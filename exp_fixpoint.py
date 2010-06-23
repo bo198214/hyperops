@@ -1,5 +1,6 @@
-from sage.symbolic.constants import e
 from sage.misc.functional import n as num
+from sage.rings.complex_field import ComplexField
+from sage.symbolic.constants import e
 import mpmath
 import sage.libs.mpmath.ext_main
 
