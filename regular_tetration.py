@@ -1,9 +1,13 @@
 from sage.functions.log import log
+from sage.functions.other import sqrt
 from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField
 from sage.rings.formal_powerseries import FormalPowerSeriesRing
 from sage.rings.real_mpfr import RR, RealField
+from sage.symbolic.constants_c import E
 import mpmath
+
+e=E
 
 def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     """
