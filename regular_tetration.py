@@ -1,13 +1,14 @@
-from sage.functions.log import log
+from sage.functions.log import ln
 from sage.functions.other import sqrt
 from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField
 from sage.rings.formal_powerseries import FormalPowerSeriesRing
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.real_mpfr import RR, RealField
-from sage.symbolic.constants_c import E
+from sage.symbolic.constants import e,NaN
 import mpmath
+import sage.libs.mpmath.ext_main
 
-e=E
 
 def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     """
@@ -31,6 +32,7 @@ def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     """
     if iprec==None:
         iprec=prec+10
+
     b=num(b,iprec)
 
     if k==0:
@@ -68,7 +70,8 @@ class RegularTetration:
             if N==5: print 'N:',N
             if direction==-1: print 'direction:',direction
 
-        self.bsym = b
+        bsym = b
+        self.bsym = bsym
         self.N = N
         if iprec==None:
             iprec=prec+10
@@ -79,13 +82,15 @@ class RegularTetration:
 
         eta = e**(1/e)
 
-        bname = repr(b).strip('0').replace('.',',')
-        if b == sqrt(2):
+        bname = repr(bsym).strip('0').replace('.',',')
+        if bsym == sqrt(2):
            bname = "sqrt2"
-        if b == eta:
+        if bsym == eta:
            bname = "eta"
 
-        b = num(b,iprec)
+        self.lnb = num(ln(bsym),iprec)
+
+        b = num(bsym,iprec)
         self.b = b
 
         self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_fp%d"%fixpoint_number
@@ -103,6 +108,10 @@ class RegularTetration:
         self.attracting = False
         if b < eta and fixpoint_number == 0:
             self.attracting = True
+
+        self.real_fp = False
+        if b <= eta and abs(fixpoint_number) <= 1:
+            self.real_fp = True
 
         self.parabolic = False
         if self.bsym == eta and abs(fixpoint_number) <= 1:
@@ -128,7 +137,7 @@ class RegularTetration:
         self.direction = direction
 
         FR = FormalPowerSeriesRing(R)
-        fps = FR.Dec_exp(FR([0,log(b)])).rmul(fp)
+        fps = FR.Dec_exp(FR([0,b.log()])).rmul(fp)
         if self.parabolic:
             fps=fps.set_item(1,1).reclass()
             
@@ -143,7 +152,7 @@ class RegularTetration:
         self.slogpoly = ps.polynomial(N)
         if debug>=2: print self.slogpoly
 
-        self.slog_raw0 = lambda z: rho*log(direction*(z-self.fp)) + self.slogpoly(z-self.fp)
+        self.slog_raw0 = lambda z: rho*(direction*(z-self.fp)).log() + self.slogpoly(z-self.fp)
 
         #slog(u)==0
         self.c = 0
@@ -155,17 +164,37 @@ class RegularTetration:
             self.c = -self.slog(u)                   
             pass
         
+    def logb(self,z):
+        """
+        Logarithm with branch cut such that for imaginary values y:
+          -pi < y <= pi for real fixpoint
+          otherwise:
+          2*pi*(k-1) <= y <  2*pi*k     for k>=1
+          2*pi*k     <  y <= 2*pi*(k+1) for k<=-1
+
+          where k is the fixpoint_number
+        """
+        k = self.fixpoint_number
+        if self.real_fp:
+            res = z.log()
+        elif k>=1:
+            res = (log(-z.conjugate())-num(i*(2*pi*k-pi),self.iprec)).conjugate()
+        elif k<=-1:
+            res = log(-z)+num(i*(2*pi*k+pi),self.iprec)
+
+        return res/self.lnb
+
     def slog(self,x,debug=0):
       iprec=self.iprec
       prec=self.prec
       b = self.b
       z0= self.fp
-      a = ln(z0)
+      a = z0.log()
 
       xin = x
       err=2.0**(-prec)
       if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'a:',a,'err:',err
-      lnb = ln(b)
+      #lnb = b.log()
       n = 0
       xn = num(x,iprec)
       yn = self.slog_raw0(xn)
@@ -177,8 +206,7 @@ class RegularTetration:
         if self.attracting:
             xn = b**xn
         else:
-            #TODO logarithms branches should be chosen to converge to the fixed point
-            xn = log(xn)/lnb
+            xn = self.logb(xn)
 
         yn = self.slog_raw0(xn)
   
@@ -203,6 +231,6 @@ class RegularTetration:
             else:
                 res += n
   
-            if debug>=1: print 'n:',n,'d:',d.n(20),'err:',err,'res:',res
+            if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
             return res
 
