@@ -122,11 +122,11 @@ class IntuitiveTetration:
         r = abs(x0-pfp)
 
         #lower fixed point
-        bL = None
+        lfp = None
         if b <= R(e**(1/e)):
-             bL = exp_fixpoint(b,0,prec=iprec)
-             r = min(r,abs(x0-bL))
-        self.bL = bL
+             lfp = exp_fixpoint(b,0,prec=iprec)
+             r = min(r,abs(x0-lfp))
+        self.lfp = lfp
 
         self.r = r
 
@@ -221,7 +221,7 @@ class IntuitiveTetration:
         z = num(z,self.iprec)
         if z.is_real():
             res=self.slog_real(z,debug)
-        elif self.bL == None:
+        elif self.lfp == None:
             #Only complex fixed points
             res=self.slog2(z)
         else:
@@ -241,18 +241,18 @@ class IntuitiveTetration:
         b = self.b
         x0 = self.x0
         pfp = self.pfp
-        bL = self.bL
+        lfp = self.lfp
         
-        if bL == None:
+        if lfp == None:
             direction = 1
-        elif x < bL and x0 < bL:
+        elif x < lfp and x0 < lfp:
             direction = 1
         elif pfp < x and pfp < x0:
             direction = 1
-        elif bL < x and x < pfp and bL < x0 and x0 < pfp: 
+        elif lfp < x and x < pfp and lfp < x0 and x0 < pfp: 
             direction = -1
         else:
-            print "x and x0 must be in the same segment of R divided by the lower and upper fixed point", "x:",x,"x0:",x0,"lfp:",bL,"ufp",pfp
+            print "x and x0 must be in the same segment of R divided by the lower and upper fixed point", "x:",x,"x0:",x0,"lfp:",lfp,"ufp",pfp
             return NaN
 
         n=0
