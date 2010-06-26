@@ -18,39 +18,6 @@ from sage.symbolic.ring import SR
 
 from exp_fixpoint import exp_fixpoint
 
-
-#use sage find_maximum...
-def find_max(f,a,b,x0,delta=2.0**(-53),iprec=60,debug=0):
-    if f(x0) >= f(a) and f(x0) >= f(b): s = x0
-    elif f(a) >= f(x0) and f(a) >= f(b): s = a
-    elif f(b) >= f(x0) and f(b) >= f(a): s = b
-    a = num(a,iprec)
-    b = num(b,iprec)
-    s = num(s,iprec)
-    a1 = None
-    b1 = None
-
-    while True:
-        if not s==a: a1 = (a+s)/2
-        if not s==b: b1 = (b+s)/2
-        sp = s
-
-        if debug>=1: print a,a1,s,b1,b,'err:',delta
-
-        if a1 != None and f(a1) > f(s):
-            b = s
-            s = a1
-        elif b1 != None and f(b1) > f(s):
-            a = s
-            s = b1
-        else:
-            if a1 != None: a = a1
-            if a1 != None: b = b1
-
-        if max(abs(s-b1),abs(s - a1)) < delta:
-            return f(s)
-        
-
 class IntuitiveTetration:
     def __init__(self,b,N,iprec=512,u=None,x0=0):
         """
