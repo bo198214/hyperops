@@ -18,6 +18,39 @@ from sage.symbolic.ring import SR
 
 from exp_fixpoint import exp_fixpoint
 
+
+#use sage find_maximum...
+def find_max(f,a,b,x0,delta=2.0**(-53),iprec=60,debug=0):
+    if f(x0) >= f(a) and f(x0) >= f(b): s = x0
+    elif f(a) >= f(x0) and f(a) >= f(b): s = a
+    elif f(b) >= f(x0) and f(b) >= f(a): s = b
+    a = num(a,iprec)
+    b = num(b,iprec)
+    s = num(s,iprec)
+    a1 = None
+    b1 = None
+
+    while True:
+        if not s==a: a1 = (a+s)/2
+        if not s==b: b1 = (b+s)/2
+        sp = s
+
+        if debug>=1: print a,a1,s,b1,b,'err:',delta
+
+        if a1 != None and f(a1) > f(s):
+            b = s
+            s = a1
+        elif b1 != None and f(b1) > f(s):
+            a = s
+            s = b1
+        else:
+            if a1 != None: a = a1
+            if a1 != None: b = b1
+
+        if max(abs(s-b1),abs(s - a1)) < delta:
+            return f(s)
+        
+
 class IntuitiveTetration:
     def __init__(self,b,N,iprec=512,u=None,x0=0):
         """
@@ -51,7 +84,7 @@ class IntuitiveTetration:
                 x0name = repr(complex(x0sym)).strip('0').replace('.',',')
         # by some reason save does not work with additional . inside the path
 
-        self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
+        self.path = "savings/itet_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
 
         if iprec != None:
             b = num(bsym,iprec)
@@ -262,9 +295,10 @@ class IntuitiveTetration:
             x = b**x
             n+=1
 
-        if n>0 and abs(xp-x0) < abs(x-x0):
-            n-=1
-            x=xp
+        if n>0:
+            if abs(xp-x0) < abs(x-x0):
+                n-=1
+                x=xp
             if debug>=1: print 'x->b^x n:',n,'x:',x
             return self.c  + self.slog_raw0(x) - n
 
@@ -312,8 +346,17 @@ class IntuitiveTetration:
         if self.prec != None:
             return self.prec
         iv0 = IntuitiveTetration(self.bsym,self.N-1,iprec=self.iprec,x0=self.x0sym)
-        self.prec = floor(-log(abs(iv0.sexp(0.5) - self.sexp(0.5)))/log(2.0))
-        print "sexp precision: " , self.prec
+        self.iv0 = iv0
+        d = lambda x: self.slog(x) - iv0.slog(x)
+        self.err = max(
+            abs(find_maximum_on_interval(d,0,1,tol=0.01,maxfun=20)[0]),
+            abs(find_minimum_on_interval(d,0,1,tol=0.01,maxfun=20)[0]))
+        print "slog err:", self.err.n(20)
+        self.prec = floor(-self.err.log(2))
+        
+        self.sexp_err = abs(iv0.sexp(0.5) - self.sexp(0.5))
+        print "sexp err:", self.sexp_err.n(20)
+        self.sexp_prec = floor(-log(self.sexp_err)/log(2.0))
         return self
 
     def backup(self):
