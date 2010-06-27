@@ -16,7 +16,7 @@ from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 
-from exp_fixpoint import exp_fixpoint
+from sage.hyperops.exp_fixpoint import exp_fixpoint
 
 class IntuitiveTetration:
     def __init__(self,b,N,iprec=512,u=None,x0=0):
@@ -315,9 +315,11 @@ class IntuitiveTetration:
         iv0 = IntuitiveTetration(self.bsym,self.N-1,iprec=self.iprec,x0=self.x0sym)
         self.iv0 = iv0
         d = lambda x: self.slog(x) - iv0.slog(x)
-        self.err = max(
-            abs(find_maximum_on_interval(d,0,1,tol=0.01,maxfun=20)[0]),
-            abs(find_minimum_on_interval(d,0,1,tol=0.01,maxfun=20)[0]))
+        maximum = find_maximum_on_interval(d,0,1,maxfun=20)
+        minimum = find_minimum_on_interval(d,0,1,maxfun=20)
+        print "max:", maximum[0].n(20), 'at:', maximum[1]
+        print "min:", minimum[0].n(20), 'at:', minimum[1]
+        self.err = max( abs(maximum[0]), abs(minimum[0]))
         print "slog err:", self.err.n(20)
         self.prec = floor(-self.err.log(2))
         
