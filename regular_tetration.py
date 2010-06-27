@@ -7,7 +7,7 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e,NaN
 
-from exp_fixpoint import exp_fixpoint 
+from sage.hyperops.exp_fixpoint import exp_fixpoint 
 
 
 class RegularTetration:
