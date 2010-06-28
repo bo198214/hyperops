@@ -210,7 +210,7 @@ class FormalPowerSeriesRing(Ring):
         Returns the FormalPowerseries converted from p by conv.
         """
         
-        return self.by_lambda(lambda n: conv(p[n]))
+        return self.by_lambda(lambda n: conv(p[n]),p.min_index)
         
         
     def by_taylor(self,expr,v,at=0,**kwargs):
