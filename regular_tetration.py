@@ -203,7 +203,10 @@ class RegularTetration:
         yp=yn
         xp=xn
         n += 1
-        xn *= a
+        if self.attracting:
+            xn *= a
+        else:
+            xn /= a
 
         yn = self.chii_raw0(xn)
         #yn = self.fp + self.direction*xn 
@@ -231,7 +234,7 @@ class RegularTetration:
       a = self.fpd
 
       #lnb = b.log()
-      res = self.chi(x).log()/a.log()
+      res = self.chi(x,debug=debug).log()/a.log()
 
       res += self.c
       res = res.n(prec)
@@ -239,7 +242,7 @@ class RegularTetration:
       return res
           
     def sexp_hyperbolic(self,x,debug=0):
-      res = self.chii(self.fpd**(x-self.c))
+      res = self.chii(self.fpd**(x-self.c),debug=debug)
       res = res.n(self.prec)
       return res
       
