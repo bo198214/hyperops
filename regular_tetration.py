@@ -92,7 +92,9 @@ class RegularTetration:
         else:
             fp = exp_fixpoint(b,fixpoint_number,prec=iprec)
 
-        self.fp = fp
+        self.fp = fp #fixpoint
+
+        self.fpd = self.log(fp) #fixpont derivative
 
         self.direction = direction
 
@@ -124,7 +126,7 @@ class RegularTetration:
             self.c = -self.slog(u)                   
             pass
         
-    def logb(self,z):
+    def log(self,z):
         """
         Logarithm with branch cut such that for imaginary values y:
           -pi < y <= pi for real fixpoint
@@ -142,7 +144,7 @@ class RegularTetration:
         elif k<=-1:
             res = log(-z)+num(i*(2*pi*k+pi),self.iprec)
 
-        return res/self.lnb
+        return res
 
     def slog(self,x,debug=0):
       iprec=self.iprec
