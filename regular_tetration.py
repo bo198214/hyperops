@@ -106,10 +106,17 @@ class RegularTetration:
         if debug>=1: print "fp:",fp
 
         [rho,ps] = fps.abel_coeffs()
+
         if debug>=2: print 'fps:',fps
         if debug>=2: print 'rho:',rho
         if debug>=2: print 'abel_ps:',ps
             
+        self.chi_ps = fps.schroeder()
+        self.chipoly = self.chi_ps.polynomial(N)
+        self.chi_raw0 = lambda z: self.chipoly(direction*(z-self.fp))
+        self.chiipoly = self.chi_ps.inv().polynomial(N)
+        self.chii_raw0 = lambda z: self.fp + direction*self.chiipoly(z)
+
         PR = PolynomialRing(R,'x')
         self.slogpoly = ps.polynomial(N)
         if debug>=2: print self.slogpoly
@@ -146,29 +153,119 @@ class RegularTetration:
 
         return res
 
-    def slog(self,x,debug=0):
+    def chi(self,x,debug=0):
+      n = 0
+      xn = num(x,self.iprec)
+      yn = self.chi_raw0(xn)
+      a = self.fpd
+      err=2.0**(-self.prec)
+      if debug>=1: print 'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a,'err:',err
+      while True:
+        yp=yn
+        xp=xn
+        n += 1
+
+        if self.attracting:
+            xn = self.b**xn
+        else:
+            xn = self.log(xn)/self.lnb
+
+        yn = self.chi_raw0(xn)
+  
+        if self.attracting:
+            d = abs(log(yn/(yp*a)))
+        else:
+            d = abs(log(yn/(yp/a)))
+
+        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+        
+        if xp == xn or d == 1:
+            if debug>=0: 
+		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b
+            return NaN
+        
+        if d<err: 
+            if self.attracting:
+                res = yn/a**n
+            else:
+                res = yn*a**n
+            if debug>=1: print 'chi:',res,'n:',n,'d:',d.n(20),'err:',err
+            return res
+
+    def chii(self,x,debug=0):
+      n = 0
+      xn = num(x,self.iprec)
+      yn = self.chii_raw0(xn)
+      a = self.fpd
+      err=2.0**(-self.prec)
+      if debug>=1: print 'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a
+      while True:
+        yp=yn
+        xp=xn
+        n += 1
+        xn *= a
+
+        yn = self.chii_raw0(xn)
+        #yn = self.fp + self.direction*xn 
+
+        for m in range(n):
+            if self.attracting:
+                yn = self.log(yn)/self.lnb
+            else:
+                yn = self.b**yn
+  
+        d = abs(yn-yp)
+
+        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+        
+        if d<err: 
+            res = yn
+            if debug>=1: print 'chii:',res,'n:',n,'d:',d.n(20),'err:',err
+            return res
+
+    def slog_divisional(self,x,debug=0):
       iprec=self.iprec
       prec=self.prec
       b = self.b
       z0= self.fp
-      a = z0.log()
+      a = self.fpd
+
+      #lnb = b.log()
+      res = self.chi(x).log()/a.log()
+
+      res += self.c
+      res = res.n(prec)
+  
+      return res
+          
+    def sexp_hyperbolic(self,x,debug=0):
+      res = self.chii(self.fpd**(x-self.c))
+      res = res.n(self.prec)
+      return res
+      
+      
+    def slog_subtractive(self,x,debug=0):
+      iprec=self.iprec
+      prec=self.prec
+      b = self.b
+      z0= self.fp
 
       xin = x
       err=2.0**(-prec)
-      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'a:',a,'err:',err
+      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'err:',err
       #lnb = b.log()
       n = 0
       xn = num(x,iprec)
       yn = self.slog_raw0(xn)
       while True:
         yp=yn
-        xp=x
+        xp=xn
         n += 1
 
         if self.attracting:
             xn = b**xn
         else:
-            xn = self.logb(xn)
+            xn = self.log(xn)/self.lnb
 
         yn = self.slog_raw0(xn)
   
@@ -196,3 +293,5 @@ class RegularTetration:
             if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
             return res
 
+    slog = slog_subtractive
+    sexp = sexp_hyperbolic
