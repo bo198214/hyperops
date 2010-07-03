@@ -4,6 +4,13 @@ from sage.symbolic.constants import e
 import mpmath
 import sage.libs.mpmath.ext_main
 
+class PrecisionError(ArithmeticError):
+    def __init__(self,iprec,prec,*args):
+        ArithmeticError.__init__(self,*args)
+        self.iprec = iprec
+        self.prec = prec
+        self.args = ("iprec:",iprec,"prec:",prec) + self.args 
+
 def exp_fixpoint(b=e,k=1,prec=53,iprec=None):
     """
     Counting fixpoints as follows:
