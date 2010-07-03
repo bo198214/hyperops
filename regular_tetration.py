@@ -7,10 +7,11 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e,NaN
 
-from sage.hyperops.exp_fixpoint import exp_fixpoint 
+from sage.hyperops.exp_fixpoint import exp_fixpoint
+#from sage.hyperops.exp_fixpoint import PrecisionError 
 
 
-class RegularTetration:
+class RegularSlog:
     def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
         """
         for the numbering of fixed points see function exp_fixpoint
@@ -112,10 +113,8 @@ class RegularTetration:
         if debug>=2: print 'abel_ps:',ps
             
         self.chi_ps = fps.schroeder()
-        self.chipoly = self.chi_ps.polynomial(N)
+        self.chipoly = self.chi_ps.polynomial(N+1)
         self.chi_raw0 = lambda z: self.chipoly(direction*(z-self.fp))
-        self.chiipoly = self.chi_ps.inv().polynomial(N)
-        self.chii_raw0 = lambda z: self.fp + direction*self.chiipoly(z)
 
         PR = PolynomialRing(R,'x')
         self.slogpoly = ps.polynomial(N)
@@ -143,6 +142,9 @@ class RegularTetration:
 
           where k is the fixpoint_number
         """
+        ### workaround for log(NaN)
+        if z == self.R(NaN):
+            return z
         k = self.fixpoint_number
         if self.real_fp:
             res = z.log()
@@ -154,147 +156,179 @@ class RegularTetration:
         return res
 
     def chi(self,x,debug=0):
-      n = 0
-      xn = num(x,self.iprec)
-      yn = self.chi_raw0(xn)
-      a = self.fpd
-      err=2.0**(-self.prec)
-      if debug>=1: print 'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a,'err:',err
-      while True:
-        yp=yn
-        xp=xn
-        n += 1
-
-        if self.attracting:
-            xn = self.b**xn
-        else:
-            xn = self.log(xn)/self.lnb
-
+        n = 0
+        xn = num(x,self.iprec)
         yn = self.chi_raw0(xn)
-  
-        if self.attracting:
-            d = abs(log(yn/(yp*a)))
-        else:
-            d = abs(log(yn/(yp/a)))
+        if yn.is_zero():
+            return self.R(0)
+        a = self.fpd
+        err=2.0**(-self.prec)
+        if debug>=1: print 'chi: x',x,'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a,'err:',err
+        while True:
+            if xn.is_zero():
+                return self.R(NaN)
 
-        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
-        
-        if xp == xn or d == 1:
-            if debug>=0: 
-		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b
-            return NaN
-        
-        if d<err: 
+            yp=yn
+            xp=xn
+            n += 1
+    
             if self.attracting:
-                res = yn/a**n
+                xn = self.b**xn
             else:
-                res = yn*a**n
-            if debug>=1: print 'chi:',res,'n:',n,'d:',d.n(20),'err:',err
+                xn = self.log(xn)/self.lnb
+    
+            yn = self.chi_raw0(xn)
+    
+            if self.attracting:
+                d = abs(log(yn/(yp*a)))
+            else:
+                d = abs(log(yn/(yp/a)))
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if xp == xn or d == 1:
+                if debug>=0: 
+    		    print "chi: precision failed for x:",x
+                return self.R(NaN)
+            
+            if d<err: 
+                if self.attracting:
+                    res = yn/a**n
+                else:
+                    res = yn*a**n
+                if debug>=1: print 'chi:',res,'n:',n,'d:',d.n(20),'err:',err
+                return res
+    
+    def slog_divisional(self,x,debug=0):
+        iprec=self.iprec
+        prec=self.prec
+        b = self.b
+        z0= self.fp
+        a = self.fpd
+  
+        res = self.c + self.chi(x,debug=debug).log()/a.log()
+        #workaround for log(NaN)
+        if res == self.R(NaN):
             return res
+
+        res = res.n(prec)
+        return res
+            
+    def slog_subtractive(self,x,debug=0):
+        iprec=self.iprec
+        prec=self.prec
+        b = self.b
+        z0= self.fp
+  
+        xin = x
+        err=2.0**(-prec)
+        if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'err:',err
+        #lnb = b.log()
+        n = 0
+        xn = num(x,iprec)
+        yn = self.slog_raw0(xn)
+        while True:
+            yp=yn
+            xp=xn
+            n += 1
+    
+            if self.attracting:
+                xn = b**xn
+            else:
+                xn = self.log(xn)/self.lnb
+    
+            yn = self.slog_raw0(xn)
+      
+            if self.attracting:
+                d = abs(yn - (yp+1))
+            else:
+                d = abs(yn - (yp-1))
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if xp == xn or d == 1:
+                if debug>=0: 
+    		    print "slog: precision failed for x:",x
+                return NaN
+            
+              
+            if d<err: 
+                res = self.c + yn.n(prec)
+    
+                if self.attracting:
+                    res -= n
+                else:
+                    res += n
+      
+                if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
+                return res
+    
+    slog = slog_subtractive
+    __call__ = slog
+  
+class RegularSexp(RegularSlog):
+    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
+        RegularSlog.__init__(self,b,fixpoint_number,u,prec,iprec,N,direction,debug)
+
+        self.chiipoly = self.chi_ps.inv().polynomial(N+1)
+        self.chii_raw0 = lambda z: direction*self.chiipoly(z-self.c)
+        self.err=2.0**(-self.prec)
 
     def chii(self,x,debug=0):
-      n = 0
-      xn = num(x,self.iprec)
-      yn = self.chii_raw0(xn)
-      a = self.fpd
-      err=2.0**(-self.prec)
-      if debug>=1: print 'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a
-      while True:
-        yp=yn
-        xp=xn
-        n += 1
-        if self.attracting:
-            xn *= a
-        else:
-            xn /= a
-
+        xn = num(x,self.iprec)
         yn = self.chii_raw0(xn)
-        #yn = self.fp + self.direction*xn 
-
-        for m in range(n):
+        a = self.fpd
+        if debug>=1: 
+            print 'chii: x:',x,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a
+        n = 0
+        while True:
+            yp=yn
+            xp=xn
+            n += 1
             if self.attracting:
-                yn = self.log(yn)/self.lnb
+                xn *= a
             else:
-                yn = self.b**yn
-  
-        d = abs(yn-yp)
-
-        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
-        
-        if d<err: 
-            res = yn
-            if debug>=1: print 'chii:',res,'n:',n,'d:',d.n(20),'err:',err
-            return res
-
-    def slog_divisional(self,x,debug=0):
-      iprec=self.iprec
-      prec=self.prec
-      b = self.b
-      z0= self.fp
-      a = self.fpd
-
-      #lnb = b.log()
-      res = self.chi(x,debug=debug).log()/a.log()
-
-      res += self.c
-      res = res.n(prec)
-  
-      return res
-          
+                xn /= a
+    
+            yn = self.chii_raw0(xn)
+            #yn = self.fp + self.direction*xn 
+    
+            for m in range(n):
+                if self.attracting:
+                    yn = self.log(yn)/self.lnb
+                else:
+                    yn = self.b**yn
+      
+            d = abs(yn-yp)
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if d.is_NaN():
+                #p = PrecisionError(self.iprec,self.prec,"chii","x:",x)
+    		#raise p
+                if debug>=0: print "chii: precision failed for x:",x
+                return d
+    
+            if d<self.err: 
+                res = yn
+                if debug>=1: print 'chii:',res,'n:',n,'d:',d.n(20),'err:',self.err
+                return res
+    
     def sexp_hyperbolic(self,x,debug=0):
-      res = self.chii(self.fpd**(x-self.c),debug=debug)
-      res = res.n(self.prec)
-      return res
-      
-      
-    def slog_subtractive(self,x,debug=0):
-      iprec=self.iprec
-      prec=self.prec
-      b = self.b
-      z0= self.fp
-
-      xin = x
-      err=2.0**(-prec)
-      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'err:',err
-      #lnb = b.log()
-      n = 0
-      xn = num(x,iprec)
-      yn = self.slog_raw0(xn)
-      while True:
-        yp=yn
-        xp=xn
-        n += 1
-
-        if self.attracting:
-            xn = b**xn
-        else:
-            xn = self.log(xn)/self.lnb
-
-        yn = self.slog_raw0(xn)
-  
-        if self.attracting:
-            d = abs(yn - (yp+1))
-        else:
-            d = abs(yn - (yp-1))
-
-        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
-        
-        if xp == xn or d == 1:
-            if debug>=0: 
-		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b
-            return NaN
-        
-          
-        if d<err: 
-            res = self.c + yn.n(prec)
-
-            if self.attracting:
-                res -= n
-            else:
-                res += n
-  
-            if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
+        if debug>0:
+            print "sexp_hyperbolic: x:",x
+        # try:
+            res = self.fp + self.chii(self.fpd**x,debug=debug)
+        # except PrecisionError as p:
+        #     p.args = p.args + ('sexp_hyperbolic','x:',x)
+        #     raise p
+        if res.is_Nan():
+            if debug>=0: print 'sexp_hyperbolic: precision failed x:',x
             return res
-
-    slog = slog_subtractive
+        res = res.n(self.prec)
+        return res
+        
     sexp = sexp_hyperbolic
+    __call__ = sexp
+        
+
