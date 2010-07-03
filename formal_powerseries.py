@@ -9,7 +9,7 @@ from sage.calculus.functional import diff
 from sage.functions.log import log
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
-from sage.misc.functional import n
+from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField_class
 from sage.rings.arith import factorial
 from sage.rings.arith import binomial as buggybinomial
@@ -3221,7 +3221,7 @@ class N(FormalPowerSeries):
         sage: None # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,FormalPowerSeriesRing(n(0,*args,**kwargs).parent()),min_index=a.min_index)
+        si(self,FormalPowerSeriesRing(num(0,*args,**kwargs).parent()),min_index=a.min_index)
 
         self.a = a
         self.args = args
@@ -3229,7 +3229,7 @@ class N(FormalPowerSeries):
 
     def coeffs(self,k):
         """ sage: None # indirect doctest """
-        return n(self.a[k],*self.args,**self.kwargs)
+        return num(self.a[k],*self.args,**self.kwargs)
         
 class Regit(FormalPowerSeries0): 
     def __init__(self,a,t,pow=False):
