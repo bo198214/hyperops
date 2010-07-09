@@ -164,7 +164,9 @@ class IntuitiveAbel:
 
         N = self.N
 
-        C = self.C
+        A = self.A
+        #Carleman matrix without 0-th row:
+        Ct = A + identity_matrix(self.R,N).submatrix(1,0,N-1,N-1)
         AI = self.AI
         assert AI*self.A == identity_matrix(N-1)
 
@@ -179,16 +181,14 @@ class IntuitiveAbel:
             x = self.f.args()[0]
             coeffs = taylor(self.f.substitute({x:x+self.x0sym})-self.x0sym,x,0,N+1).polynomial(self.R)
 
-        M=N+1
-        self.C = matrix(self.R,M,N)
-        self.C.set_block(0,0,C)
-        self.C[0,N-1] = 0
-        self.C[1,N-1] = coeffs[N-1]
-        for k in range(2,M-1):
-            self.C[k,N-1] = psmul_at(self.C[1],self.C[k-1],N-1)
-        self.C[M-1] = psmul(self.C[1],self.C[M-2])
+        self.Ct = matrix(self.R,N,N)
+        self.Ct.set_block(0,0,Ct)
+        self.Ct[0,N-1] = coeffs[N-1]
+        for m in range(1,N-1):
+            self.Ct[m,N-1] = psmul_at(self.Ct[0],self.Ct[m-1],N-1)
+        self.Ct[N-1] = psmul(self.Ct[0],self.Ct[N-2])
 
-        self.A = self.C.submatrix(1,0,N,N) - identity_matrix(self.R,N+1).submatrix(1,0,N,N)
+        self.A = self.Ct - identity_matrix(self.R,N+1).submatrix(1,0,N,N)
 
         av=self.A.column(N-1)[:N-1]
         ah=self.A.row(N-1)[:N-1]
