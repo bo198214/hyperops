@@ -26,7 +26,7 @@ def psmul(v,w):
     assert v.degree()==w.degree()
     return [psmul_at(v,w,n) for n in xrange(N)]
 
-class IntuitiveAbel:
+class IntuitiveAbel(SageObject):
     def __init__(self,f,N,iprec=512,u=None,x0=0,fname=None,extendable=True):
         """
         x0 is the development point for the Carleman matrix for the abel function
@@ -38,7 +38,9 @@ class IntuitiveAbel:
         if it is extendable then you can increase N without recomputing everything.
         """
 
-        self.f = f
+        x = f.variables()[0]
+        self.f = f.function(x)
+        
         self.N = N
         self.iprec = iprec
         x0sym = x0
@@ -161,15 +163,20 @@ class IntuitiveAbel:
     __call__ = abel
 
     
-    def extend(self,by=1):
+    def extend(self,by=1,debug=0):
         "Increases the matrix size by `by'"
         for k in xrange(by):
             self._extend1()
 
         self._init_abel()
+        self.calc_diff(self.iv0,debug=debug)
 
     def _extend1(self):
         "Increases the matrix size by 1"
+
+        #save current self
+        self.iv0 = copy(self)
+        self.iv0.abel_raw0 = lambda z: self.iv0.abel0poly(z-self.iv0.x0)
 
         N = self.N
 
@@ -179,11 +186,6 @@ class IntuitiveAbel:
         AI = self.AI
         assert AI*self.A == identity_matrix(N-1)
 
-        n = N - 1
-
-        #shortcut
-        #self.C = self.fast_carleman_matrix(N+1)
-        
         if isinstance(self.f,FormalPowerSeries):
             coeffs = [ self.f[n] for n in xrange(0,N+1) ]
         else:
@@ -209,16 +211,16 @@ class IntuitiveAbel:
         # print 'av:',av
         # print 'a_n:',a_n
 
-        AI0 = matrix(self.R,n+1,n+1)
+        AI0 = matrix(self.R,N,N)
         AI0.set_block(0,0,self.AI)
 
-        horiz = matrix(self.R,1,n+1)
+        horiz = matrix(self.R,1,N)
         horiz.set_block(0,0,(ah*AI).transpose().transpose())
-        horiz[0,n] = -1
+        horiz[0,N-1] = -1
 
-        vert = matrix(self.R,n+1,1)
+        vert = matrix(self.R,N,1)
         vert.set_block(0,0,(AI*av).transpose())
-        vert[n,0] = -1
+        vert[N-1,0] = -1
 
         self.N += 1
         self.AI = AI0 +  vert*horiz/(a_n-ah*AI*av)
@@ -226,11 +228,9 @@ class IntuitiveAbel:
         #assert (self.A*self.AI - identity_matrix(self.R,n+1)).norm() < 0.0001
         assert self.A*self.AI == identity_matrix(self.R,N), repr(self.A*self.AI)
 
-    def calc_prec(self,debug=0):
-        if self.prec != None:
-            return self.prec
-        iv0 = IntuitiveAbel(self.f,self.N-1,iprec=self.iprec,x0=self.x0sym)
-        self.iv0 = iv0
+    def calc_diff(self,iv0,debug=0):
+        self.prec=None
+        iv0.prec=None
         d = lambda x: self.abel(x) - iv0.abel(x)
         a = find_root(lambda x: (self.f(x)+x)/2-self.x0,self.x0-100,self.f(self.x0))
         maximum = find_maximum_on_interval(d,self.x0-a,self.x0+self.f(a),maxfun=20)
@@ -241,6 +241,17 @@ class IntuitiveAbel:
         print "err:", self.err.n(20)
         self.prec = floor(-self.err.log(2))
         
+        
+    def calc_prec(self,debug=0):
+        if self.extendable:
+            self.extend(debug=debug)
+            return self
+
+        iv0 = IntuitiveAbel(self.f,self.N-1,iprec=self.iprec,x0=self.x0sym)
+        self.iv0 = iv0
+
+        self.calc_diff(iv0,debug=debug)
+
         return self
 
     def backup(self):
