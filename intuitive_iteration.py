@@ -19,13 +19,15 @@ from sage.symbolic.ring import SR
 from sage.hyperops.formal_powerseries import FormalPowerSeries
 
 class IntuitiveAbel:
-    def __init__(self,f,N,iprec=512,u=None,x0=0,fname=None):
+    def __init__(self,f,N,iprec=512,u=None,x0=0,fname=None,extendable=True):
         """
         x0 is the development point for the Carleman matrix for the abel function
         u is the initial value such that abel(u)=0 or equivalently super(0)=u
 
         if no u is specified we have abel(x0)=0
         iprec=None means try to work with the rational numbers
+
+        if it is extendable then you can increase N without recomputing everything.
         """
 
         self.f = f
@@ -78,13 +80,33 @@ class IntuitiveAbel:
         
         C = Matrix(R,N)
 
-        row = vector(R,[1]+(N-1)*[0])
-        C[0] = row
-        for m in xrange(1,N):
-            row = psmul(row,coeffs)
-            C[m] = row
-  
-        A = (C - identity_matrix(N)).submatrix(1,0,N-1,N-1)
+        row0 = vector(R,[1]+(N-1)*[0])
+        C[0] = row0
+        C[1] = vector(R,[coeffs[n] for n in range(N)])
+        #first compute powers of 2, the index is 2**m
+        m = 1
+        while 2**m < N:
+            row = psmul(C[2**(m-1)],C[2**(m-1)])
+            C[2**m] = row
+            m += 1
+
+        for m in range(3,N):
+            bin = Integer(m).bits()
+            
+            k0 = 0
+            while k0 < len(bin):
+                if bin[k0] == 1: break
+                k0 += 1
+
+            if 2**k0 == m: continue
+
+            C[m] = C[2**k0]
+
+            for k in range(k0+1,len(bin)):
+               if bin[k] == 1:
+                   C[m] = psmul(C[m],C[2**k])
+
+        A = (C - identity_matrix(R,N)).submatrix(1,0,N-1,N-1)
         self.A = A.transpose()
 
         print "A computed."
@@ -92,10 +114,13 @@ class IntuitiveAbel:
         if iprec != None:
             A = num(A,iprec)
 
-        row = A.solve_left(vector([1] + (N-2)*[0]))
-
-        print "A solved."
-
+        if extendable:
+            AI = ~A
+            print "A inverted."
+        else:
+            row = A.solve_left(vector([1] + (N-2)*[0]))
+            print "A solved."
+        
         self.abel0coeffs = [0]+[row[n] for n in range(N-1)]
         self.abel0poly = PolynomialRing(R,'x')(self.abel0coeffs[:int(N)/2])
         
@@ -113,6 +138,40 @@ class IntuitiveAbel:
         return res.n(self.prec)
 
     __call__ = abel
+
+    def extend(self,by=1):
+        "Increases the matrix size by `by'"
+
+        N = self.N
+
+        #ah
+        #av
+        #a_n
+
+        A = self.A
+        self.A = matrix(self.R,N+1,N+1)
+        self.A.set_block(0,0,A)
+        # we have computed p(x)**(k-1), p(x)**k and perhaps (p(x)+c*x**n)**(k-1)
+        # (p(x)+c*x**n)**k = (p(x)+c*x**n)**k-1 * (p(x)+c*x**n)
+        # degree lower or equal n gives the first truncated 
+        # with n-th entry being the sum of all k-fold products with sum of indices equal to n.
+        # and k*c0**(k-1)*c*x**n
+        # all other have degree greater than x
+
+        AI = self.AI
+        AI0 = matrix(self.R,N+1,N+1)
+        AI0.set_block(0,0,self.AI)
+
+        horiz = matrix(self.R,1,N+1)
+        horiz.set_block(0,0,(ah*AI).transpose().transpose())
+        horiz[0,N] = -1
+
+        vert = matrix(self.R,N+1,1)
+        vert.set_block(0,0,(AI*av).transpose())
+        vert[N,0] = -1
+
+        self.AI = AI0 +  vert*horiz/(a_n-ah*AI*av)
+        assert (self.A*self.AI - identity_matrix(self.R,N+1)).norm() < 0.0001
 
     def calc_prec(self,debug=0):
         if self.prec != None:
