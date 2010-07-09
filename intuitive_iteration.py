@@ -45,6 +45,8 @@ class IntuitiveAbel:
         self.x0sym = x0sym
 
         self.prec = None
+        self.extendable = extendable
+        self.u = u
 
         x0name = repr(x0sym)
         if x0name.find('.') > -1:
@@ -77,33 +79,32 @@ class IntuitiveAbel:
         #too slow
         #C = Matrix([ [ln(b)**n/factorial(n)*sum([binomial(m,k)*k**n*(b**x0)**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
 
-        self.C = self.fast_carleman_matrix(N)
-        A = self.C.submatrix(1,0,N-1,N-1) - identity_matrix(R,N).submatrix(1,0,N-1,N-1)
-
-        self.A = A
+        C = self.fast_carleman_matrix(N)
+        self.A = C.submatrix(1,0,N-1,N-1) - identity_matrix(R,N).submatrix(1,0,N-1,N-1)
 
         print "A computed."
+        self._init_abel()
 
-        if iprec != None:
-            A = num(A,iprec)
-
-        bvec = vector([1] + (N-2)*[0])
-        if extendable:
-            self.AI = ~A
+    def _init_abel(self):
+        bvec = vector([1] + (self.N-2)*[0])
+        if self.extendable:
+            self.AI = ~self.A
             row = bvec * self.AI 
             print "A inverted."
         else:
             row = A.solve_left(bvec)
             print "A solved."
         
-        self.abel0coeffs = [0]+[row[n] for n in range(N-1)]
-        self.abel0poly = PolynomialRing(R,'x')(self.abel0coeffs[:int(N)/2])
+        self.abel0coeffs = [0]+[row[n] for n in range(self.N-1)]
+        self.abel0poly = PolynomialRing(self.R,'x')(self.abel0coeffs[:int(self.N)/2])
         
         self.abel_raw0 = lambda z: self.abel0poly(z-self.x0)
 
         self.c = 0
-        if not u == None:
-            self.c = - self.abel(u)
+        if not self.u == None:
+            self.c = - self.abel(self.u)
+
+        
 
     def fast_carleman_matrix(self,N):
         "computes the Nx(N-1) carleman-matrix"
@@ -159,8 +160,16 @@ class IntuitiveAbel:
 
     __call__ = abel
 
+    
     def extend(self,by=1):
         "Increases the matrix size by `by'"
+        for k in xrange(by):
+            self._extend1()
+
+        self._init_abel()
+
+    def _extend1(self):
+        "Increases the matrix size by 1"
 
         N = self.N
 
