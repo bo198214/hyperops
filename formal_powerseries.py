@@ -7,6 +7,7 @@ Author: Henryk Trappmann
 from sage.calculus.calculus import var
 from sage.calculus.functional import diff
 from sage.functions.log import log
+from sage.functions.other import sqrt
 from sage.matrix.constructor import matrix
 from sage.misc.misc_c import prod
 from sage.misc.functional import n as num
@@ -1725,7 +1726,13 @@ class FormalPowerSeries(RingElement):
 
     ### finite approximate operations
 
-    def carleman_matrix(p,N,M=None):
+    def l2(p,N):
+        """
+        l2 norm: computes sqrt(|p[0]|^2 + |p[1]|^2 + ... |p[N-1]|^2)
+        """
+        return sqrt(sum([abs(p[n])**2 for n in range(N)]))
+
+    def carleman_matrix(p,M,N=None):
         """
         The carleman_matrix has as nth row the coefficients of p^n.
         It has N rows and N columns, except M specifies a different number of 
@@ -1736,8 +1743,8 @@ class FormalPowerSeries(RingElement):
         sage: P([1,1]).carleman_matrix(4) == matrix([[1,0,0,0],[1,1,0,0],[1,2,1,0],[1,3,3,1]])                      
         True
         """
-        if M == None: 
-            M=N
+        if N == None: 
+            N=M
         return matrix([[p.npow(m)[n] for n in range(N) ] for m in range(M)])
 
     def bell_matrix(a,N,M=None):
