@@ -15,6 +15,7 @@ from sage.rings.rational_field import QQ
 from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
+import sage.symbolic.expression
 
 from sage.hyperops.formal_powerseries import FormalPowerSeries
 
@@ -38,8 +39,14 @@ class IntuitiveAbel(SageObject):
         if it is extendable then you can increase N without recomputing everything.
         """
 
-        x = f.variables()[0]
-        self.f = f.function(x)
+        self.fps = None
+        if isinstance(f,sage.symbolic.expression.Expression):
+            x = f.variables()[0]
+            f = f.function(x)
+        if isinstance(f,FormalPowerSeries):
+            self.fps = f
+            f = f.polynomial(N-1)
+        self.f = f
         
         self.N = N
         self.iprec = iprec
@@ -81,7 +88,15 @@ class IntuitiveAbel(SageObject):
         #too slow
         #C = Matrix([ [ln(b)**n/factorial(n)*sum([binomial(m,k)*k**n*(b**x0)**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
 
-        C = self.fast_carleman_matrix(N)
+        if self.fps == None:
+            x = self.f.args()[0]
+            coeffs = taylor(self.f.substitute({x:x+x0sym})-x0sym,x,0,N-1).polynomial(self.R)
+            coeffs = [coeffs[n] for n in xrange(N-1)]
+        else:
+            coeffs = [ self.fps[n] for n in xrange(0,N) ]
+        print "taylor computed"
+        
+        C = self.fast_carleman_matrix(coeffs)
         self.A = C.submatrix(1,0,N-1,N-1) - identity_matrix(R,N).submatrix(1,0,N-1,N-1)
 
         print "A computed."
@@ -94,7 +109,7 @@ class IntuitiveAbel(SageObject):
             row = bvec * self.AI 
             print "A inverted."
         else:
-            row = A.solve_left(bvec)
+            row = self.A.solve_left(bvec)
             print "A solved."
         
         self.abel0coeffs = [0]+[row[n] for n in range(self.N-1)]
@@ -108,25 +123,19 @@ class IntuitiveAbel(SageObject):
 
         
 
-    def fast_carleman_matrix(self,N):
+    def fast_carleman_matrix(self,coeffs):
         "computes the Nx(N-1) carleman-matrix"
 
-        M = N
-        N = M-1
+        N = len(coeffs)
+        M = N+1
         f = self.f
         x0sym = self.x0sym
-        if isinstance(self.f,FormalPowerSeries):
-            coeffs = [ self.f[n] for n in xrange(0,N) ]
-        else:
-            x = self.f.args()[0]
-            coeffs = taylor(self.f.substitute({x:x+x0sym})-x0sym,x,0,N).polynomial(self.R)
-
         
         C = Matrix(self.R,M,N)
 
         row0 = vector(self.R,[1]+(N-1)*[0])
         C[0] = row0
-        C[1] = vector(self.R,[coeffs[n] for n in range(N)])
+        C[1] = coeffs
         #first compute lines with index being powers of 2
         m = 1
         while 2**m < M:
@@ -184,13 +193,13 @@ class IntuitiveAbel(SageObject):
         #Carleman matrix without 0-th row:
         Ct = A + identity_matrix(self.R,N).submatrix(1,0,N-1,N-1)
         AI = self.AI
-        assert AI*self.A == identity_matrix(N-1)
+        #assert AI*self.A == identity_matrix(N-1)
 
         if isinstance(self.f,FormalPowerSeries):
-            coeffs = [ self.f[n] for n in xrange(0,N+1) ]
+            coeffs = [ self.f[n] for n in xrange(0,N) ]
         else:
             x = self.f.args()[0]
-            coeffs = taylor(self.f.substitute({x:x+self.x0sym})-self.x0sym,x,0,N+1).polynomial(self.R)
+            coeffs = taylor(self.f.substitute({x:x+self.x0sym})-self.x0sym,x,0,N).polynomial(self.R)
 
         self.Ct = matrix(self.R,N,N)
         self.Ct.set_block(0,0,Ct)
@@ -199,6 +208,7 @@ class IntuitiveAbel(SageObject):
             self.Ct[m,N-1] = psmul_at(self.Ct[0],self.Ct[m-1],N-1)
         self.Ct[N-1] = psmul(self.Ct[0],self.Ct[N-2])
 
+        print "C extended"
         self.A = self.Ct - identity_matrix(self.R,N+1).submatrix(1,0,N,N)
 
         av=self.A.column(N-1)[:N-1]
@@ -226,7 +236,7 @@ class IntuitiveAbel(SageObject):
         self.AI = AI0 +  vert*horiz/(a_n-ah*AI*av)
 
         #assert (self.A*self.AI - identity_matrix(self.R,n+1)).norm() < 0.0001
-        assert self.A*self.AI == identity_matrix(self.R,N), repr(self.A*self.AI)
+        #assert self.A*self.AI == identity_matrix(self.R,N), repr(self.A*self.AI)
 
     def calc_diff(self,iv0,debug=0):
         self.prec=None
