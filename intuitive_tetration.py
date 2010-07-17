@@ -92,6 +92,7 @@ class IntuitiveTetration:
             C[m] = row
   
         A = (C - identity_matrix(N)).submatrix(1,0,N-1,N-1)
+        self.A = A
 
         print "A computed."
 
