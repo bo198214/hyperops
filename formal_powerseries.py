@@ -8,7 +8,7 @@ from sage.calculus.calculus import var
 from sage.calculus.functional import diff
 from sage.functions.log import log
 from sage.functions.other import sqrt
-from sage.matrix.constructor import matrix
+from sage.matrix.constructor import matrix, identity_matrix
 from sage.misc.misc_c import prod
 from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField_class
@@ -1747,7 +1747,7 @@ class FormalPowerSeries(RingElement):
             N=M
         return matrix([[p.npow(m)[n] for n in range(N) ] for m in range(M)])
 
-    def bell_matrix(a,N,M=None):
+    def bell_matrix(a,M,N=None):
         """
         The Bell matrix with N (or M) rows and N columns of this power series.
         The n-th column of the Bell matrix is the sequence of coefficients 
@@ -1759,12 +1759,20 @@ class FormalPowerSeries(RingElement):
         sage: P([1,1]).bell_matrix(4) == matrix([[1,1,1,1],[0,1,2,3],[0,0,1,3],[0,0,0,1]])                      
         True
         """
-        if M == None:
-            M=N
+        if N == None: 
+            N=M
         return matrix([[a.npow(n)[m] for n in range(N)] for m in range(M)])
 
+    def abel_matrix(self,N,repl_col=None):
+        """
+        is the bell matrix - identity matrix with first column removed and square truncated.
+        """
         
-        
+        res = self.bell_matrix(N,N+1)[:,1:N+1] - identity_matrix(N+1)[:N,1:N+1]
+        if repl_col == None:
+          return res
+        res.set_column(repl_col,[1]+[0]*(N-1))
+        return res
 
 class FormalPowerSeries0(FormalPowerSeries):
     """
