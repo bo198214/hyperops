@@ -1,3 +1,4 @@
+from sage.calculus.functional import taylor
 from sage.functions.log import log, ln
 from sage.functions.other import sqrt,real,imag,ceil,floor
 from sage.functions.trig import tan
@@ -7,7 +8,7 @@ from sage.misc.persist import save
 from sage.modules.free_module_element import vector
 from sage.rings.arith import factorial, binomial
 from sage.rings.complex_field import ComplexField
-from sage.rings.formal_powerseries import FormalPowerSeriesRing
+from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries
 from sage.rings.integer import Integer
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.power_series_ring import PowerSeriesRing
@@ -17,7 +18,6 @@ from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 import sage.symbolic.expression
 
-from sage.hyperops.formal_powerseries import FormalPowerSeries
 
 def psmul_at(v,w,n):
     return sum([v[k]*w[n-k] for k in xrange(n+1)])
@@ -27,7 +27,7 @@ def psmul(v,w):
     assert v.degree()==w.degree()
     return [psmul_at(v,w,n) for n in xrange(N)]
 
-class IntuitiveAbel(SageObject):
+class IntuitiveAbel:
     def __init__(self,f,N,iprec=512,u=None,x0=0,fname=None,extendable=True):
         """
         x0 is the development point for the Carleman matrix for the abel function
