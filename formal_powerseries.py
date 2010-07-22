@@ -245,6 +245,10 @@ class FormalPowerSeriesRing(Ring):
         [42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         
+        if c == self.K0:
+            return Zero(self)
+        if c == self.K1:
+            return One(self)
         return Constant(self,c)
         
 
@@ -2383,7 +2387,7 @@ class Taylor(FormalPowerSeries):
 
 ### Constants ###
 
-class Zero(FormalPowerSeries):
+class Zero(FormalPowerSeries01):
     """
     The zero element power series.
 
@@ -2392,6 +2396,9 @@ class Zero(FormalPowerSeries):
     sage: loads(dumps(P.Zero))
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
     """
+    def __init__(self,parent):
+        FormalPowerSeries.__init__(self,parent,min_index=Infinity)
+
     def coeffs(self,n): 
         """ sage: None   # indirect doctest """
         return self.K0
