@@ -2397,7 +2397,7 @@ class Zero(FormalPowerSeries01):
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
     """
     def __init__(self,parent):
-        FormalPowerSeries.__init__(self,parent,min_index=Infinity)
+        FormalPowerSeries.__init__(self,parent,min_index=2)
 
     def coeffs(self,n): 
         """ sage: None   # indirect doctest """
