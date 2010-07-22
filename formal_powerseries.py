@@ -121,7 +121,10 @@ class FormalPowerSeriesRing(Ring):
         sage: #class F(FormalPowerSeries):^J    def coeffs(self,n): return n 
         sage: #F(P)
         """
-        return FormalPowerSeries(self,f,min_index)
+        res = FormalPowerSeries(self,f,min_index)
+        if min_index != 0:
+            return res.extinct_before(min_index)
+        return res
 
 
     def by_iterator(self,g,min_index=0):
