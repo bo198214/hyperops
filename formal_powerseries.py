@@ -2198,17 +2198,16 @@ class FormalPowerSeries01(FormalPowerSeries0):
 
         return Regit01(a,t)
 
-    def selfit(a,ie=None):
+    def itop(a,ie):
         """
-        Regular iteration to the argument (if iteration exponent `ie' is not given):
-        a.it(x)(x) as powerseries in x.
-        
-        If given `ie' must be a polynomial.
+        Regular iteration as operation of two FormalPowerSeries.
+        The iteration exponent ie is a FormalPowerSeries. 
+        The result is again a FormalPowerSeries01.
         
         Requires a[0]==0 and a[1]==0.
         """
 
-        return Selfit01(a,ie)
+        return ItOp01(a,ie)
 
     def logit_jabotinsky(a):
         """
@@ -3480,27 +3479,21 @@ class Logit_Jabotinsky(FormalPowerSeries01):
 
         return r
 
-class Selfit01(FormalPowerSeries01):
-    def __init__(self,a,ie=None):
+class ItOp01(FormalPowerSeries01):
+    def __init__(self,a,ie):
         """
-        Description and tests at FormalPowerSeries01.selfit
+        Description and tests at FormalPowerSeries01.itop
         sage: None   # indirect doctest
         """
-        if ie == None:
-            P = PolynomialRing(a.K,'x')
-            ie = P.gen()
-        else:
-            P = ie.parent()
 
         si = FormalPowerSeries.__init__
-        si(self,FormalPowerSeriesRing(P),min_index=1)
+        si(self,a.parent(),min_index=1)
 
         self.a=a
-        self.P = P
         self.ie = ie
+        self.b = self.a.regit(self.ie)
 
     def coeffs(self,n):
-        P = self.P
-        b = self.a.regit(self.ie)
-
-        return sum([ P(b[k])[n-k] for k in range(n+1)])
+        if n==0: return 0
+        if n==1: return 1
+        return sum([ self.b[k][n-k] for k in range(2,n+1)])
