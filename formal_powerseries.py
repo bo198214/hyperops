@@ -32,6 +32,11 @@ from sage.symbolic.ring import SymbolicRing
 
 def binomial(x,y):
   if type(x) is RealLiteral and x == int(x): return buggybinomial(int(x),y)
+  if isinstance(x,FormalPowerSeries):
+    res = x.parent().One
+    for n in xrange(y):
+      res *= x-n
+    return res.lmul(x.parent().base_ring().one_element()/factorial(y))
   return buggybinomial(x,y)
 
 def decidable0(K): 
@@ -194,6 +199,8 @@ class FormalPowerSeriesRing(Ring):
         sage: P(2*x+x**2)
         [0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
+        if p.parent() == self.base_ring():
+          return self.by_constant(p)
         return self.by_list(p.padded_list())
 
     def by_powerseries(self,p):
@@ -1837,8 +1844,6 @@ class FormalPowerSeries0(FormalPowerSeries):
         a.it(1) = a
         a.it(s+t) == a.it(s)(a.it(t))
 
-        Alternative expression: a.it(t) == a & t
-
         See also: nit, regit (for restrictions depending t's kind)
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
@@ -1898,8 +1903,6 @@ class FormalPowerSeries0(FormalPowerSeries):
         return s.inv()(s.rmul(a[1]**t))
 
 
-
-    __and__ = it
 
     def inv(a):
         """
@@ -2204,10 +2207,14 @@ class FormalPowerSeries01(FormalPowerSeries0):
         The iteration exponent ie is a FormalPowerSeries. 
         The result is again a FormalPowerSeries01.
         
+        Alternative expression: a.it(t) == a & t
+
         Requires a[0]==0 and a[1]==0.
         """
 
         return ItOp01(a,ie)
+
+    __and__ = itop
 
     def logit_jabotinsky(a):
         """
