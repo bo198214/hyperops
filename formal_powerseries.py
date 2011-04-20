@@ -31,13 +31,28 @@ from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
 
 def binomial(x,y):
-  if type(x) is RealLiteral and x == int(x): return buggybinomial(int(x),y)
-  if isinstance(x,FormalPowerSeries):
-    res = x.parent().One
-    for n in xrange(y):
-      res *= x-n
-    return res.lmul(x.parent().base_ring().one_element()/factorial(y))
-  return buggybinomial(x,y)
+    if type(x) is RealLiteral and x == int(x): res = buggybinomial(int(x),y)
+    else: res = buggybinomial(x,y)
+    # if isinstance(x,FormalPowerSeries):
+    #   res = x.parent().One
+    #   for n in xrange(y):
+    #     res *= x-n
+    #   return res.lmul(x.parent().base_ring().one_element()/factorial(y))
+    if isinstance(x,SageObject): 
+        X = x.parent()
+        XB = X.base()
+        if isinstance(y,SageObject):
+            Y = y.parent()
+        elif type(y) is int:
+            Y = Integer(1).parent()
+        R = res.parent()
+        #print X.is_ring(), not X.is_field(), XB.is_field(), XB.has_coerce_map_from(Y)
+        if X.is_ring() and not X.is_field() and XB.is_field()\
+            and  XB.has_coerce_map_from(Y) and R.is_field(): 
+            #we want the result being of the same type as X
+            #not the FractionField that buggybinomial returns
+            res = X(res)
+    return res
 
 def decidable0(K): 
     """
@@ -1040,7 +1055,7 @@ class FormalPowerSeries(RingElement):
 
         return Crush(self)
 
-    def apply(self,f):
+    def apply(self,f,result_type=None,result_base_ring=None):
         """
         Returns the result of applying the function f(x,n) on each coefficient
         self[n].
@@ -1051,7 +1066,7 @@ class FormalPowerSeries(RingElement):
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
 
-        return Apply(self,f)
+        return Apply(self,f,result_type=result_type,result_base_ring=result_base_ring)
 
     def inc(a):
         """
@@ -2907,13 +2922,18 @@ class ExtinctBefore(FormalPowerSeries):
         if n < self.min_index:
             return self.K0
         return self.a[n]
+
 class Apply(FormalPowerSeries):
-    def __init__(self,a,f):
+    def __init__(self,a,f,result_type=None,result_base_ring=None):
         """
         Description and tests at FormalPowerSeries.apply
         sage: None  # indirect doctest
         """
-        FormalPowerSeries.__init__(self,a.parent(),min_index=a.min_index)
+        if not result_base_ring == None:
+            result_type = FormalPowerSeriesRing(result_base_ring)
+        if result_type == None:
+            result_type = a.parent()
+        FormalPowerSeries.__init__(self,result_type,min_index=a.min_index)
         self.a = a
         self.f = f
 
