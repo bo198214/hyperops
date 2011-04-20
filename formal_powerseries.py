@@ -294,6 +294,10 @@ class FormalPowerSeriesRing(Ring):
 
         if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
             return self.by_constant(p1,**kwargs)
+        
+        if isinstance(p1,SageObject) and\
+	(issubclass(p1.parent(),self.K) or p1.parent()==self.K):
+            return self.by_constant(p1,**kwargs)
 
         if isinstance(p1,list):
             if p2 == None:
@@ -3432,8 +3436,7 @@ class Regit01(FormalPowerSeries01):
         sage: None   # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=a.min_index)
-        self.K = t.parent()
+        si(self,None,min_index=a.min_index,base_ring=t.parent())
         self.a = a 
         self.t = t
 
@@ -3453,11 +3456,10 @@ class Regit01(FormalPowerSeries01):
 
         r = self.K0
         for m in range(n):
-            s = self.K0
+            s = a.K0
             for k in range(m+1):
                 s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
-            s *= binomial(t,m)
-            r += s
+            r += s*binomial(t,m)
         return r
 
 class Logit_Jabotinsky(FormalPowerSeries01):
