@@ -295,8 +295,7 @@ class FormalPowerSeriesRing(Ring):
         if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
             return self.by_constant(p1,**kwargs)
         
-        if isinstance(p1,SageObject) and\
-	(issubclass(p1.parent(),self.K) or p1.parent()==self.K):
+        if isinstance(p1,SageObject) and self.K.has_coerce_map_from(p1.parent()):
             return self.by_constant(p1,**kwargs)
 
         if isinstance(p1,list):
@@ -1028,7 +1027,19 @@ class FormalPowerSeries(RingElement):
         If the base_ring of self is again a powerseries over base_ring2,
         then interpret the coefficient powerseries as a powerseries in the same
         variable and expand the resulting powerseries over base_ring2.
+
+        
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: F = FormalPowerSeriesRing(QQ)                 
+        sage: p = F.Dec_exp.it(F.Exp)    
+        sage: p.parent()
+        FormalPowerSeriesRing over FormalPowerSeriesRing over Rational Field
+        sage: p.crush()
+        [0, 1, 1/2, 2/3, 17/24, 59/80, 1099/1440, 47297/60480, 48037/60480, ...]
         """
+
+        return Crush(self)
+
     def apply(self,f):
         """
         Returns the result of applying the function f(x,n) on each coefficient
@@ -2218,7 +2229,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         Requires a[0]==0 and a[1]==0.
         """
 
-        return ItOp01(a,ie)
+        return a.regit(ie).crush()
 
     __and__ = itop
 
@@ -3479,21 +3490,17 @@ class Logit_Jabotinsky(FormalPowerSeries01):
 
         return r
 
-class ItOp01(FormalPowerSeries01):
-    def __init__(self,a,ie):
+class Crush(FormalPowerSeries):
+    def __init__(self,a):
         """
-        Description and tests at FormalPowerSeries01.itop
+        Description and tests at FormalPowerSeries.crush
         sage: None   # indirect doctest
         """
 
         si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=1)
+        si(self,a.parent().base_ring(),min_index=a.min_index)
 
         self.a=a
-        self.ie = ie
-        self.b = self.a.regit(self.ie)
 
     def coeffs(self,n):
-        if n==0: return 0
-        if n==1: return 1
-        return sum([ self.b[k][n-k] for k in range(2,n+1)])
+        return sum([ self.a[k][n-k] for k in range(self.min_index,n+1)])
