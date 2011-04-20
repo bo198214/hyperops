@@ -1023,6 +1023,12 @@ class FormalPowerSeries(RingElement):
             return p._subclass(FormalPowerSeries0)
         return p
             
+    def crush(self):
+        """
+        If the base_ring of self is again a powerseries over base_ring2,
+        then interpret the coefficient powerseries as a powerseries in the same
+        variable and expand the resulting powerseries over base_ring2.
+        """
     def apply(self,f):
         """
         Returns the result of applying the function f(x,n) on each coefficient
