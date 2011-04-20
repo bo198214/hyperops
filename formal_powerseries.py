@@ -1019,27 +1019,12 @@ class FormalPowerSeries(RingElement):
             return p._subclass(FormalPowerSeries0)
         return p
             
-    def mul_fact(a):
+    def apply(self,f):
         """
-        The sequence a[n]*n! 
+    	Applies the function f(x,n) on each coefficient self[n].
+        """
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.Exp.mul_fact()                                   
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
-        """
-        return MulFact(a)
-
-    def div_fact(a):
-        """
-        Returns the sequence a[n]/n!.
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P(lambda n: 1).div_fact() - P.Exp
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return DivFact(a)
+        return Apply(self,f)
 
     def inc(a):
         """
@@ -2871,7 +2856,7 @@ class Inv_selfroot_inc(FormalPowerSeries):
         return P.K(r)/factorial(n)
 
 ### Methods ###
-    
+
 class ExtinctBefore(FormalPowerSeries):
     def __init__(self,a,min_index):
         """
@@ -2890,31 +2875,20 @@ class ExtinctBefore(FormalPowerSeries):
         if n < self.min_index:
             return self.K0
         return self.a[n]
-
-class MulFact(FormalPowerSeries):
-    def __init__(self,a):
+class Apply(FormalPowerSeries):
+    def __init__(self,a,f):
         """
-        Description and tests at FormalPowerSeries.mul_fact
-        sage: None   # indirect doctest
-        """
-        FormalPowerSeries.__init__(self,a.parent(),min_index=a.min_index)
-        self.a = a
-    def coeffs(self,n): 
-        """ sage: None   # indirect doctest """
-        return self.a[n]*self.K(factorial(n))
-
-class DivFact(FormalPowerSeries):
-    def __init__(self,a):
-        """
-        Description and tests at FormalPowerSeries.div_fact
-        sage: None   # indirect doctest
+        Description and tests at FormalPowerSeries.apply
+        sage: None  # indirect doctest
         """
         FormalPowerSeries.__init__(self,a.parent(),min_index=a.min_index)
         self.a = a
-    def coeffs(self,n): 
-        """ sage: None   # indirect doctest """
-        return self.a[n]/self.K(factorial(n))
-        
+        self.f = f
+
+    def coeffs(self,n):
+        """ sage: None # indirect doctest """
+        return self.f(self.a[n],n)
+
 class IncMethod(FormalPowerSeries):
     def __init__(self,a):
         """
