@@ -22,7 +22,7 @@ from sage.rings.polynomial.polynomial_element import Polynomial
 from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.rational_field import QQ, RationalField
 from sage.rings.rational import Rational
-from sage.rings.real_mpfr import RR, RealField, RealNumber
+from sage.rings.real_mpfr import RR, RealField, RealNumber, RealField_class
 from sage.rings.real_mpfr import RealLiteral
 from sage.rings.ring import Ring
 from sage.rings.ring_element import RingElement
@@ -72,7 +72,7 @@ def decidable0(K):
         return True
     if isinstance(K,RationalField):
         return True
-    if isinstance(K,RealNumber):
+    if isinstance(K,RealField_class):
         return True
     if isinstance(K,PolynomialRing_field):
         return True
