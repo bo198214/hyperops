@@ -3458,7 +3458,13 @@ class Regit01(FormalPowerSeries01):
         sage: None   # indirect doctest
         """
         si = FormalPowerSeries.__init__
-        si(self,None,min_index=a.min_index,base_ring=t.parent())
+        if a.base_ring().has_coerce_map_from(t.parent()):
+            ps_type = a.parent()
+            base_ring = None
+        elif t.parent().has_coerce_map_from(a.base_ring()):
+            ps_type = None
+            base_ring = t.parent()
+        si(self,ps_type,min_index=a.min_index,base_ring=base_ring)
         self.a = a 
         self.t = t
 
