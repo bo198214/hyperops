@@ -1063,34 +1063,38 @@ class FormalPowerSeries(RingElement):
         True
         """
  
-        min_index = max(2,p.min_index)
-        for n in range(p.min_index,2):
-            if not p[n] == 0:
-                min_index = n
-                break
+        if p.parent().is_decidable:
+            min_index = max(2,p.min_index)
+            for n in range(p.min_index,2):
+                if not p[n] == 0:
+                    min_index = n
+                    break
+            p.min_index = min_index
 
-        p.min_index = min_index
+            if p.min_index == 1 and p[1] == 1 and not isinstance(p,FormalPowerSeries01):
+                return p._subclass(FormalPowerSeries01)
 
-        if p.min_index < 0:
+        if p.min_index <= 0:
             return p
 
+        if p.min_index > 2 and not isinstance(p,FormalPowerSeries0):
+            return p._subclass(FormalPowerSeries0)
+    
+        # p.min_index is either 1 or 2
         if hasattr(p,'hint'):
             if p.hint[0] == 0:
-                if p.hint[1] == 1:
-                    return p._subclass(FormalPowerSeries01)
-                return p._subclass(FormalPowerSeries0)
-                  
-        if not p.parent().is_decidable:
-            if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
-                return p._subclass(FormalPowerSeries0)
-            return p
+                if p.hint[1] == 0:
+                    p.min_index = 2
+                else:
+                    p.min_index = 1
+                    if p.hint[1] == 1 and not isinstance(p,FormalPowerSeries01):
+                        return p._subclass(FormalPowerSeries01)
 
-        if min_index > 0:
-            if p[1] == 1:
-                return p._subclass(FormalPowerSeries01)
+        if not isinstance(p,FormalPowerSeries0):
             return p._subclass(FormalPowerSeries0)
+
         return p
-            
+
     def crush(self):
         """
         If the base_ring of self is again a powerseries over base_ring2,
