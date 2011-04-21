@@ -409,6 +409,11 @@ class FormalPowerSeriesRing(Ring):
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return self.One
+
+    
+    def mul_factorial(c,n): return c*factorial(n)
+
+    def div_factorial(c,n): return c/factorial(n)
         
     def __init__(self,base_ring):
         """
@@ -456,11 +461,7 @@ class FormalPowerSeriesRing(Ring):
         self.Cosh = Cosh(self)
         self.Arcsinh = Arcsinh(self,min_index=1)
         self.Arctanh = Arctanh(self,min_index=1)
-        def mul_factorial(c,n): return c*factorial(n)
-        def div_factorial(c,n): return c/factorial(n)
-        self.mul_factorial = mul_factorial
-        self.div_factorial = div_factorial
-        self.Bernoulli = (self.Id / self.Exp.dec()).apply(mul_factorial)
+        self.Bernoulli = (self.Id / self.Exp.dec()).apply(self.mul_factorial)
         self.Bernoulli.__doc__ = """
         The n-th Bernoulli number is equal to 
         the n-th derivative of 1/(exp(x)-1) at 0.
