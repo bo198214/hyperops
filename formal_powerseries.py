@@ -3229,7 +3229,7 @@ class Mul(FormalPowerSeries):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         a,b = self.a,self.b
-        return sum([self.ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)])
+        return sum([self.ab(k,n-k) for k in range(a.min_index,n+1-b.min_index)],self.K0)
 
 class Div(FormalPowerSeries):
     def __init__(self,c,b):
@@ -3302,12 +3302,12 @@ class Nipow(FormalPowerSeries):
         if a.parent().is_decidable:
             assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
 
-        da = a.set_item(0,0)
+        da = a.set_item(0,s.K0)
         
         if n>=0 and a[0] == 1: 
-            #dont use symbolic arithmetic for ratonal powers of 1
-            return sum([binomial(t,k) * da.npow(k)[n] for k in range(n+1)],a.K0)
-        return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],a.K0)
+            #dont use symbolic arithmetic for rational powers of 1
+            return sum([binomial(t,k) * da.npow(k)[n] for k in range(n+1)],s.K0)
+        return sum([binomial(t,k) * a[0]**t/a[0]**k * da.npow(k)[n] for k in range(n+1)],s.K0)
 
 class Compose(FormalPowerSeries):
     def __init__(self,b,a):
@@ -3326,11 +3326,12 @@ class Compose(FormalPowerSeries):
         """ sage: None   # indirect doctest """
         b = self.b
         a = self.a
-        res = sum([b[k]*(a.npow(k)[n]) for k in range(n+1)])
+        res = sum([b[k]*(a.npow(k)[n]) for k in range(n+1)],self.K0)
         if b.min_index < 0:
             bi = a.rcp()
-            res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)],b.K0)
+            res += sum([b[k]*(bi.npow(-k)[n]) for k in range(b.min_index,0)])
         return res
+
 class Lshift(FormalPowerSeries):
     def __init__(self,a,m=1):
         """
@@ -3523,7 +3524,7 @@ class Inv(FormalPowerSeries0):
         if n==1:
             return 1/a[1]
         if n>1:
-            return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)])/a[1]**n
+            return - sum([ b[k]*a.npow(k)[n] for k in range(1,n)],self.K0)/a[1]**n
 
 class Logit(FormalPowerSeries0):
     def __init__(self,a,j1=None):
@@ -3569,7 +3570,7 @@ class Logit(FormalPowerSeries0):
         
         N = n + self.min_index - 1
         #print n,N
-        r = a.K0
+        r = self.K0
 
         for k in range(1,n):
             r-=self[k]*(a.npow(k)[N]-ap[N-k])
@@ -3585,6 +3586,7 @@ class Schroeder(FormalPowerSeries01):
         si = FormalPowerSeries.__init__
         si(self,a.parent(),min_index=1)
         self.a=a
+        self.hint = HintType([0,1])
 
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
@@ -3598,8 +3600,8 @@ class Schroeder(FormalPowerSeries01):
         if n <= 0:
             return self.K0
         if n == 1:
-            return 1
-        return sum([self[m]*a.npow(m)[n] for m in range(1,n)])/(q - q**n)
+            return self.K1
+        return sum([self[m]*a.npow(m)[n] for m in range(1,n)],self.K0)/(q - q**n)
 
 class InvSchroeder(FormalPowerSeries01):
     def __init__(self,a):
@@ -3620,7 +3622,7 @@ class InvSchroeder(FormalPowerSeries01):
             return self.K0
         if n == 1:
             return 1
-        return sum([a[m]*self.npow(m)[n] for m in range(2,n+1)])/(q**n-q)
+        return sum([a[m]*self.npow(m)[n] for m in range(2,n+1)],self.K0)/(q**n-q)
     
 class Regit01(FormalPowerSeries01):
     def __init__(self,a,t):
@@ -3651,12 +3653,12 @@ class Regit01(FormalPowerSeries01):
         if n == 1: return self.K1
         #def c(m):
         #    return (-1)**(n-1-m)*binomial(t,m)*binomial(t-1-m,n-1-m)
-        #res = sum([c(m)*a.nit(m)[n] for m in range(n)],a.K0)
+        #res = sum([c(m)*a.nit(m)[n] for m in range(n)],self.K0)
         #return res
 
         r = self.K0
         for m in range(n):
-            s = a.K0
+            s = self.K0
             for k in range(m+1):
                 s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
             r += s*binomial(t,m)
@@ -3668,19 +3670,18 @@ class Logit_Jabotinsky(FormalPowerSeries01):
         Description and tests at FormalPowerSeries01.julia
         sage: None   # indirect doctest
         """
-        P = a.parent()
         si = FormalPowerSeries.__init__
-        si(self,P,min_index=1)
+        si(self,a.parent(),min_index=1)
         self.a=a
 
     def coeffs(self,n):
         """ sage: None # indirect doctest """
         a = self.a
-        r = a.K0
-        P = a.parent()
+        r = self.K0
+        P = self.parent()
 
         for m in range(n):
-            s = a.K0
+            s = self.K0
             for k in range(m+1):
                 s += binomial(m,k)*(-1)**(m-k)*a.nit(k)[n] 
             s *= P.Stirling1[m][1]/factorial(m)
@@ -3702,4 +3703,4 @@ class Crush(FormalPowerSeries):
             self.hint = a.hint
 
     def coeffs(self,n):
-        return sum([ self.a[k][n-k] for k in range(self.min_index,n+1)])
+        return sum([ self.a[k][n-k] for k in range(self.min_index,n+1)],self.K0)
