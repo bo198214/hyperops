@@ -112,6 +112,160 @@ def _assert_nat(n):
     assert _isnat(n), repr(n)+ " must be natural number."
 
 class FormalPowerSeriesRing(Ring):
+    def __init__(self,base_ring):
+        """
+        Returns the powerseries ring over base_ring.
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: FormalPowerSeriesRing(QQ) 
+        FormalPowerSeriesRing over Rational Field
+        """
+        if base_ring == None:
+            return
+
+        self.K = base_ring
+
+        def PSS(seq):
+            """ sage: None   # indirect doctest """
+            return self.by_list(seq)
+
+        if self.K == int:
+            self.K = Integer
+
+        K = self.K
+        if self.K == SymbolicRing:
+            self.K0=Integer(0)
+            self.K1=Integer(1)
+        else:
+            self.K0 = K.zero_element()
+            self.K1 = K.one_element()
+
+        K0 = self.K0
+        K1 = self.K1
+        self.Zero = Zero(self)
+        self.One = One(self)
+        self.Id = Id(self,min_index=1)
+        self.Inc = Inc(self)
+        self.Dec = Dec(self)
+        self.Exp = Exp(self)
+        self.Dec_exp = Dec_exp(self,min_index=1)
+        self.Log_inc = Log_inc(self,min_index=1)
+        self.Sin = Sin(self,min_index=1)
+        self.Cos = Cos(self)
+        self.Arcsin = Arcsin(self,min_index=1)
+        self.Arctan = Arctan(self,min_index=1)
+        self.Sinh = Sinh(self,min_index=1)
+        self.Cosh = Cosh(self)
+        self.Arcsinh = Arcsinh(self,min_index=1)
+        self.Arctanh = Arctanh(self,min_index=1)
+        self.Bernoulli = (self.Id / self.Exp.dec()).apply(self.mul_factorial)
+        self.Bernoulli.__doc__ = """
+        The n-th Bernoulli number is equal to 
+        the n-th derivative of 1/(exp(x)-1) at 0.
+        """
+        self.Tan = Tan(self,min_index=1)
+        self.Tanh = Tanh(self,min_index=1)
+        self.Xexp = Xexp(self,min_index=1)
+        self.Lambert_w = Lambert_w(self,min_index=1)
+        self.Sqrt_inc = Sqrt_inc(self)
+
+        #dont go into a recursion defining stirling1
+        if isinstance(K,FormalPowerSeriesRing):
+            return
+
+        self.Stirling1 = Stirling1(self)
+
+#         def lehmer_comtet(n,k): #A008296
+#             """ sage: None   # indirect doctest """
+#             r = 0
+#             for l in range(k,n+1):
+#                 r += binomial(l, k)*k**(l-k)*self.Stirling1[n][l] 
+#             return K(r)
+
+        self.Lehmer_comtet = Lehmer_comtet(self)
+        self.A000248  = self.Lehmer_comtet
+
+        #self.selfpower_inc = PSF(lambda n: K(sum([ lehmer_comtet(n,k) for k in range(0,n+1))/factorial(n),K0))
+        self.Selfpower_inc = Selfpower_inc(self)
+
+        self.Superroot_inc = Superroot_inc(self)
+
+        self.A003725 = A003725(self)
+
+        self.Selfroot_inc = Selfroot_inc(self)
+        
+        self.Inv_selfroot_inc = Inv_selfroot_inc(self)
+
+        #Mittag-Leffler polynomial cache
+        self.mlpc = {}
+
+    def __call__(self,p1=None,p2=None,p3=None,**kwargs):
+        """
+        Initialization by finite sequence of coefficients:
+        Examples:
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: PQ = FormalPowerSeriesRing(QQ)
+        sage: PQ([1,2,3])
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ([])
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        
+        Initialization by coefficient function:
+        Example:
+        sage: PQ(lambda n: 1/factorial(n))
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+
+        Initialization by expresion:
+        Examples:
+        sage: PQ(1+2*x+3*x^2,x)
+        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ(exp(x),x)
+        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
+        sage: PQ(ln(x),x,1)
+        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
+
+        Note: This is much slower than directly providing the coefficient function. 
+
+        See also methods: by_const, by_undef, by_list, by_taylor, by_lambda
+        """
+
+        if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
+            return self.by_constant(p1,**kwargs)
+        
+        if isinstance(p1,SageObject) and self.K.has_coerce_map_from(p1.parent()):
+            return self.by_constant(p1,**kwargs)
+
+        if isinstance(p1,list):
+            if p2 == None:
+                return self.by_list(p1,**kwargs)
+            return self.by_list(p1,p2,**kwargs)
+
+        if isinstance(p1,Expression):
+            if p3 == None:
+                return self.by_taylor(p1,p2,**kwargs)
+            return self.by_taylor(p1,p2,p3,**kwargs)
+
+        if isinstance(p1,Polynomial):
+            return self.by_polynomial(p1)
+
+        if isinstance(p1,PowerSeries):
+            return self.by_powerseries(p1)
+
+        #TODO generator if isinstance(p1,
+
+        if type(p1) is type(lambda n: 0):
+            if p2 == None:
+                return self.by_lambda(p1,**kwargs)
+            return self.by_lambda(p1,p2,**kwargs)
+
+        if type(p1) is FormalPowerSeries:
+            return self.by_
+
+        if p1 == None:
+            return self.by_undefined(p2)
+
+        raise TypeError, "unrecognized initialization input " + repr(type(p1))
+
     def by_lambda(self,f,min_index=0):
         """
         Returns the powerseries with coefficients f(n).
@@ -277,73 +431,6 @@ class FormalPowerSeriesRing(Ring):
         return Constant(self,c)
         
 
-    def __call__(self,p1=None,p2=None,p3=None,**kwargs):
-        """
-        Initialization by finite sequence of coefficients:
-        Examples:
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: PQ = FormalPowerSeriesRing(QQ)
-        sage: PQ([1,2,3])
-        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PQ([])
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        
-        Initialization by coefficient function:
-        Example:
-        sage: PQ(lambda n: 1/factorial(n))
-        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
-
-        Initialization by expresion:
-        Examples:
-        sage: PQ(1+2*x+3*x^2,x)
-        [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: PQ(exp(x),x)
-        [1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800, ...]
-        sage: PQ(ln(x),x,1)
-        [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
-
-        Note: This is much slower than directly providing the coefficient function. 
-
-        See also methods: by_const, by_undef, by_list, by_taylor, by_lambda
-        """
-
-        if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
-            return self.by_constant(p1,**kwargs)
-        
-        if isinstance(p1,SageObject) and self.K.has_coerce_map_from(p1.parent()):
-            return self.by_constant(p1,**kwargs)
-
-        if isinstance(p1,list):
-            if p2 == None:
-                return self.by_list(p1,**kwargs)
-            return self.by_list(p1,p2,**kwargs)
-
-        if isinstance(p1,Expression):
-            if p3 == None:
-                return self.by_taylor(p1,p2,**kwargs)
-            return self.by_taylor(p1,p2,p3,**kwargs)
-
-        if isinstance(p1,Polynomial):
-            return self.by_polynomial(p1)
-
-        if isinstance(p1,PowerSeries):
-            return self.by_powerseries(p1)
-
-        #TODO generator if isinstance(p1,
-
-        if type(p1) is type(lambda n: 0):
-            if p2 == None:
-                return self.by_lambda(p1,**kwargs)
-            return self.by_lambda(p1,p2,**kwargs)
-
-        if type(p1) is FormalPowerSeries:
-            return self.by_
-
-        if p1 == None:
-            return self.by_undefined(p2)
-
-        raise TypeError, "unrecognized initialization input " + repr(type(p1))
-
     def is_field(self):
         """
         Returns True if self is a field, i.e. if it can be used as
@@ -415,93 +502,6 @@ class FormalPowerSeriesRing(Ring):
 
     def div_factorial(self,c,n): return c/factorial(n)
         
-    def __init__(self,base_ring):
-        """
-        Returns the powerseries ring over base_ring.
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: FormalPowerSeriesRing(QQ) 
-        FormalPowerSeriesRing over Rational Field
-        """
-        if base_ring == None:
-            return
-
-        self.K = base_ring
-
-        def PSS(seq):
-            """ sage: None   # indirect doctest """
-            return self.by_list(seq)
-
-        if self.K == int:
-            self.K = Integer
-
-        K = self.K
-        if self.K == SymbolicRing:
-            self.K0=Integer(0)
-            self.K1=Integer(1)
-        else:
-            self.K0 = K.zero_element()
-            self.K1 = K.one_element()
-
-        K0 = self.K0
-        K1 = self.K1
-        self.Zero = Zero(self)
-        self.One = One(self)
-        self.Id = Id(self,min_index=1)
-        self.Inc = Inc(self)
-        self.Dec = Dec(self)
-        self.Exp = Exp(self)
-        self.Dec_exp = Dec_exp(self,min_index=1)
-        self.Log_inc = Log_inc(self,min_index=1)
-        self.Sin = Sin(self,min_index=1)
-        self.Cos = Cos(self)
-        self.Arcsin = Arcsin(self,min_index=1)
-        self.Arctan = Arctan(self,min_index=1)
-        self.Sinh = Sinh(self,min_index=1)
-        self.Cosh = Cosh(self)
-        self.Arcsinh = Arcsinh(self,min_index=1)
-        self.Arctanh = Arctanh(self,min_index=1)
-        self.Bernoulli = (self.Id / self.Exp.dec()).apply(self.mul_factorial)
-        self.Bernoulli.__doc__ = """
-        The n-th Bernoulli number is equal to 
-        the n-th derivative of 1/(exp(x)-1) at 0.
-        """
-        self.Tan = Tan(self,min_index=1)
-        self.Tanh = Tanh(self,min_index=1)
-        self.Xexp = Xexp(self,min_index=1)
-        self.Lambert_w = Lambert_w(self,min_index=1)
-        self.Sqrt_inc = Sqrt_inc(self)
-
-        #dont go into a recursion defining stirling1
-        if isinstance(K,FormalPowerSeriesRing):
-            return
-
-        self.Stirling1 = Stirling1(self)
-
-#         def lehmer_comtet(n,k): #A008296
-#             """ sage: None   # indirect doctest """
-#             r = 0
-#             for l in range(k,n+1):
-#                 r += binomial(l, k)*k**(l-k)*self.Stirling1[n][l] 
-#             return K(r)
-
-        self.Lehmer_comtet = Lehmer_comtet(self)
-        self.A000248  = self.Lehmer_comtet
-
-        #self.selfpower_inc = PSF(lambda n: K(sum([ lehmer_comtet(n,k) for k in range(0,n+1))/factorial(n),K0))
-        self.Selfpower_inc = Selfpower_inc(self)
-
-        self.Superroot_inc = Superroot_inc(self)
-
-        self.A003725 = A003725(self)
-
-        self.Selfroot_inc = Selfroot_inc(self)
-        
-        self.Inv_selfroot_inc = Inv_selfroot_inc(self)
-
-        #Mittag-Leffler polynomial cache
-        self.mlpc = {}
-
     def _repr_(self):
         """
         Description of this FormalPowerSeriesRing.
