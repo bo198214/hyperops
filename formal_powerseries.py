@@ -456,7 +456,11 @@ class FormalPowerSeriesRing(Ring):
         self.Cosh = Cosh(self)
         self.Arcsinh = Arcsinh(self,min_index=1)
         self.Arctanh = Arctanh(self,min_index=1)
-        self.Bernoulli = (self.Id / self.Exp.dec()).apply(lambda c,n:c*factorial(n))
+        def mul_factorial(c,n): return c*factorial(n)
+        def div_factorial(c,n): return c/factorial(n)
+        self.mul_factorial = mul_factorial
+        self.div_factorial = div_factorial
+        self.Bernoulli = (self.Id / self.Exp.dec()).apply(mul_factorial)
         self.Bernoulli.__doc__ = """
         The n-th Bernoulli number is equal to 
         the n-th derivative of 1/(exp(x)-1) at 0.
@@ -1056,7 +1060,7 @@ class FormalPowerSeries(RingElement):
         sage: p = P.gen()
         sage: FP = FormalPowerSeriesRing(P)
         sage: FP.Dec_exp.regit(p).parent() == FP
-        sage: True
+        True
 
         sage: FFP = FormalPowerSeriesRing(FP)
         sage: h1 = FP([0,p])
@@ -1086,7 +1090,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.Exp.apply(lambda c,n: c*factorial(n))
+        sage: P.Exp.apply(P.mul_factorial)
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
 
@@ -1472,7 +1476,8 @@ class FormalPowerSeries(RingElement):
         sage: c.bell_polynomials(2)[6] == 6*c5*c1 + 15*c4*c2 + 10*c3**2
         True
         """
-        return (a.apply(lambda c,n: c/factorial(n))**k).apply(lambda c,n: c*factorial(n)).rmul(Integer(1)/factorial(k))
+        A = a.parent()
+        return (a.apply(A.div_factorial)**k).apply(A.mul_factorial).rmul(Integer(1)/factorial(k))
 
     def bell_polynomial(a,n,k):
         """
@@ -1498,8 +1503,7 @@ class FormalPowerSeries(RingElement):
         sage: c1 = P('c1');c2 = P('c2');c3 = P('c3');c4 = P('c4');c5 = P('c5')
         sage: PS = FormalPowerSeriesRing(P)
         sage: c = PS([0,c1,c2,c3,c4,c5])
-        sage: div_fact = lambda a,n: a/factorial(n)
-        sage: (PS.Exp(c.apply(div_fact)) - c.bell_complete(5).apply(div_fact))[1:6]
+        sage: (PS.Exp(c.apply(PS.div_factorial)) - c.bell_complete(5).apply(PS.div_factorial))[1:6]
         [0, 0, 0, 0, 0]
         """
         if n <= 0:
@@ -1712,7 +1716,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P.Exp.apply(lambda c,n: c*factorial(n))
+        sage: p = P.Exp.apply(P.mul_factorial)
         sage: (p << 1) - p
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1725,7 +1729,7 @@ class FormalPowerSeries(RingElement):
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P.Exp.apply(lambda c,n: c*factorial(n))
+        sage: p = P.Exp.apply(P.mul_factorial)
         sage: (p >> 1) - p
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
