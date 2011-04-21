@@ -126,8 +126,8 @@ class FormalPowerSeriesRing(Ring):
         self.K = base_ring
         if is_decidable is None:
             self.is_decidable = decidable0(base_ring)
-        self.is_decidable.__doc__ = \
-            "is_one and is_zero can be decided in the base_ring"
+        #self.is_decidable.__doc__ = \
+        #    "is_one and is_zero can be decided in the base_ring"
 
 
         def PSS(seq):
@@ -230,8 +230,17 @@ class FormalPowerSeriesRing(Ring):
         [0, 1, -1/2, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10, 1/11, -1/12, ...]
 
         Note: This is much slower than directly providing the coefficient function. 
-
         See also methods: by_const, by_undef, by_list, by_taylor, by_lambda
+
+        Some base rings of a FormalPowerSeries are decidable, some not
+        if you think, that the automatic detection is wrong
+        you can explicitely specify with is_decidable option
+        sage: FormalPowerSeriesRing(QQ).is_decidable   
+        True
+        sage: FormalPowerSeriesRing(PolynomialRing(QQ,'x')).is_decidable   
+        True
+        sage: FormalPowerSeriesRing(FormalPowerSeriesRing(QQ)).is_decidable    
+        False
         """
 
         if isinstance(p1,Integer) or isinstance(p1,int) or isinstance(p1,Rational):
@@ -1025,10 +1034,10 @@ class FormalPowerSeries(RingElement):
         True
         """
 
-#         if not decidable0(p.K):
-#             if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
-#                 p._subclass(FormalPowerSeries0)
-#             return p
+        if not p.parent().is_decidable:
+            if p.min_index > 0 and not isinstance(p,FormalPowerSeries0):
+                p._subclass(FormalPowerSeries0)
+            return p
 
         min_index = max(2,p.min_index)
         for n in range(p.min_index,2):
