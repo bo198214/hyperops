@@ -1045,12 +1045,36 @@ class FormalPowerSeries(RingElement):
 
         
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: F = FormalPowerSeriesRing(QQ)                 
-        sage: p = F.Dec_exp.it(F.Exp)    
-        sage: p.parent()
+        sage: FQ = FormalPowerSeriesRing(QQ)                 
+        sage: g = FQ.Dec_exp.regit(FQ.Exp)    
+        sage: g.parent()
         FormalPowerSeriesRing over FormalPowerSeriesRing over Rational Field
-        sage: p.crush()
+        sage: g.crush()
         [0, 1, 1/2, 2/3, 17/24, 59/80, 1099/1440, 47297/60480, 48037/60480, ...]
+        
+        sage: P = PolynomialRing(QQ,'p')
+        sage: p = P.gen()
+        sage: FP = FormalPowerSeriesRing(P)
+        sage: FP.Dec_exp.regit(p).parent() == FP
+        sage: True
+
+        sage: FFP = FormalPowerSeriesRing(FP)
+        sage: h1 = FP([0,p])
+        sage: h2 = h1.apply(lambda poly,n: poly(FP.Exp),result_type=FFP)
+        sage: h2.parent() == FFP
+        True
+        sage: h2[1] - FP.Exp   
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: h2[2]
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: h3 = h2.regit(p-1)
+        sage: (h3[1] - FP.Exp**(p-1))[0:7]              
+        [0, 0, 0, 0, 0, 0, 0]
+        sage: h4 = h3.crush()
+        sage: h4.parent() == FP
+        True
+        sage: (h4 - FP.Id * FP.Exp(FP.Id * (p-1)))[0:7]
+        [0, 0, 0, 0, 0, 0, 0]
         """
 
         return Crush(self)
@@ -3294,8 +3318,24 @@ class Regit(FormalPowerSeries0):
         Description and tests at FormalPowerSeries.regit
         sage: None   # indirect doctest
         """
+        A = a.parent()
+        AB = A.base_ring()
+        T = t.parent()
+        if pow==False and AB.has_coerce_map_from(T):
+            res_type = A
+            base_ring = None #will be taken from res_type
+        elif pow==False and T.has_coerce_map_from(AB):
+            res_type = None #will be computed from base_ring
+            base_ring = T
+        elif pow == True:
+            base_ring = None #will be taken from res_type
+            if T.has_coerce_map_from(A):
+                res_type = T
+            elif A.has_coerce_map_from(T):
+                res_type = A
+
         si = FormalPowerSeries.__init__
-        si(self,a.parent(),min_index=1)
+        si(self,res_type,min_index=1,base_ring=base_ring)
         self.a = a 
         self.t = t
         self.pow=pow
