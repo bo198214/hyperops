@@ -112,7 +112,7 @@ def _assert_nat(n):
     assert _isnat(n), repr(n)+ " must be natural number."
 
 class FormalPowerSeriesRing(Ring):
-    def __init__(self,base_ring):
+    def __init__(self,base_ring,is_decidable=None):
         """
         Returns the powerseries ring over base_ring.
 
@@ -124,6 +124,11 @@ class FormalPowerSeriesRing(Ring):
             return
 
         self.K = base_ring
+        if is_decidable is None:
+            self.is_decidable = decidable0(base_ring)
+        self.is_decidable.__doc__ = \
+            "is_one and is_zero can be decided in the base_ring"
+
 
         def PSS(seq):
             """ sage: None   # indirect doctest """
@@ -3188,7 +3193,7 @@ class Nipow(FormalPowerSeries):
         """ sage: None   # indirect doctest """
         a = s.a
         t = s.t
-        if decidable0(a.K):
+        if a.parent().is_decidable:
             assert a[0] != 0, "0th coefficient is " + repr(a[0]) + ", but must be non-zero for non-integer powers"
 
         da = a.set_item(0,0)
@@ -3359,7 +3364,7 @@ class Regit(FormalPowerSeries0):
         b = self
         a = b.a
         t = b.t
-        if decidable0(a.K):
+        if a.parent().is_decidable:
             assert a[1]!=1, a[1]
             assert a[1]!=0, a[1]
 
@@ -3472,7 +3477,7 @@ class Schroeder(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         a = self.a
-        if decidable0(a.K):
+        if a.parent().is_decidable:
             assert a[1] != 0, a[1]
             assert a[1] != 1, a[1]
         
@@ -3526,7 +3531,7 @@ class Regit01(FormalPowerSeries01):
         """ sage: None   # indirect doctest """
         a = self.a
         t = self.t
-        if decidable0(a.K):
+        if a.parent().is_decidable:
             assert a[0] == 0, "The index of the lowest non-zero coefficient must be 1, but is " + repr(a.min_index)
             assert a[1] == 1, "The first coefficient must be 1, but is " + repr(a[1])
 
