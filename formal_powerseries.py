@@ -1084,7 +1084,7 @@ class FormalPowerSeries(RingElement):
 
         return Crush(self)
 
-    def apply(self,f,result_type=None,result_base_ring=None):
+    def apply(self,f,first=None,last=None,result_type=None,result_base_ring=None):
         """
         Returns the result of applying the function f(x,n) on each coefficient
         self[n].
@@ -1095,7 +1095,7 @@ class FormalPowerSeries(RingElement):
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
 
-        return Apply(self,f,result_type=result_type,result_base_ring=result_base_ring)
+        return Apply(self,f,first=first,last=last,result_type=result_type,result_base_ring=result_base_ring)
 
     def inc(a):
         """
@@ -1356,7 +1356,7 @@ class FormalPowerSeries(RingElement):
         [1, 1/2, 1/8, 1/48, 1/384, 1/3840, 1/46080, 1/645120, 1/10321920, ...]
 
         sage: PR = FormalPowerSeriesRing(RR)
-        sage: PR.Exp.nipow(0.5).n(20)                       
+        sage: PR.Exp.nipow(RR(0.5r)).n(20)                       
         [1.0000, 0.50000, 0.12500, 0.020833, 0.0026042, 0.00026042, 0.000021701, ...]
         """
         return Nipow(a,t)
@@ -1379,8 +1379,9 @@ class FormalPowerSeries(RingElement):
         sage: P = FormalPowerSeriesRing(QQ)
         sage: P(lambda n: 1).pow(-1)
         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: P = FormalPowerSeriesRing(RealField(16))
-        sage: P([1,2,3])**(-0.37)
+        sage: R = RealField(16)
+        sage: P = FormalPowerSeriesRing(R)
+        sage: P([1,2,3])**(RealNumber(-0.37r))
         [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.091, -9.079, 6.390, ...]
         """
 
@@ -1525,7 +1526,7 @@ class FormalPowerSeries(RingElement):
         sage: P = FormalPowerSeriesRing(QQ)
         sage: f = P.by_list([1,2,3],-2).polynomial(5)                  
         sage: g = P.by_list([1,2,3],-2).genfunc(5)
-        sage: f(3.7)==g(3.7)
+        sage: f(3.7r)==g(3.7r)
         True
         """
         m = a.min_index
@@ -2953,7 +2954,7 @@ class ExtinctBefore(FormalPowerSeries):
         return self.a[n]
 
 class Apply(FormalPowerSeries):
-    def __init__(self,a,f,result_type=None,result_base_ring=None):
+    def __init__(self,a,f,first=None,last=None,result_type=None,result_base_ring=None):
         """
         Description and tests at FormalPowerSeries.apply
         sage: None  # indirect doctest
@@ -2965,10 +2966,18 @@ class Apply(FormalPowerSeries):
         FormalPowerSeries.__init__(self,result_type,min_index=a.min_index)
         self.a = a
         self.f = f
+        self.first = first
+        self.last = last
 
     def coeffs(self,n):
         """ sage: None # indirect doctest """
+        
+        outside = False
+        if not self.first is None and n<self.first: outside = True
+        elif not self.last is None and n>self.last: outside = True
+        if outside: return self.a[n]
         return self.f(self.a[n],n)
+            
 
 class IncMethod(FormalPowerSeries):
     def __init__(self,a):
