@@ -3697,8 +3697,9 @@ class Crush(FormalPowerSeries):
 
         si = FormalPowerSeries.__init__
         si(self,a.parent().base_ring(),min_index=a.min_index)
-
         self.a=a
+        if hasattr(a,'hint'):
+            self.hint = a.hint
 
     def coeffs(self,n):
         return sum([ self.a[k][n-k] for k in range(self.min_index,n+1)])
