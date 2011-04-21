@@ -411,9 +411,9 @@ class FormalPowerSeriesRing(Ring):
         return self.One
 
     
-    def mul_factorial(c,n): return c*factorial(n)
+    def mul_factorial(self,c,n): return c*factorial(n)
 
-    def div_factorial(c,n): return c/factorial(n)
+    def div_factorial(self,c,n): return c/factorial(n)
         
     def __init__(self,base_ring):
         """
