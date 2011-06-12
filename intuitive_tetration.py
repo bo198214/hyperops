@@ -29,7 +29,7 @@ class IntuitiveSlog:
         self.prec = None
 
 
-        bname = repr(b).replace('.',',')
+        bname = repr(b).strip('0').replace('.',',')
         if b == sqrt(2):
            bname = "sqrt2"
         if b == e**(1/e):
@@ -38,9 +38,9 @@ class IntuitiveSlog:
         x0name = repr(x0)
         if x0name.find('.') > -1:
             if x0.is_real():
-                x0name = repr(float(x0)).replace('.',',')
+                x0name = repr(float(x0)).strip('0').replace('.',',')
             else:
-                x0name = repr(complex(x0)).replace('.',',')
+                x0name = repr(complex(x0)).strip('0').replace('.',',')
         # by some reason save does not work with additional . inside the path
 
         self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
@@ -111,15 +111,18 @@ class IntuitiveSlog:
         L = ComplexField(iprec)(L.real,L.imag)
         self.L = L
 
+        r = abs(x0-L)
 
         #lower fixed point
         bL = None
         if b <= R(e**(1/e)):
              bL = mpmath.lambertw(-mpmath.ln(b),0)/(-mpmath.ln(b))
              bL = RealField(iprec)(bL)
+             r = min(r,abs(x0-bL))
         self.bL = bL
 
-        self.r = abs(x0-self.bL)
+        self.r = r
+
 
         if bL == None or real(x0) < bL:
             #slog(0)==-1
