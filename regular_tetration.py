@@ -1,38 +1,57 @@
-from sage.functions.log import log
+from sage.functions.log import ln
+from sage.functions.other import sqrt
 from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField
 from sage.rings.formal_powerseries import FormalPowerSeriesRing
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.real_mpfr import RR, RealField
-import mpmath
+from sage.symbolic.constants import e,NaN
 
-class RegularTetration:
-    def __init__(self,b,N,iprec=512,fixpoint_number=0,prec=None,angle_real=pi):
+from sage.hyperops.exp_fixpoint import exp_fixpoint
+#from sage.hyperops.exp_fixpoint import PrecisionError 
+
+
+class RegularSlog:
+    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
         """
-	Counting fixpoints as follows:
-        For b<e^(1/e): 
-	  0 denotes the lower fixpoint on the real axis,
-          1 denotes the upper fixed point on the real axis,
-	  2 denotes the fixpoint in the upper halfplane closest to the real axis, 
-          3 the second-closest, etc
+        for the numbering of fixed points see function exp_fixpoint
 
-	For b>e^(1/e): 
-	  1 denotes the fixpoint in the upper halfplane closest to the real axis,
-          2 the second-closest fixed point, etc.
+        u is the initial value such that slog(u)=0 and sexp(0)=u
+        for the attracting fixed point it defaults to u=1
+        otherwise it is undetermined
+
+        direction can be +1 (real values when approaching from the right of the fixpoint) 
+        or -1 (real values when approaching from the left of the fixed point)
         """
 
-        self.bsym = b
+        if debug >= 1:
+            if b==sqrt(2): print 'b:',b
+            if fixpoint_number==0: print 'fixpoint_number:',fixpoint_number
+            if prec==53: print 'prec:',prec
+            if N==5: print 'N:',N
+            if direction==-1: print 'direction:',direction
+
+        bsym = b
+        self.bsym = bsym
         self.N = N
+        if iprec==None:
+            iprec=prec+10
+            if debug>=1: print 'iprec:',iprec
         self.iprec = iprec
         self.prec = prec
         self.fixpoint_number = fixpoint_number
 
-        bname = repr(b).strip('0').replace('.',',')
-        if b == sqrt(2):
+        eta = e**(1/e)
+
+        bname = repr(bsym).strip('0').replace('.',',')
+        if bsym == sqrt(2):
            bname = "sqrt2"
-        if b == e**(1/e):
+        if bsym == eta:
            bname = "eta"
 
-        b = num(b,iprec)
+        self.lnb = num(ln(bsym),iprec)
+
+        b = num(bsym,iprec)
         self.b = b
 
         self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_fp%d"%fixpoint_number
@@ -46,58 +65,270 @@ class RegularTetration:
                 R = QQ
             else:
                 R = SR
-        R = RealField(iprec)
-        C = ComplexField(iprec)
-        self.R = R
-        self.C = C
 
-	mpmath.mp.prec = iprec
-        L = self.fp(fixpoint_number)
-        self.L = L
+        self.attracting = False
+        if b < eta and fixpoint_number == 0:
+            self.attracting = True
 
+        self.real_fp = False
+        if b <= eta and abs(fixpoint_number) <= 1:
+            self.real_fp = True
 
-        if b <= e**(1/e) and fixpoint_number == 0:
-            r = abs(L-self.fp(1))
+        self.parabolic = False
+        if self.bsym == eta and abs(fixpoint_number) <= 1:
+            self.parabolic = True
+            if direction == +1:
+                self.attracting = False
+            if direction == -1:
+                self.attracting = True
+
+        if b <= eta and abs(fixpoint_number) <= 1:
+            R = RealField(iprec)
         else:
-            r1 = abs(L-self.fp(fixpoint_number+1))
-            r2 = abs(L-self.fp(fixpoint_number-1))
-            r = min(r1,r2)
+            R = ComplexField(iprec)
+        self.R = R
 
-        self.r = r
-        self.phi = angle_real
+        if self.parabolic:
+            fp = R(e) #just for not messing it into a complex number
+        else:
+            fp = exp_fixpoint(b,fixpoint_number,prec=iprec)
 
-        R = RealField(iprec)
+        self.fp = fp #fixpoint
+
+        self.fpd = self.log(fp) #fixpont derivative
+
+        self.direction = direction
+
         FR = FormalPowerSeriesRing(R)
-        [rho,ps] = FR.Dec_exp(FR([0,log(b)])).rmul(L).abel_coeffs()
+        fps = FR.Dec_exp(FR([0,b.log()])).rmul(fp)
+        if self.parabolic:
+            fps=fps.set_item(1,1).reclass()
+            
+        if debug>=1: print "fp:",fp
+
+        [rho,ps] = fps.abel_coeffs()
+
+        if debug>=2: print 'fps:',fps
+        if debug>=2: print 'rho:',rho
+        if debug>=2: print 'abel_ps:',ps
+            
+        self.chi_ps = fps.schroeder()
+        self.chipoly = self.chi_ps.polynomial(N+1)
+        self.chi_raw0 = lambda z: self.chipoly(direction*(z-self.fp))
+
         PR = PolynomialRing(R,'x')
-        self.rho = rho
         self.slogpoly = ps.polynomial(N)
+        if debug>=2: print self.slogpoly
 
+        self.slog_raw0 = lambda z: rho*(direction*(z-self.fp)).log() + self.slogpoly(z-self.fp)
+
+        #slog(u)==0
         self.c = 0
-        if fixpoint_number == 0:
-            #slog(0)==-1
-	    self.c = -1 - self.slog(0.0)                   
-
-    def fp(self,k=1):
-        b=self.b
-        iprec = self.iprec
-        L = mpmath.lambertw(-mpmath.ln(b),-k)/(-mpmath.ln(b))
-        return ComplexField(iprec)(L.real,L.imag)
-
+        if self.attracting and direction==-1 and u==None:
+            u=1
+            if debug>=1: print 'u:',u
+            
+        if not u==None:
+            self.c = -self.slog(u)                   
+            pass
+        
     def log(self,z):
-        return log(z*exp(CC(0,-self.phi))) 
+        """
+        Logarithm with branch cut such that for imaginary values y:
+          -pi < y <= pi for real fixpoint
+          otherwise:
+          2*pi*(k-1) <= y <  2*pi*k     for k>=1
+          2*pi*k     <  y <= 2*pi*(k+1) for k<=-1
 
-    def slog_raw(self,z): 
-        z = num(z,self.iprec)
-        return self.c + self.rho*self.log(z-self.L) + self.slogpoly(z-self.L)
-        
-        
-    def slog(self,z):
-        z = num(z,self.iprec)
-        if abs(z-self.L) > self.r/2:
-            if self.fixpoint_number == 0:
-                return self.slog(self.b**z)-1
+          where k is the fixpoint_number
+        """
+        ### workaround for log(NaN)
+        if z == self.R(NaN):
+            return z
+        k = self.fixpoint_number
+        if self.real_fp:
+            res = z.log()
+        elif k>=1:
+            res = (log(-z.conjugate())-num(i*(2*pi*k-pi),self.iprec)).conjugate()
+        elif k<=-1:
+            res = log(-z)+num(i*(2*pi*k+pi),self.iprec)
+
+        return res
+
+    def chi(self,x,debug=0):
+        n = 0
+        xn = num(x,self.iprec)
+        yn = self.chi_raw0(xn)
+        if yn.is_zero():
+            return self.R(0)
+        a = self.fpd
+        err=2.0**(-self.prec)
+        if debug>=1: print 'chi: x',x,'N:',self.N,'iprec:',self.iprec,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a,'err:',err
+        while True:
+            if xn.is_zero():
+                return self.R(NaN)
+
+            yp=yn
+            xp=xn
+            n += 1
+    
+            if self.attracting:
+                xn = self.b**xn
             else:
-                return self.slog(log(z)/log(self.b))+1
+                xn = self.log(xn)/self.lnb
+    
+            yn = self.chi_raw0(xn)
+    
+            if self.attracting:
+                d = abs(log(yn/(yp*a)))
+            else:
+                d = abs(log(yn/(yp/a)))
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if xp == xn or d == 1:
+                if debug>=0: 
+    		    print "chi: precision failed for x:",x
+                return self.R(NaN)
+            
+            if d<err: 
+                if self.attracting:
+                    res = yn/a**n
+                else:
+                    res = yn*a**n
+                if debug>=1: print 'chi:',res,'n:',n,'d:',d.n(20),'err:',err
+                return res
+    
+    def slog_divisional(self,x,debug=0):
+        iprec=self.iprec
+        prec=self.prec
+        b = self.b
+        z0= self.fp
+        a = self.fpd
+  
+        res = self.c + self.chi(x,debug=debug).log()/a.log()
+        #workaround for log(NaN)
+        if res == self.R(NaN):
+            return res
 
-        return self.slog_raw(z)
+        res = res.n(prec)
+        return res
+            
+    def slog_subtractive(self,x,debug=0):
+        iprec=self.iprec
+        prec=self.prec
+        b = self.b
+        z0= self.fp
+  
+        xin = x
+        err=2.0**(-prec)
+        if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'err:',err
+        #lnb = b.log()
+        n = 0
+        xn = num(x,iprec)
+        yn = self.slog_raw0(xn)
+        while True:
+            yp=yn
+            xp=xn
+            n += 1
+    
+            if self.attracting:
+                xn = b**xn
+            else:
+                xn = self.log(xn)/self.lnb
+    
+            yn = self.slog_raw0(xn)
+      
+            if self.attracting:
+                d = abs(yn - (yp+1))
+            else:
+                d = abs(yn - (yp-1))
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if xp == xn or d == 1:
+                if debug>=0: 
+    		    print "slog: precision failed for x:",x
+                return NaN
+            
+              
+            if d<err: 
+                res = self.c + yn.n(prec)
+    
+                if self.attracting:
+                    res -= n
+                else:
+                    res += n
+      
+                if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
+                return res
+    
+    slog = slog_subtractive
+    __call__ = slog
+  
+class RegularSexp(RegularSlog):
+    def __init__(self,b=sqrt(2),fixpoint_number=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
+        RegularSlog.__init__(self,b,fixpoint_number,u,prec,iprec,N,direction,debug)
+
+        self.chiipoly = self.chi_ps.inv().polynomial(N+1)
+        self.chii_raw0 = lambda z: direction*self.chiipoly(z-self.c)
+        self.err=2.0**(-self.prec)
+
+    def chii(self,x,debug=0):
+        xn = num(x,self.iprec)
+        yn = self.chii_raw0(xn)
+        a = self.fpd
+        if debug>=1: 
+            print 'chii: x:',x,'prec:',self.prec,'b:',self.b,'fp:',self.fp,'a:',a
+        n = 0
+        while True:
+            yp=yn
+            xp=xn
+            n += 1
+            if self.attracting:
+                xn *= a
+            else:
+                xn /= a
+    
+            yn = self.chii_raw0(xn)
+            #yn = self.fp + self.direction*xn 
+    
+            for m in range(n):
+                if self.attracting:
+                    yn = self.log(yn)/self.lnb
+                else:
+                    yn = self.b**yn
+      
+            d = abs(yn-yp)
+    
+            if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+            
+            if d.is_NaN():
+                #p = PrecisionError(self.iprec,self.prec,"chii","x:",x)
+    		#raise p
+                if debug>=0: print "chii: precision failed for x:",x
+                return d
+    
+            if d<self.err: 
+                res = yn
+                if debug>=1: print 'chii:',res,'n:',n,'d:',d.n(20),'err:',self.err
+                return res
+    
+    def sexp_hyperbolic(self,x,debug=0):
+        if debug>0:
+            print "sexp_hyperbolic: x:",x
+        # try:
+            res = self.fp + self.chii(self.fpd**x,debug=debug)
+        # except PrecisionError as p:
+        #     p.args = p.args + ('sexp_hyperbolic','x:',x)
+        #     raise p
+        if res.is_Nan():
+            if debug>=0: print 'sexp_hyperbolic: precision failed x:',x
+            return res
+        res = res.n(self.prec)
+        return res
+        
+    sexp = sexp_hyperbolic
+    __call__ = sexp
+        
+

@@ -15,40 +15,48 @@ from sage.rings.rational_field import QQ
 from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
-import mpmath
 
+from sage.hyperops.exp_fixpoint import exp_fixpoint
 
-class IntuitiveSlog:
-    def __init__(self,b,N,iprec=512,x0=0):
-        self.bsym = b
+class IntuitiveTetration:
+    def __init__(self,b,N,iprec=512,u=None,x0=0):
+        """
+        x0 is the development point for the Carleman matrix for the slog
+        u is the initial value such that slog(u)=0 or equivalently sexp(0)=u
+
+        if no u is specified we have slog(x0)=0
+        """
+
+        bsym = b
+        self.bsym = bsym
         self.N = N
         self.iprec = iprec
-        self.x0sym = x0
+        x0sym = x0
+        self.x0sym = x0sym
 
-        self.c = 0
         self.prec = None
 
 
-        bname = repr(b).strip('0').replace('.',',')
-        if b == sqrt(2):
+        bname = repr(bsym).strip('0').replace('.',',')
+        if bsym == sqrt(2):
            bname = "sqrt2"
-        if b == e**(1/e):
+        if bsym == e**(1/e):
            bname = "eta"
 
-        x0name = repr(x0)
+        x0name = repr(x0sym)
         if x0name.find('.') > -1:
             if x0.is_real():
-                x0name = repr(float(x0)).strip('0').replace('.',',')
+                x0name = repr(float(x0sym)).strip('0').replace('.',',')
             else:
-                x0name = repr(complex(x0)).strip('0').replace('.',',')
+                x0name = repr(complex(x0sym)).strip('0').replace('.',',')
         # by some reason save does not work with additional . inside the path
 
-        self.path = "savings/islog_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
+        self.path = "savings/itet_%s"%bname + "_N%04d"%N + "_iprec%05d"%iprec + "_a%s"%x0name
 
         if iprec != None:
-            b = num(b,iprec)
+            b = num(bsym,iprec)
             self.b = b
-            x0 = num(x0,iprec)
+            x0 = num(x0sym,iprec)
             if x0.is_real():
                 R = RealField(iprec)
             else:
@@ -84,13 +92,14 @@ class IntuitiveSlog:
             C[m] = row
   
         A = (C - identity_matrix(N)).submatrix(1,0,N-1,N-1)
+        self.A = A
 
         print "A computed."
 
         if iprec != None:
             A = num(A,iprec)
 
-        row = A.solve_left(vector([1] + (N-2)*[0]))[0]
+        row = A.solve_left(vector([1] + (N-2)*[0]))
 
         print "A solved."
 
@@ -103,100 +112,89 @@ class IntuitiveSlog:
         self.sexp0coeffs = sexp0ps[:N]
         self.sexp0poly = PolynomialRing(R,'x')(self.sexp0coeffs[:int(N)/2])
 
+        self.slog_raw0 = lambda z: self.slog0poly(z-self.x0)
+
         print "slog reversed."
 
         #the primary or the upper fixed point
-	mpmath.mp.prec = iprec
-        L = mpmath.lambertw(-mpmath.ln(b),-1)/(-mpmath.ln(b))
-        L = ComplexField(iprec)(L.real,L.imag)
-        self.L = L
+        pfp = exp_fixpoint(b,1,prec=iprec)
+        self.pfp = pfp
 
-        r = abs(x0-L)
+        r = abs(x0-pfp)
 
         #lower fixed point
-        bL = None
+        lfp = None
         if b <= R(e**(1/e)):
-             bL = mpmath.lambertw(-mpmath.ln(b),0)/(-mpmath.ln(b))
-             bL = RealField(iprec)(bL)
-             r = min(r,abs(x0-bL))
-        self.bL = bL
+             lfp = exp_fixpoint(b,0,prec=iprec)
+             r = min(r,abs(x0-lfp))
+        self.lfp = lfp
 
         self.r = r
 
 
-        if bL == None or real(x0) < bL:
-            #slog(0)==-1
-	    self.c = -1 - self.slog(0.0)                   
-        elif not bL == None and imag(x0)==0 and bL < x0 and x0 < L:
-            #slog(e)==0
-	    self.c = -self.slog_real(R(e))
-	else:
-            self.c = 0
+        self.c = 0
+        if not u == None:
+            self.c = - self.slog(u)
 
-       
-
-    def slog_raw(self,z):
-        """
-        The raw slog without continuation.
-        """
-        x0 = self.x0
-        c = self.c
-        
-        return c+self.slog0poly(z-x0)
-        
     def cmp_ir(self,z):
         """ 
         returns -1 for left, 0 for in, and 1 for right from initial region
-        cut line is on the north ray from L.
+        cut line is on the north ray from pfp.
 
         Works only for real x0.
         """
-        L = self.L
+        pfp = self.pfp
         x0 = self.x0
         if x0 > 0.5:
             print z,abs(z)
-            if real(z) >= real(L) and abs(z) < abs(L):
+            if real(z) >= real(pfp) and abs(z) < abs(pfp):
                 return 0
-            if real(z) < real(L):
+            if real(z) < real(pfp):
                 return -1
-            if real(z) > real(L):
+            if real(z) > real(pfp):
                 return 1
         else:
-            if imag(z) > imag(L):
-                if real(z) > real(L):
+            if imag(z) > imag(pfp):
+                if real(z) > real(pfp):
                     return 1
-                if real(z) < real(L):
+                if real(z) < real(pfp):
                     return -1
-            if real(z) < real(L) and real(z) > log(real(L)) + log(sqrt(1+tan(imag(z))**2)):
+            if real(z) < real(pfp) and real(z) > log(real(pfp)) + log(sqrt(1+tan(imag(z))**2)):
                 return 0
-            if real(z) > real(L):
+            if real(z) > real(pfp):
                 return 1
-            if real(z) < real(L):
+            if real(z) < real(pfp):
                 return -1
 
     def slog2(self,z):
         """
         In the complex plane continued slog for base > eta
         """
-        if isinstance(z,float) and self.iprec != None:
-           z = RealField(self.iprec)(z)
         
-        slog = self.slog2
-        slog_raw = self.slog_raw
         b = self.b
-        x0 = self.x0
-        N = self.N
         z = num(z,self.iprec)
 
-        if self.cmp_ir(z) == -1:
-            return slog(b**z)-1
-        if self.cmp_ir(z) == +1:
-            return slog(log(z)/log(b))+1
-        return slog_raw(z)
+        n = 0
+        while self.cmp_ir(z) == -1:
+            z = b**z
+            n += 1
+ 
+        if n > 0:
+            return self.c + self.slog_raw0(z) - n
+          
+        n = 0
+        while self.cmp_ir(z) == +1:
+            z = z.log(b)
+            n+=1
+
+        assert self.cmp_ir(z) == 0, self.cmp_ir(z)
+
+        return self.c + self.slog_raw0(z) + n
+
 
     def slog1(self,z):
         """
-        In the complex plane continued slog for base <= eta
+        In the complex plane continued slog for base <= eta and x0 near attracting fixpoint
         """
         
         slog = self.slog1
@@ -207,49 +205,83 @@ class IntuitiveSlog:
         z = num(z,self.iprec)
         r = self.r
 
-        if abs(z-x0) > r:
-            return slog(b**z)-1
-        return slog_raw(z)
+        n = 0
+        while abs(z-x0) > r/2:
+            z = b**z
+            n += 1
 
-    def slog(self,z):
+        return self.c + self.slog_raw0(z) - n
+
+    def slog(self,z,debug=0):
         """
         slog continued into the complex plane where possible.
         Should always be possible if the real part of the development point
         is left from the lower fixed point
         """
 
-        if self.bL == None:
+        z = num(z,self.iprec)
+        if z.is_real():
+            res=self.slog_real(z,debug)
+        elif self.lfp == None:
             #Only complex fixed points
-            return self.slog2(z)
+            res=self.slog2(z)
         else:
-            return self.slog1(z)
+            res=self.slog1(z)
    
+        if self.prec == None: return res
+        else: return num(res,self.prec)
 
-    def slog_real(self,x):
+    def slog_real(self,x,debug=0):
         """
         Development point is x0
         real continued slog
         """
-        if isinstance(x,float) and self.iprec != None:
-           x = RealField(self.iprec)(x)
+        if self.iprec != None:
+           x = num(x,self.iprec)
 
-        slog_real = self.slog_real
-        slog_raw = self.slog_raw
         b = self.b
         x0 = self.x0
-        L = self.L
-        bL = self.bL
+        pfp = self.pfp
+        lfp = self.lfp
         
-        if bL == None or x0 < bL or x0 > L:
-            sign = 1
+        if lfp == None:
+            direction = 1
+        elif x < lfp and x0 < lfp:
+            direction = 1
+        elif pfp < x and pfp < x0:
+            direction = 1
+        elif lfp < x and x < pfp and lfp < x0 and x0 < pfp: 
+            direction = -1
         else:
-            sign = -1
+            print "x and x0 must be in the same segment of R divided by the lower and upper fixed point", "x:",x,"x0:",x0,"lfp:",lfp,"ufp",pfp
+            return NaN
 
-        if sign*(x - self.x0 + 0.5) < 0:
-            return slog_real(b**x)-1
-        if sign*(x - b**(x0 - 0.5)) > 0:
-            return slog_real(log(x)/log(b))+1
-        return slog_raw(x)
+        n=0
+        while direction*(x - x0) < 0:
+            if debug>=2: print n,':','x:',x,'x0',x0,'dir',direction
+            xp = x
+            x = b**x
+            n+=1
+
+        if n>0:
+            if abs(xp-x0) < abs(x-x0):
+                n-=1
+                x=xp
+            if debug>=1: print 'x->b^x n:',n,'x:',x
+            return self.c  + self.slog_raw0(x) - n
+
+        while direction*(x - x0) > 0 and x>0:
+            if debug>=2: print n,':','x:',x,'x0',x0,'dir',direction
+            xp = x
+            x = x.log(b)
+            n+=1
+
+        if n>0 and abs(xp-x0) < abs(x-x0):
+            n-=1
+            x=xp
+            if debug>=1: print 'x->log_b(x) n:',n,'x:',x
+
+        return self.c  + self.slog_raw0(x) + n
 
     def sexp_raw(self,x):
         x0 = self.x0
@@ -281,9 +313,20 @@ class IntuitiveSlog:
     def calc_prec(self):
         if self.prec != None:
             return self.prec
-        iv0 = IntuitiveSlog(self.bsym,self.N-1,iprec=self.iprec,x0=self.x0sym)
-        self.prec = floor(-log(abs(iv0.sexp(0.5) - self.sexp(0.5)))/log(2.0))
-        print "sexp precision: " , self.prec
+        iv0 = IntuitiveTetration(self.bsym,self.N-1,iprec=self.iprec,x0=self.x0sym)
+        self.iv0 = iv0
+        d = lambda x: self.slog(x) - iv0.slog(x)
+        maximum = find_maximum_on_interval(d,0,1,maxfun=20)
+        minimum = find_minimum_on_interval(d,0,1,maxfun=20)
+        print "max:", maximum[0].n(20), 'at:', maximum[1]
+        print "min:", minimum[0].n(20), 'at:', minimum[1]
+        self.err = max( abs(maximum[0]), abs(minimum[0]))
+        print "slog err:", self.err.n(20)
+        self.prec = floor(-self.err.log(2))
+        
+        self.sexp_err = abs(iv0.sexp(0.5) - self.sexp(0.5))
+        print "sexp err:", self.sexp_err.n(20)
+        self.sexp_prec = floor(-log(self.sexp_err)/log(2.0))
         return self
 
     def backup(self):
