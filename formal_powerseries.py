@@ -12,8 +12,8 @@ from sage.matrix.constructor import matrix, identity_matrix
 from sage.misc.misc_c import prod
 from sage.misc.functional import n as num
 from sage.rings.complex_field import ComplexField_class
-from sage.rings.arith import factorial
-from sage.rings.arith import binomial as buggybinomial
+from sage.functions.other import factorial
+from sage.functions.other import binomial as buggybinomial
 from sage.rings.infinity import Infinity
 from sage.rings.integer import Integer
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
@@ -25,7 +25,7 @@ from sage.rings.rational import Rational
 from sage.rings.real_mpfr import RR, RealField, RealNumber, RealField_class
 from sage.rings.real_mpfr import RealLiteral
 from sage.rings.ring import Ring
-from sage.rings.ring_element import RingElement
+from sage.structure.element import RingElement
 from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
@@ -149,8 +149,8 @@ class FormalPowerSeriesRing(Ring):
             self.K0=Integer(0)
             self.K1=Integer(1)
         else:
-            self.K0 = K.zero_element()
-            self.K1 = K.one_element()
+            self.K0 = K.zero()
+            self.K1 = K.one()
 
         K0 = self.K0
         K1 = self.K1
@@ -285,7 +285,7 @@ class FormalPowerSeriesRing(Ring):
         if p1 == None:
             return self.by_undefined(p2)
 
-        raise TypeError, "unrecognized initialization input " + repr(type(p1))
+        raise TypeError("unrecognized initialization input " + repr(type(p1)))
 
     def by_lambda(self,f,min_index=0):
         """
@@ -496,24 +496,24 @@ class FormalPowerSeriesRing(Ring):
         """
         return False
 
-    def zero_element(self):
+    def zero(self):
         """
         Returns the zero element of this power series ring.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.zero_element()             
+        sage: P.zero()
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return self.Zero
 
-    def one_element(self):
+    def one(self):
         """
         Returns the one element of this power series ring.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.one_element()              
+        sage: P.one()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return self.One
@@ -765,7 +765,7 @@ class FormalPowerSeries(RingElement):
 
         RingElement.__init__(self, parent)
 
-        if not self.__class__.__dict__.has_key('coeffs'):
+        if 'coeffs' not in self.__class__.__dict__:
             self.coeffs = f
 
         if min_index == None:
@@ -918,7 +918,10 @@ class FormalPowerSeries(RingElement):
         True
         """
 
-        if not self._memo.has_key(n):
+        if isinstance(n,slice):
+            return [self[ii] for ii in range(*n.indices(n.stop))]
+            #return self.__getslice__(slice.start,slice.stop)
+        if n not in self._memo:
             #self._memo[n] = simplify(expand(self.coeffs(n)))
             self._memo[n] = self.coeffs(n)
         return self._memo[n]
@@ -932,6 +935,8 @@ class FormalPowerSeries(RingElement):
         sage: P(lambda n: n)[1:3]
         [1, 2]
         """
+        print(i,j)
+
         return [self[k] for k in range(i,j)]
 
     def set_item(a, index, value):
@@ -1333,9 +1338,9 @@ class FormalPowerSeries(RingElement):
             return a.parent().One
         if n==1:
             return a
-        if not a._powMemo.has_key(n):
-            n1 = int(n) / 2
-            n2 = int(n) / 2 + n % 2
+        if n not in a._powMemo:
+            n1 = n // 2
+            n2 = n // 2 + n % 2
             a._powMemo[n] = a.npow_mult(n1) * a.npow_mult(n2)
         return a._powMemo[n]
 
@@ -1352,7 +1357,7 @@ class FormalPowerSeries(RingElement):
         25/2
         """
 #        print k,m,n
-        if f._powMemo.has_key((k,m,n)):
+        if (k,m,n) in f._powMemo:
             return f._powMemo[(k,m,n)]
 
         if m == 0:
@@ -1629,7 +1634,7 @@ class FormalPowerSeries(RingElement):
 
         # index k from 1 to n
         def s(k,n):
-            if mlpc.has_key((k,n)):
+            if (k,n) in mlpc:
                return mlpc[(k,n)]
 
             if k == 0:
@@ -1702,7 +1707,6 @@ class FormalPowerSeries(RingElement):
 #             else: res += s
 
 #         res += "O(x^" + repr(n) + ")"
-
         if a.coeffs == None:
             return "Undefined"
 
@@ -1715,12 +1719,11 @@ class FormalPowerSeries(RingElement):
                 else:
                     res += ", "
         for n in range(80):
-            coeff = a[n]
             s = repr(a[n]) + ", "
             if len(res)+len(s) > 76: break
             else: res += s
 
-        res += "...]";
+        res += "...]"
         #res = repr([ a(m) for m in range(10)])
         return res
 
@@ -1945,9 +1948,9 @@ class FormalPowerSeries0(FormalPowerSeries):
             return a.parent().Id
         if n == 1:
             return a
-        if not a._itMemo.has_key(n):
-            n1 = int(n) / 2
-            n2 = int(n) / 2 + n % 2
+        if n not in a._itMemo:
+            n1 = n // 2
+            n2 = n // 2 + n % 2
             a._itMemo[n] = a.nit(n1).compose(a.nit(n2))
         return a._itMemo[n]
 
@@ -2104,7 +2107,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         #The case a not being a primitive root of unit, e.g. |a[1]|!=1
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: a = P([0,2,1])               
+        sage: a = P([0,2,0,1])
         sage: j = a.logit()                   
         sage: j(a) - a.diff()*j            
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
@@ -2253,7 +2256,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     def valit(a):
         """
-        Returns the last index i such that a[j] == Id[j] for j<=i.
+        Returns the last index i such that a[i] == Id[i].
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -3553,29 +3556,41 @@ class Logit(FormalPowerSeries0):
         a = self.a
         ap = self.ap
 
+        r = self.K0
 
+        # joh  = h'*j
         if a[1] == self.K1:
             if n < self.min_index:
                 return self.K0
             if n == self.min_index:
                 return a[self.min_index]
 
+            valit = self.min_index - 1
+            N = n + valit
+
+            # sum(k=1..N) j_k a^k_N = sum(k=0..N) ap_(N-k) * j_k, ap_0 = a_1 != 0
+            # a^k_N = 0 for n<=k<N; ap_m = 0 for 0 < m < valit
+            # j_N * a_1^N + sum(k=1..n) j_k a^k_N = ap_0*j_N + sum(k=0..n) ap_(N-k) * j_k
+            # so in case a_1 = 1 = ap_0, we have the recursion
+            # j_n * a^n_N + sum(k=1..(n-1)) j_k a^k_N = ap_valit * j_n + sum(k=1..N-1) ap_(N-k) * j_k
+            for k in range(1,n):
+                r-=self[k]*(a.npow(k)[N]-ap[N-k])
+
+            assert ap[valit] == (valit + 1) * a[valit + 1]
+            assert a.npow(n)[N] == a[valit+1]*n, str(a.npow(n)[N]) + "!=" + str(a[N-n+1]*n) + " n=" + str(n) + " N=" + str(N) + str(a)
+            assert a.npow(n)[N]-ap[N-n] ==  a[valit+1]*(n-valit-1)
+            return r/(a[valit+1]*(n-(valit+1)))
+            #return r/(a.npow(n)[N]-ap[valit])
         else:
             if n < 1:
                 return self.K0
             if n == 1:
                 return self.j1
-
-        #compute the maximum m such that j_m has non-zero coefficient
-        
-        N = n + self.min_index - 1
-        #print n,N
-        r = self.K0
-
-        for k in range(1,n):
-            r-=self[k]*(a.npow(k)[N]-ap[N-k])
-        
-        return r/(a.npow(n)[N]-ap[N-n])
+            # sum(k=1..n) j_k a^k_n = sum(k=1..n) ap_(n-k) * j_k, ap_0 = a_1 != 0
+            # j_n * a_1^n + sum(k=1..n-1) j_k a^k_n = ap_0 * j_n + sum(k=0..n-1) ap_(n-k) * j_k
+            for k in range(1,n):
+                k += self[k]*(ap[n-k]-a.npow(k)[n])
+            return r/(a[1]**n-a[1])
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
