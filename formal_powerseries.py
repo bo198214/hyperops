@@ -3587,9 +3587,9 @@ class Logit(FormalPowerSeries0):
             if n == 1:
                 return self.j1
             # sum(k=1..n) j_k a^k_n = sum(k=1..n) ap_(n-k) * j_k, ap_0 = a_1 != 0
-            # j_n * a_1^n + sum(k=1..n-1) j_k a^k_n = ap_0 * j_n + sum(k=0..n-1) ap_(n-k) * j_k
+            # j_n * a_1^n + sum(k=1..n-1) j_k a^k_n = ap_0 * j_n + sum(k=1..n-1) ap_(n-k) * j_k
             for k in range(1,n):
-                k += self[k]*(ap[n-k]-a.npow(k)[n])
+                r += self[k]*(ap[n-k]-a.npow(k)[n])
             return r/(a[1]**n-a[1])
 
 class Schroeder(FormalPowerSeries01):
