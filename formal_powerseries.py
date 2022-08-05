@@ -4,17 +4,14 @@ Cached formal powerseries and formal Laurant series in one variable.
 Author: Henryk Trappmann
 """
 
-from sage.calculus.calculus import var
 from sage.calculus.functional import diff
 from sage.functions.log import log
 from sage.functions.other import sqrt
 from sage.matrix.constructor import matrix, identity_matrix
 from sage.misc.misc_c import prod
 from sage.misc.functional import n as num
-from sage.rings.complex_field import ComplexField_class
 from sage.functions.other import factorial
 from sage.functions.other import binomial as buggybinomial
-from sage.rings.infinity import Infinity
 from sage.rings.integer import Integer
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
@@ -22,7 +19,7 @@ from sage.rings.polynomial.polynomial_element import Polynomial
 from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.rational_field import QQ, RationalField
 from sage.rings.rational import Rational
-from sage.rings.real_mpfr import RR, RealField, RealNumber, RealField_class
+from sage.rings.real_mpfr import RR, RealField, RealField_class
 from sage.rings.real_mpfr import RealLiteral
 from sage.rings.ring import Ring
 from sage.structure.element import RingElement
@@ -2718,7 +2715,7 @@ class Arctan(FormalPowerSeries01):
     def coeffs(self,n):
         """ sage: None   # indirect doctest """
         if n % 2 == 0: return self.K0
-        return self.K((-1)**(n/2)/Integer(n))
+        return self.K((-1)**(n//2)/Integer(n))
 
 class Sinh(FormalPowerSeries01):
     """
@@ -2802,7 +2799,7 @@ class Tan(FormalPowerSeries01):
         """ sage: None   # indirect doctest """
         if N % 2 == 0:
             return self.K0
-        n = (N + 1) / 2
+        n = (N + 1) // 2
         P = self.parent()
         return P.K(P.Bernoulli[2*n] * (-4)**n * (1-4**n) / factorial(2*n))
 
@@ -2820,7 +2817,7 @@ class Tanh(FormalPowerSeries01):
         """ sage: None   # indirect doctest """
         if N % 2 == 0:
             return self.K0
-        n = (N+1)/2
+        n = (N+1)//2
         P = self.parent()
         return P.K(P.Bernoulli[2*n] * (-1)**(2*n) * 4**n * (4**n-1) / factorial(2*n))
 
@@ -3574,7 +3571,7 @@ class Logit(FormalPowerSeries0):
             # so in case a_1 = 1 = ap_0, we have the recursion
             # j_n * a^n_N + sum(k=1..(n-1)) j_k a^k_N = ap_valit * j_n + sum(k=1..N-1) ap_(N-k) * j_k
             for k in range(1,n):
-                r-=self[k]*(a.npow(k)[N]-ap[N-k])
+                r += self[k]*(ap[N-k]-a.npow(k)[N])
 
             assert ap[valit] == (valit + 1) * a[valit + 1]
             assert a.npow(n)[N] == a[valit+1]*n, str(a.npow(n)[N]) + "!=" + str(a[N-n+1]*n) + " n=" + str(n) + " N=" + str(N) + str(a)
