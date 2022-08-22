@@ -916,7 +916,7 @@ class FormalPowerSeries(RingElement):
         """
 
         if isinstance(n,slice):
-            return [self[ii] for ii in range(*n.indices(n.stop))]
+            return [self[ii] for ii in range(n.start,n.stop,1 if n.step is None else n.step )]
             #return self.__getslice__(slice.start,slice.stop)
         if n not in self._memo:
             #self._memo[n] = simplify(expand(self.coeffs(n)))
@@ -1317,6 +1317,8 @@ class FormalPowerSeries(RingElement):
         """
         return a.parent().One/a
 
+    reciprocal = rcp
+
     def npow_mult(a,n):
         """
         Power with natural exponent n computed in the most simple way by
@@ -1587,9 +1589,10 @@ class FormalPowerSeries(RingElement):
         m = a.min_index
         return lambda x: sum([a[k]*x**k for k in range(m,n)],a.K0)
         
-    def polynomial(a,n,x='x'):
+    def polynomial(a,n,x='x',R=None):
         """
         Returns the associated polynomial for the first n coefficients.
+        You can specify a different Ring with R, it tries to convert to.
         f_0 + f_1*x + f_2*x^2 + ... + f_{n-1}*x^{n-1}
 
         In case of a Laurant series with e.g. min_index=-2:
@@ -1608,13 +1611,16 @@ class FormalPowerSeries(RingElement):
         """
 
 #        return PolynomialRing(a.K,x)(sum([a[k]*x**k for k in range(n)],a.K0))
-        P = PolynomialRing(a.K,x)
+        if R is None:
+            R = a.K
         m = a.min_index
         if m >= 0:
+            P = PolynomialRing(R, x)
             return P(a[:n])
 
-        xp = P.gen()
-        return P(a[m:n])/P(xp**(-m))
+        Q = PolynomialRing(R, x)
+        xp = Q.gen()
+        return Q(a[m:n])/Q(xp**(-m))
 
     def mittag_leffler_polynomial(self,n):
         """
@@ -2041,6 +2047,8 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         return Inv(a)
 
+    inverse = inv
+
     __invert__ = inv
 
 #     def julia_b(a):
@@ -2073,6 +2081,30 @@ class FormalPowerSeries0(FormalPowerSeries):
 #             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K0)
 
 #         return a.new(lambda n: h(b[n]))
+
+    def super(a):
+        """
+        The super function S of f, solves joS = S'
+        where j is the julia function/logit of f
+        """
+
+        return Super(a)
+
+    def exp_abel(a):
+        """
+        The exponential of the Abel function of f
+        solves h = j * h'
+        where j is the julia function/logit of f
+        """
+        return ExpAbel(a)
+
+    def expit(a):
+        """
+        The inverse Operator of logit. I.e. given a function j we want to retrieve the function f
+        such that
+        j o f = f' * j
+        """
+        return Expit(a)
 
     def logit(a):
         """
@@ -2415,6 +2447,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         resit = juli[-1]
         #juli[-1]=0
         return [resit,juli.set_item(-1,0).integral()]
+
 
 ### Constructors ###
 
@@ -3570,6 +3603,7 @@ class Logit(FormalPowerSeries0):
             # j_N * a_1^N + sum(k=1..n) j_k a^k_N = ap_0*j_N + sum(k=0..n) ap_(N-k) * j_k
             # so in case a_1 = 1 = ap_0, we have the recursion
             # j_n * a^n_N + sum(k=1..(n-1)) j_k a^k_N = ap_valit * j_n + sum(k=1..N-1) ap_(N-k) * j_k
+            # a^n_N = a_{valit+1} * n
             for k in range(1,n):
                 r += self[k]*(ap[N-k]-a.npow(k)[N])
 
@@ -3588,6 +3622,63 @@ class Logit(FormalPowerSeries0):
             for k in range(1,n):
                 r += self[k]*(ap[n-k]-a.npow(k)[n])
             return r/(a[1]**n-a[1])
+
+class ExpAbel(FormalPowerSeries01):
+    """
+    Description and tests at FormalPower/series.exp_abel
+    sage: None  # indirect doctest
+    """
+    def __init__(self,a):
+        self.a = a
+        self.j = a.logit()
+
+    def coeffs(self,n):
+        """ sage: None #indirect doctest """
+
+        #h = j * h'
+        #h_n = sum(i+k=n) j_i*(k+1)*h_{k+1} #j_0 = 0, j_1=0
+        #h_n = sum(k=0,n-2) j_(n-k)*(k+1)*h_{k+1}
+        res = 1
+        for k in range(1,n):
+            res += self.j[n-k]*(k+1)*self.a[k]
+        return res
+
+
+class Expit(FormalPowerSeries0):
+    def __init__(self,j,j1=None):
+        """
+        Description and tests at FormalPowerSeries.julia_gen
+        sage: None   # indirect doctest
+        """
+        self.j=j
+
+        si = FormalPowerSeries.__init__
+        si(self,j.parent(),min_index=1)
+
+    def coeffs(self,n):
+        """ sage: None #indirect doctest """
+        j = self.j
+        valit = j.min_index - 1
+        N = n + valit
+
+        r = self.K0
+
+        # joh  = h'*j
+        if n == 0:
+            return self.K0
+        if n == 1:
+            return self.K1
+        if n < valit + 1:
+            return 0
+        if n == valit + 1:
+            return j[n]
+
+        for k in range(valit+1,n):
+            r += j[k]*self.npow(k)[N]
+        for k in range(n-1):
+            r -= (k+1)*self[k+1]*j[N-k]
+
+        return r/j[valit+1]
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
