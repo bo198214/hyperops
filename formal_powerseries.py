@@ -2103,6 +2103,14 @@ class FormalPowerSeries0(FormalPowerSeries):
         The inverse Operator of logit. I.e. given a function j we want to retrieve the function f
         such that
         j o f = f' * j
+
+        sage: PQ = FormalPowerSeriesRing(QQ)
+        sage: p = PQ([0,1,0,2])
+        sage: p.logit().expit() - p
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: p = PQ.Dec_exp
+        sage: p.logit().expit() - p
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return Expit(a)
 
@@ -3655,30 +3663,53 @@ class Expit(FormalPowerSeries0):
         si = FormalPowerSeries.__init__
         si(self,j.parent(),min_index=1)
 
-    def coeffs(self,n):
-        """ sage: None #indirect doctest """
-        j = self.j
-        valit = j.min_index - 1
-        N = n + valit
+        #self.t = FormalPowerSeriesRing(QQ)([0,1,0,2])
+        #self.t = FormalPowerSeriesRing(QQ).Dec_exp
 
-        r = self.K0
+    def coeffs(a,n):
+        """ sage: None #indirect doctest """
+        j = a.j
+        v = j.min_index - 1
+        N = n + v
+
+        r = a.K0
 
         # joh  = h'*j
         if n == 0:
-            return self.K0
+            return a.K0
         if n == 1:
-            return self.K1
-        if n < valit + 1:
+            return a.K1
+        if n < v + 1:
             return 0
-        if n == valit + 1:
+        if n == v + 1:
             return j[n]
 
-        for k in range(valit+1,n):
-            r += j[k]*self.npow(k)[N]
-        for k in range(n-1):
-            r -= (k+1)*self[k+1]*j[N-k]
+        #assert sum([ j[k]*a.t.npow(k)[N] for k in range(1,N+1)]) == sum([ (k+1)*a.t[k+1] * j[N-k] for k in range(N+1)]),"A"
+        #assert j[v+1]*a.t.npow(v+1)[N] + sum([ j[k]*a.t.npow(k)[N] for k in range(v+2,N+1)]) == a.t[1]*j[N] + sum([ k*a.t[k] * j[N+1-k] for k in range(v+1,n+1)]),"B"
+        #for i in range(v,0,-1):
+        #    assert a.t.npow(i+1)[n+i] == sum([a.t[k]*a.t.npow(i)[n+i-k] for k in range(v+1,n+1)]) + a[1]*a.t.npow(i)[n+i-1],"i:%d,n:%d"%(i,n)
+        #assert a.t.npow(v+1)[N] ==            sum([sum([a.t[k]*a.t.npow(i)[n+i-k] for k in range(v+1,n+1)]) for i in range(1,v+1)]) + a.t[n], "C"
+        #assert a.t.npow(v+1)[N] == (v+1)*a.t[n]  + sum([sum([a.t[k]*a.t.npow(i)[n+i-k] for k in range(v+1,n)]) for i in range(1,v+1)]), "D"
+        # sum(k=1..N) j_k a^k_N = sum(k=0..N) (k+1)a_{k+1} * j_{N-k}
+        # j_{v+1} a^(v+1)_N +...+ j_N a^N_N = a_1*j_N + (v+1)a_{v+1}*j_n +...+ n*a_n * j_{v+1}
+        # a^(v+k+1)_{n+v} does not contain a_n for k > 0
+        # a^(v+1)_{n+v}  = a_n*a^v_v +         a_{n-1}*a^v_{v+1}    +...+ a_{v+1}*a^v_{n-1}     + a_1*a^v_{n+v-1}
+        # a^v_{n+v-1}    = a_n*a^(v-1)_{v-1} + a_{n-1}*a^{v-1}_v    +...+ a_{v+1}*a^(v-1)_{n-2} + a_1*a^(v-1)_{n+v-2}
+        # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v_3}
+        # ...
+        # a^1_n          = a_n
 
-        return r/j[valit+1]
+        for k in range(v+2,N+1):
+            r += j[k]*a.npow(k)[N]
+        r -= a[1]*j[N]
+        for k in range(v+1,n):
+            r -= k*a[k]*j[N+1-k]
+        s = 0
+        for k in range(v+1,n):
+            s += a[k]*sum([a.npow(i)[n+i-k] for i in range(1,v+1)])
+        r += j[v+1]*s
+
+        return r/j[v+1]/(n-v-1)
 
 class Schroeder(FormalPowerSeries01):
     def __init__(self,a):
