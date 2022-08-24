@@ -1,8 +1,25 @@
-"""
-Cached formal powerseries and formal Laurant series in one variable.
+r"""
+Cached formal powerseries and formal Laurant series in one variable
 
-Author: Henryk Trappmann
+<Paragraph description>
+
+EXAMPLES::
+
+<Lots and lots of examples>
+
+AUTHORS:
+- Henryk Trappmann (2022-08-23): initial version
 """
+
+# ****************************************************************************
+#       Copyright (C) 2022 Henryk Trappmann <your email>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.calculus.functional import diff
 from sage.functions.log import log
@@ -16,7 +33,7 @@ from sage.rings.integer import Integer
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.polynomial_ring import PolynomialRing_field
 from sage.rings.polynomial.polynomial_element import Polynomial
-from sage.rings.powerseries import PowerSeriesRing
+from sage.rings.power_series_ring import PowerSeriesRing
 from sage.rings.power_series_ring_element import PowerSeries
 from sage.rings.rational_field import QQ, RationalField
 from sage.rings.rational import Rational
@@ -27,6 +44,8 @@ from sage.structure.element import RingElement
 from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
+from sage.categories.action import Action
+from operator import mul, truediv
 
 HintType = PolynomialRing(QQ, 't')
 
@@ -118,6 +137,14 @@ def _assert_nat(n):
     assert _isnat(n), repr(n) + " must be natural number."
 
 
+def mul_factorial(c, n):
+    return c * factorial(n)
+
+
+def div_factorial(c, n):
+    return c / factorial(n)
+
+
 class FormalPowerSeriesRing(Ring):
     def __init__(self, base_ring, is_decidable=None):
         """
@@ -129,7 +156,7 @@ class FormalPowerSeriesRing(Ring):
         """
         if base_ring is None:
             return
-
+        self.foo = True  # TODO
         self.K = base_ring
         if is_decidable is None:
             self.is_decidable = decidable0(base_ring)
@@ -158,8 +185,6 @@ class FormalPowerSeriesRing(Ring):
             self.K0 = K.zero()
             self.K1 = K.one()
 
-        K0 = self.K0
-        K1 = self.K1
         self.Zero = Zero(self)
         self.One = One(self)
         self.Id = Id(self, min_index=1)
@@ -176,12 +201,12 @@ class FormalPowerSeriesRing(Ring):
         self.Cosh = Cosh(self)
         self.Arcsinh = Arcsinh(self, min_index=1)
         self.Arctanh = Arctanh(self, min_index=1)
-        self.Bernoulli = (self.Id / self.Exp.dec()).apply(self.mul_factorial)
+        self.Bernoulli = (self.Id / self.Exp.dec()).apply(mul_factorial)
         self.Bernoulli.__doc__ = """
         The n-th Bernoulli number is equal to 
         the n-th derivative of 1/(exp(x)-1) at 0.
         """
-        self.Tan = Tan(self, min_index=1)
+        self.Tan = Tan(self)
         self.Tanh = Tanh(self, min_index=1)
         self.Xexp = Xexp(self, min_index=1)
         self.Lambert_w = Lambert_w(self, min_index=1)
@@ -216,6 +241,28 @@ class FormalPowerSeriesRing(Ring):
 
         # Mittag-Leffler polynomial cache
         self.mlpc = {}
+
+    class MultiplyAction(Action):
+        def __init__(self, G, S, is_left=True, op=None):
+            super().__init__(G, S, is_left=is_left, op=op)
+            # print("G",self.G,"is_left", self.is_left())
+
+        def _act_(self,g,x):
+            if self.op == mul:
+                if self.is_left():
+                    return g.rmul(x)
+                else:
+                    return g.lmul(x)
+            if self.op == truediv:
+                if self.is_left():
+                    return g.rmul(1/x)
+                else:
+                    return g.reciprocal().lmul(x)
+
+    def _get_action_(self, S, op, self_on_left):
+        # print(S,self_on_left,op)
+        if self.K.has_coerce_map_from(S):
+            return self.MultiplyAction(self,S,is_left=self_on_left,op=op)
 
     def __call__(self, p1=None, p2=None, p3=None, **kwargs):
         """
@@ -257,20 +304,20 @@ class FormalPowerSeriesRing(Ring):
         """
 
         if isinstance(p1, Integer) or isinstance(p1, int) or isinstance(p1, Rational):
-            return self.by_constant(p1, **kwargs)
+            return self.by_constant(p1)
 
         if isinstance(p1, SageObject) and self.K.has_coerce_map_from(p1.parent()):
-            return self.by_constant(p1, **kwargs)
+            return self.by_constant(p1)
 
         if isinstance(p1, list):
             if p2 is None:
                 return self.by_list(p1, **kwargs)
-            return self.by_list(p1, p2, **kwargs)
+            return self.by_list(p1, p2)
 
         if isinstance(p1, Expression):
             if p3 is None:
-                return self.by_taylor(p1, p2, **kwargs)
-            return self.by_taylor(p1, p2, p3, **kwargs)
+                return self.by_taylor(p1, p2)
+            return self.by_taylor(p1, p2, p3)
 
         if isinstance(p1, Polynomial):
             return self.by_polynomial(p1)
@@ -283,7 +330,7 @@ class FormalPowerSeriesRing(Ring):
         if isinstance(p1, type(lambda n: 0)):
             if p2 is None:
                 return self.by_lambda(p1, **kwargs)
-            return self.by_lambda(p1, p2, **kwargs)
+            return self.by_lambda(p1, p2)
 
         if type(p1) is FormalPowerSeries:
             return self.by_
@@ -359,7 +406,7 @@ class FormalPowerSeriesRing(Ring):
         """
         return FormalPowerSeries(self, min_index=min_index)
 
-    def by_list(self, list, start=0):
+    def by_list(self, the_list, start=0):
         """
         Returns the powerseries with coefficients p[n] where
         p[n]==0 for 0<=n<start, p[m+start]==list[m] for all list indices m,
@@ -377,7 +424,7 @@ class FormalPowerSeriesRing(Ring):
         sage: P.by_list([1,2,3],5)
         [0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return List(self, list, start).reclass()
+        return List(self, the_list, start).reclass()
 
     def by_polynomial(self, p):
         """
@@ -418,7 +465,7 @@ class FormalPowerSeriesRing(Ring):
 
         return self.by_lambda(lambda n: conv(p[n]), p.min_index)
 
-    def by_taylor(self, expr, v, at=0, **kwargs):
+    def by_taylor(self, expr, v, at=0):
         """
         Returns the taylor series of `expr' with respect to `v' at `at'.
 
@@ -436,7 +483,7 @@ class FormalPowerSeriesRing(Ring):
         # print "after",min_index
         return Taylor(self, expr, v, at).reclass()
 
-    def by_constant(self, c, **kwargs):
+    def by_constant(self, c):
         """
         Returns the powerseries with coefficients [c,0,0,...].
 
@@ -494,7 +541,7 @@ class FormalPowerSeriesRing(Ring):
         """
         Powerseries ring is never finite (except the base ring has only 1 element).
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: FormalPowerSeriesRing(QQ).is_finite()     
+        sage: FormalPowerSeriesRing(QQ).is_finite()
         False
         """
         return False
@@ -521,12 +568,6 @@ class FormalPowerSeriesRing(Ring):
         """
         return self.One
 
-    def mul_factorial(self, c, n):
-        return c * factorial(n)
-
-    def div_factorial(self, c, n):
-        return c / factorial(n)
-
     def _repr_(self):
         """
         Description of this FormalPowerSeriesRing.
@@ -540,7 +581,7 @@ class FormalPowerSeriesRing(Ring):
     def _coerce_map_from_(self, T):
         """
         Returns true if type T can be coerced to a FormalPowerSeries
-        with self as parent. This can be done always when 
+        with self as parent. This can be done always when
         T can be coerced to self.base_ring().
         This is used for operations like lmul and rmul.
 
@@ -551,16 +592,16 @@ class FormalPowerSeriesRing(Ring):
         sage: P._coerce_map_from_(int)
         True
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P._coerce_map_from_(int)                      
+        sage: P._coerce_map_from_(int)
         True
-        sage: P._coerce_map_from_(RR)      
+        sage: P._coerce_map_from_(RR)
         False
         """
         # print self.K, T,not self.K.coerce_map_from(T) == None
-        if not self.K.coerce_map_from(T) is None:
+        if self.K.coerce_map_from(T) is not None:
             return True
         if isinstance(T, FormalPowerSeriesRing):
-            return not self.K.coerce_map_from(T.K) is None
+            return self.K.coerce_map_from(T.K) is not None
         return False
 
     def base_ring(self):
@@ -735,7 +776,7 @@ class FormalPowerSeries(RingElement):
 
         sage: #you can initialize power series with arbitrary functions on natural numbers    
         sage: #for example the power series of sqrt(2)^x can be given as
-        sage: bsrt = FormalPowerSeriesRing(SR)(sqrt(2)^x,x)
+        sage: bsrt = FormalPowerSeriesRing(SR).by_taylor(sqrt(2)^x,x)
 
         sage: #making the 0-th coefficient 0 to get the decremented exponential 
         sage: dbsrt = bsrt.set_item(0,0)
@@ -926,7 +967,7 @@ class FormalPowerSeries(RingElement):
         """
 
         if isinstance(n, slice):
-            return [self[ii] for ii in range(n.start, n.stop, 1 if n.step is None else n.step)]
+            return [self[ii] for ii in range(0 if n.start is None else n.start, n.stop, 1 if n.step is None else n.step)]
             # return self.__getslice__(slice.start,slice.stop)
         if n not in self._memo:
             # self._memo[n] = simplify(expand(self.coeffs(n)))
@@ -962,9 +1003,10 @@ class FormalPowerSeries(RingElement):
             min_index += 1
         return a.new(lambda n: value if n == index else a[n], min_index)
 
-    def __setitem__(a, index, value):
+    def __setitem__(a, item, value):
         """
-        Replaces a[index] by value, returns None.
+        Replaces a[item] by value, returns None.
+        item can also be a range with value being a sequence.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -976,43 +1018,7 @@ class FormalPowerSeries(RingElement):
         sage: p[0] = 0
         sage: p.min_index
         1
-        """
-        min_index = a.min_index
-        if min_index == index and value == 0:
-            min_index += 1
 
-        a.min_index = min_index
-        f = a.coeffs
-        a.coeffs = lambda n: value if n == index else f(n)
-
-    def set_slice(a, i, j, seq):
-        """
-        Returns the powerseries that has a[i:j] replaced by seq, returns None.
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P(lambda n: n).set_slice(5,10,[42,43,44,45,46])
-        [0, 1, 2, 3, 4, 42, 43, 44, 45, 46, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, ...]
-        sage: P([1,2]).set_slice(0,1,[0]).min_index
-        1
-        """
-
-        min_index = a.min_index
-        min_s = j - i
-        for k in range(0, j - i):
-            if not seq[k] == 0:
-                min_s = k
-                break
-
-        if i <= min_index <= i + min_s:
-            min_index = i + min_s
-        else:
-            min_index = min(min_index, i + min_s)
-        return a.new(lambda n: seq[n - i] if i <= n < j else a[n], min_index)
-
-    def __setslice__(a, i, j, seq):
-        """
-        Replaces a[i:j] by seq.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1025,22 +1031,36 @@ class FormalPowerSeries(RingElement):
         sage: p.min_index
         1
         """
+        if isinstance(item, slice):
+            i = item.start
+            j = item.stop
+            seq = value
+            if item.step not in (1, None):
+                raise ValueError('only step=1 supported')
+            min_index = a.min_index
+            min_s = j - i
+            for k in range(0, j - i):
+                if not seq[k] == 0:
+                    min_s = k
+                    break
 
-        min_index = a.min_index
-        min_s = j - i
-        for k in range(0, j - i):
-            if not seq[k] == 0:
-                min_s = k
-                break
+            if i <= min_index <= i + min_s:
+                min_index = i + min_s
+            else:
+                min_index = min(min_index, i + min_s)
 
-        if i <= min_index <= i + min_s:
-            min_index = i + min_s
+            a.min_index = min_index
+            f = a.coeffs
+            a.coeffs = lambda n: seq[n - i] if i <= n < j else f(n)
         else:
-            min_index = min(min_index, i + min_s)
+            index = item
+            min_index = a.min_index
+            if min_index == index and value == 0:
+                min_index += 1
 
-        a.min_index = min_index
-        f = a.coeffs
-        a.coeffs = lambda n: seq[n - i] if i <= n < j else f(n)
+            a.min_index = min_index
+            f = a.coeffs
+            a.coeffs = lambda n: value if n == index else f(n)
 
     def extinct_before(a, min_index):
         """
@@ -1065,7 +1085,7 @@ class FormalPowerSeries(RingElement):
         Due to implementation effort a reclassed object can not be 
         pickled/serialized with dumps.
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries,
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, FormalPowerSeries
         sage: from sage.rings.formal_powerseries import FormalPowerSeries0, FormalPowerSeries01
         sage: P = FormalPowerSeriesRing(QQ)
         sage: isinstance(P([0,1]).reclass(),FormalPowerSeries01)
@@ -1155,9 +1175,9 @@ class FormalPowerSeries(RingElement):
         Returns the result of applying the function f(x,n) on each coefficient
         self[n].
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, mul_factorial
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: P.Exp.apply(P.mul_factorial)
+        sage: P.Exp.apply(mul_factorial)
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...]
         """
 
@@ -1204,8 +1224,6 @@ class FormalPowerSeries(RingElement):
         """
         return RMul(a, s)
 
-    _rmul_ = rmul
-
     def lmul(a, s):
         """
         Scalar multiplication from left with scalar s 
@@ -1221,8 +1239,6 @@ class FormalPowerSeries(RingElement):
         [2/3, 4/3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return LMul(a, s)
-
-    _lmul_ = lmul
 
     def add(a, b):
         """
@@ -1450,7 +1466,7 @@ class FormalPowerSeries(RingElement):
         sage: R = RealField(16)
         sage: P = FormalPowerSeriesRing(R)
         sage: P([1,2,3])**(RealNumber(-0.37r))
-        [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.091, -9.079, 6.390, ...]
+        [1.000, -0.7400, -0.09619, 1.440, -2.228, 0.6642, 4.092, -9.079, 6.390, ...]
         """
 
         if isinstance(t, FormalPowerSeries):
@@ -1546,8 +1562,8 @@ class FormalPowerSeries(RingElement):
         sage: c.bell_polynomials(2)[6] == 6*c5*c1 + 15*c4*c2 + 10*c3**2
         True
         """
-        A = a.parent()
-        return (a.apply(A.div_factorial) ** k).apply(A.mul_factorial).rmul(Integer(1) / factorial(k))
+        A = a
+        return (a.apply(div_factorial) ** k).apply(mul_factorial).rmul(Integer(1) / factorial(k))
 
     def bell_polynomial(a, n, k):
         """
@@ -1568,12 +1584,12 @@ class FormalPowerSeries(RingElement):
         """
         The complete Bell polynomial.
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, div_factorial
         sage: P = PolynomialRing(QQ,['c1','c2','c3','c4','c5'])
         sage: c1 = P('c1');c2 = P('c2');c3 = P('c3');c4 = P('c4');c5 = P('c5')
         sage: PS = FormalPowerSeriesRing(P)
         sage: c = PS([0,c1,c2,c3,c4,c5])
-        sage: (PS.Exp(c.apply(PS.div_factorial)) - c.bell_complete(5).apply(PS.div_factorial))[1:6]
+        sage: (PS.Exp(c.apply(div_factorial)) - c.bell_complete(5).apply(div_factorial))[1:6]
         [0, 0, 0, 0, 0]
         """
         if n <= 0:
@@ -1646,7 +1662,6 @@ class FormalPowerSeries(RingElement):
         """
 
         P = PolynomialRing(QQ, 'x')
-        x = P.gen()
 
         mlpc = self.parent().mlpc
 
@@ -1780,9 +1795,9 @@ class FormalPowerSeries(RingElement):
         Returns the powerseries with coefficients shiftet to the left by m.
         The coefficients a[0],...,a[m-1] get lost.
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, mul_factorial
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P.Exp.apply(P.mul_factorial)
+        sage: p = P.Exp.apply(mul_factorial)
         sage: (p << 1) - p
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1793,9 +1808,9 @@ class FormalPowerSeries(RingElement):
         Returns the powerseries with coefficients shifted to the right by m.
         The resulting coefficients b[0],...,b[m-1] are zero.
 
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing, mul_factorial
         sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P.Exp.apply(P.mul_factorial)
+        sage: p = P.Exp.apply(mul_factorial)
         sage: (p >> 1) - p
         [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
@@ -1913,6 +1928,9 @@ class FormalPowerSeries0(FormalPowerSeries):
     is0 = True
     is01 = False
 
+    def __init__(self, parent, **kwargs):
+        FormalPowerSeries.__init__(self,parent,**kwargs)
+
     def set_parabolic(a, n):
         """
         Tells whether a[1]**n = 1
@@ -1980,7 +1998,7 @@ class FormalPowerSeries0(FormalPowerSeries):
             return a.inv().nit(-t)
         return a.regit(t)
 
-    def regit(a, t, pow=False):
+    def regit(a, t, is_pow=False):
         """
         Regular (non-integer) iteration (works also for integer t).
         Preconditions: 
@@ -1988,7 +2006,7 @@ class FormalPowerSeries0(FormalPowerSeries):
             Particularly a[1]!=0 and a[1]!=1.
             a[1]**t must be defined.
 
-        pow=True means that t is not the exponent but the whole power (a_1)^t
+        is_pow=True means that t is not the exponent but the whole power (a_1)^t
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1999,15 +2017,15 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: z,zt = PQ.gens()
         sage: FPQ = FormalPowerSeriesRing(PQ)
         sage: p = FPQ([0,z,3*z])
-        sage: p.regit(zt,pow=True)[1]
+        sage: p.regit(zt,is_pow=True)[1]
         zt
-        sage: p.regit(zt,pow=True)[3] - (-18*z*zt^2 + 18*zt^3 + 18*z*zt - 18*zt^2)/(z^3 - z^2 - z + 1)
+        sage: p.regit(zt,is_pow=True)[3] - (-18*z*zt^2 + 18*zt^3 + 18*z*zt - 18*zt^2)/(z^3 - z^2 - z + 1)
         0
         """
 
         a._assertp0()
 
-        return Regit(a, t, pow)
+        return Regit(a, t, is_pow)
 
     def regit_b(a, t):
         """
@@ -2170,7 +2188,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         """
-        return a.julia()
+        return a.julia(scale=log(a[1]))
 
     def julia(a, scale=1):
         """
@@ -2263,7 +2281,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: pah = p.abel()
         sage: pac = p.abel2()
         sage: pah
-        [0, 1/2*a/(-a + 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
+        [0, -1/2*a/(a - 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
         sage: [pac[k] - pah[k]==0 for k in range(0,5)]
         [True, True, True, True, True]
         """
@@ -2281,7 +2299,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: a = var('a')
         sage: p = FormalPowerSeriesRing(PolynomialRing(QQ,a))(exp(a*x)-1,x)
         sage: p.abel2()
-        [0, -1/2*a/(a - 1), (5/12*a^3 + 1/12*a^2)/(2*a^3 - 2*a^2 - 2*a + 2), ...]
+        [0, -1/2*a/(a - 1), (5/24*a^3 + 1/24*a^2)/(a^3 - a^2 - a + 1), ...]
         
         """
 
@@ -2339,6 +2357,12 @@ class FormalPowerSeries01(FormalPowerSeries0):
     #         return q
 
     is01 = True
+
+    def __init__(self, parent, **kwargs):
+        FormalPowerSeries0.__init__(self,parent,**kwargs)
+        # TODO: assert
+        self.min_index = 1
+
 
     def regit(a, t):
         """
@@ -2487,9 +2511,9 @@ class Iterated(FormalPowerSeries):
         if n < self.min_index:
             return self.K0
         if n == self.min_index:
-            return g.next()
+            return next(g)
         x = self[n - 1]  # dummy to compute the prev value
-        return g.next()
+        return next(g)
 
 
 class List(FormalPowerSeries):
@@ -2534,7 +2558,7 @@ class Taylor(FormalPowerSeries):
 
         si = FormalPowerSeries.__init__
         # coeffs always returns non-empty list, at least [0,0] is contained
-        min_index = expr.taylor(v, at, 2).substitute({v: v + at}).coeffs(v)[0][1]
+        min_index = expr.taylor(v, at, 2).substitute({v: v + at}).coefficients(v)[0][1]
         si(self, parent, min_index=min_index)
 
         self.expr = expr
@@ -2550,7 +2574,7 @@ class Taylor(FormalPowerSeries):
         expr = self.expr
         v = self.v
         at = self.at
-        return self.K(expr.taylor(v, at, n).substitute({v: v + at}).coeff(v, n))
+        return self.K(expr.taylor(v, at, n).substitute({v: v + at}).coefficient(v, n))
 
 
 # # # Constants # # #
@@ -2871,10 +2895,13 @@ class Tan(FormalPowerSeries01):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Tan))
+    sage: P.Tan
     [0, 1, 0, 1/3, 0, 2/15, 0, 17/315, 0, 62/2835, 0, 1382/155925, 0, ...]
     """
     hint = HintType([0, 1])
+
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def coeffs(self, N):
         """ sage: None   # indirect doctest """
@@ -2882,7 +2909,7 @@ class Tan(FormalPowerSeries01):
             return self.K0
         n = (N + 1) // 2
         P = self.parent()
-        return P.K(P.Bernoulli[2 * n] * (-4) ** n * (1 - 4 ** n) / factorial(2 * n))
+        return self.K(P.Bernoulli[2 * n] * (-4) ** n * (1 - 4 ** n) / factorial(2 * n))
 
 
 class Tanh(FormalPowerSeries01):
@@ -2891,7 +2918,7 @@ class Tanh(FormalPowerSeries01):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Tanh))
+    sage: P.Tanh
     [0, 1, 0, -1/3, 0, 2/15, 0, -17/315, 0, 62/2835, 0, -1382/155925, 0, ...]
     """
     hint = HintType([0, 1])
@@ -2902,7 +2929,7 @@ class Tanh(FormalPowerSeries01):
             return self.K0
         n = (N + 1) // 2
         P = self.parent()
-        return P.K(P.Bernoulli[2 * n] * (-1) ** (2 * n) * 4 ** n * (4 ** n - 1) / factorial(2 * n))
+        return self.K(P.Bernoulli[2 * n] * (-1) ** (2 * n) * 4 ** n * (4 ** n - 1) / factorial(2 * n))
 
 
 class Xexp(FormalPowerSeries01):
@@ -2942,7 +2969,7 @@ class Lambert_w(FormalPowerSeries01):
             return self.K0
         if n == 1:
             return self.K1
-        return self.K((-n) ** (n - 1) / factorial(n))
+        return self.K((-n) ** (n - 1)) / self.K(factorial(n))
 
 
 class Sqrt_inc(FormalPowerSeries):
@@ -3039,7 +3066,7 @@ class Selfpower_inc(FormalPowerSeries):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Selfpower_inc))
+    sage: P.Selfpower_inc
     [1, 1, 1, 1/2, 1/3, 1/12, 3/40, -1/120, 59/2520, -71/5040, 131/10080, ...]
     """
     hint = HintType([1, 1])
@@ -3047,7 +3074,7 @@ class Selfpower_inc(FormalPowerSeries):
     def coeffs(self, n):
         """ sage: None   # indirect doctest """
         P = self.parent()
-        return P.K(sum([P.Stirling1[n][k] * P.A000248[k] for k in range(n + 1)])) / factorial(n)
+        return self.K(sum([P.Stirling1[n][k] * P.A000248[k] for k in range(n + 1)])) / factorial(n)
 
 
 class Superroot_inc(FormalPowerSeries):
@@ -3056,7 +3083,7 @@ class Superroot_inc(FormalPowerSeries):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Superroot_inc))
+    sage: P.Superroot_inc
     [1, 1, -1, 3/2, -17/6, 37/6, -1759/120, 13279/360, -97283/1008, ...]
     """
     hint = HintType([1, 1])
@@ -3064,7 +3091,7 @@ class Superroot_inc(FormalPowerSeries):
     def coeffs(self, n):
         """ sage: None   # indirect doctest """
         P = self.parent()
-        return P.K(sum([P.Stirling1[n][k] * Integer(1 - k) ** (k - 1) for k in range(n + 1)])) / factorial(n)
+        return self.K(sum([P.Stirling1[n][k] * Integer(1 - k) ** (k - 1) for k in range(n + 1)])) / factorial(n)
 
 
 class A003725(FormalPowerSeries):
@@ -3089,7 +3116,7 @@ class Selfroot_inc(FormalPowerSeries):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Selfroot_inc))
+    sage: P.Selfroot_inc
     [1, 1, -1, 1/2, 1/6, -3/4, 131/120, -9/8, 1087/1260, -271/720, -2291/10080, ...]
     """
     hint = HintType([1, 1])
@@ -3097,7 +3124,7 @@ class Selfroot_inc(FormalPowerSeries):
     def coeffs(self, n):
         """ sage: None   # indirect doctest """
         P = self.parent()
-        return P.K(sum([P.Stirling1[n][k] * P.A003725[k] for k in range(n + 1)])) / factorial(n)
+        return self.K(sum([P.Stirling1[n][k] * P.A003725[k] for k in range(n + 1)])) / factorial(n)
 
 
 class Inv_selfroot_inc(FormalPowerSeries):
@@ -3107,7 +3134,7 @@ class Inv_selfroot_inc(FormalPowerSeries):
 
     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
     sage: P = FormalPowerSeriesRing(QQ)
-    sage: loads(dumps(P.Inv_selfroot_inc))
+    sage: P.Inv_selfroot_inc
     [1, 1, 1, 3/2, 7/3, 4, 283/40, 4681/360, 123101/5040, 118001/2520, ...]
     """
     hint = HintType([1, 1])
@@ -3118,12 +3145,12 @@ class Inv_selfroot_inc(FormalPowerSeries):
         if n < 0:
             return self.K0
         if n == 0:
-            return P.K1
+            return self.K1
         r = 0
         for k in range(1, n + 1):
             r += P.Stirling1[n][k] * P.K((k + 1)) ** (k - 1)
 
-        return P.K(r) / factorial(n)
+        return self.K(r) / factorial(n)
 
 
 # # # Methods # # #
@@ -3171,7 +3198,7 @@ class Apply(FormalPowerSeries):
         self.f = f
         self.first = first
         self.last = last
-        if hasattr(a, 'hint') and self.first >= 2:
+        if hasattr(a, 'hint') and first is not None and first >= 2:
             self.hint = a.hint
 
     def coeffs(self, n):
@@ -3579,7 +3606,7 @@ class N(FormalPowerSeries):
 
 
 class Regit(FormalPowerSeries0):
-    def __init__(self, a, t, pow=False):
+    def __init__(self, a, t, is_pow=False):
         """
         Description and tests at FormalPowerSeries.regit
         sage: None   # indirect doctest
@@ -3587,13 +3614,13 @@ class Regit(FormalPowerSeries0):
         A = a.parent()
         AB = A.base_ring()
         T = t.parent()
-        if pow is False and AB.has_coerce_map_from(T):
+        if is_pow is False and AB.has_coerce_map_from(T):
             res_type = A
             base_ring = None  # will be taken from res_type
-        elif pow is False and T.has_coerce_map_from(AB):
+        elif is_pow is False and T.has_coerce_map_from(AB):
             res_type = None  # will be computed from base_ring
             base_ring = T
-        elif pow is True:
+        elif is_pow is True:
             base_ring = None  # will be taken from res_type
             if T.has_coerce_map_from(A):
                 res_type = T
@@ -3604,7 +3631,7 @@ class Regit(FormalPowerSeries0):
         si(self, res_type, min_index=1, base_ring=base_ring)
         self.a = a
         self.t = t
-        self.pow = pow
+        self.is_pow = is_pow
 
     def coeffs(self, n):
         """ sage: None   # indirect doctest """
@@ -3621,7 +3648,7 @@ class Regit(FormalPowerSeries0):
             return self.K0
         if n == 1:
             # print ")"
-            if self.pow:
+            if self.is_pow:
                 return t
             return a[1] ** t
 
@@ -3779,7 +3806,7 @@ class ExpAbel(FormalPowerSeries01):
 
 
 class Expit(FormalPowerSeries0):
-    def __init__(self, j, j1=None):
+    def __init__(self, j, j1=None, **kwargs):
         """
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
@@ -3885,11 +3912,11 @@ class Regit01(FormalPowerSeries01):
         sage: None   # indirect doctest
         """
         si = FormalPowerSeries.__init__
+        ps_type = None
+        base_ring = None
         if a.base_ring().has_coerce_map_from(t.parent()):
             ps_type = a.parent()
-            base_ring = None
         elif t.parent().has_coerce_map_from(a.base_ring()):
-            ps_type = None
             base_ring = t.parent()
         si(self, ps_type, min_index=a.min_index, base_ring=base_ring)
         self.a = a
