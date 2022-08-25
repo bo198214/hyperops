@@ -22,7 +22,7 @@ AUTHORS:
 # ****************************************************************************
 
 from sage.calculus.functional import diff
-from sage.functions.log import log
+from sage.functions.log import log,exp
 from sage.functions.other import sqrt
 from sage.matrix.constructor import matrix, identity_matrix
 from sage.misc.misc_c import prod
@@ -156,7 +156,6 @@ class FormalPowerSeriesRing(Ring):
         """
         if base_ring is None:
             return
-        self.foo = True  # TODO
         self.K = base_ring
         if is_decidable is None:
             self.is_decidable = decidable0(base_ring)
@@ -242,9 +241,14 @@ class FormalPowerSeriesRing(Ring):
         # Mittag-Leffler polynomial cache
         self.mlpc = {}
 
-    class MultiplyAction(Action):
+    def is_zero(self):
+        return False
+        #return sum([abs(self[k]) for k in range(100)]) == self.K0
+
+    class FPSAction(Action):
         def __init__(self, G, S, is_left=True, op=None):
             super().__init__(G, S, is_left=is_left, op=op)
+            self.S = S
             # print("G",self.G,"is_left", self.is_left())
 
         def _act_(self,g,x):
@@ -262,7 +266,7 @@ class FormalPowerSeriesRing(Ring):
     def _get_action_(self, S, op, self_on_left):
         # print(S,self_on_left,op)
         if self.K.has_coerce_map_from(S):
-            return self.MultiplyAction(self,S,is_left=self_on_left,op=op)
+            return self.FPSAction(self, S, is_left=self_on_left, op=op)
 
     def __call__(self, p1=None, p2=None, p3=None, **kwargs):
         """
@@ -1143,7 +1147,7 @@ class FormalPowerSeries(RingElement):
         sage: g.crush()
         [0, 1, 1/2, 2/3, 17/24, 59/80, 1099/1440, 47297/60480, 48037/60480, ...]
         
-        sage: P = PolynomialRing(QQ,'p')
+        sage: P = PolynomialRing(FQ,'p')
         sage: p = P.gen()
         sage: FP = FormalPowerSeriesRing(P)
         sage: FP.Dec_exp.regit(p).parent() == FP
@@ -1151,20 +1155,20 @@ class FormalPowerSeries(RingElement):
 
         sage: FFP = FormalPowerSeriesRing(FP)
         sage: h1 = FP([0,p])
-        sage: h2 = h1.apply(lambda poly,n: poly(FP.Exp),result_type=FFP)
+        sage: h2 = h1.apply(lambda poly,n: poly(FQ.Exp),result_type=FFP)
         sage: h2.parent() == FFP
         True
-        sage: h2[1] - FP.Exp   
+        sage: h2[1] - FQ.Exp
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: h2[2]
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: h3 = h2.regit(p-1)
-        sage: (h3[1] - FP.Exp**(p-1))[0:7]              
+        sage: h3 = h2.regit(5)
+        sage: (h3[1] - FQ.Exp**(5))[0:7]
         [0, 0, 0, 0, 0, 0, 0]
         sage: h4 = h3.crush()
-        sage: h4.parent() == FP
+        sage: h4.parent() == FQ
         True
-        sage: (h4 - FP.Id * FP.Exp(FP.Id * (p-1)))[0:7]
+        sage: (h4 - FQ.Id * FQ.Exp(FQ.Id * (p-1)))[0:7]
         [0, 0, 0, 0, 0, 0, 0]
         """
 
@@ -1530,7 +1534,7 @@ class FormalPowerSeries(RingElement):
 
     def log(a):
         """
-        Logarithm of powerseries a with a[0]==1.
+        Logarithm of powerseries a with a[0]!=0.
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
@@ -1540,11 +1544,25 @@ class FormalPowerSeries(RingElement):
 
         P = a.parent()
 
-        dec_a = a.set_item(0, 0)
+        divdec_a = (a.rmul(a.K1/a[0])).set_item(0, 0)
 
         #        if decidable0(a.K):
         #            assert a[0] == 1
-        return dec_a | P.Log_inc
+        return (divdec_a | P.Log_inc).set_item(0,log(a[0]))
+
+    def exp(a):
+        """
+        Exponential of Powerseries
+        sage: PQ.Log_inc.exp()
+        [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ([2/3,5]).log().exp()
+        [2/3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: PQ([2/3,5]).exp().log()
+        [2/3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        """
+        P = a.parent()
+
+        return P.Exp(a.set_item(0,0)).lmul(exp(a[0]))
 
     #     def __xor__(a,t): # ^
     #         #Not recognized as it seems to be mapped to ** in sage
@@ -3614,21 +3632,25 @@ class Regit(FormalPowerSeries0):
         A = a.parent()
         AB = A.base_ring()
         T = t.parent()
-        if is_pow is False and AB.has_coerce_map_from(T):
-            res_type = A
-            base_ring = None  # will be taken from res_type
-        elif is_pow is False and T.has_coerce_map_from(AB):
-            res_type = None  # will be computed from base_ring
-            base_ring = T
-        elif is_pow is True:
-            base_ring = None  # will be taken from res_type
-            if T.has_coerce_map_from(A):
-                res_type = T
-            elif A.has_coerce_map_from(T):
-                res_type = A
+        if is_pow is False:
+            base_ring = (a[1]**t).parent()
+        else:
+            if T.has_coerce_map_from(AB):
+                base_ring = T
+            elif AB.has_coerce_map_from(T):
+                base_ring = AB
+
+        # if is_pow is False and AB.has_coerce_map_from(T):
+        #     res_type = A
+        #     base_ring = None  # will be taken from res_type
+        # elif is_pow is False and T.has_coerce_map_from(AB):
+        #     res_type = None  # will be computed from base_ring
+        #     base_ring = T
+        # elif is_pow is True:
+        #     base_ring = None  # will be taken from res_type
 
         si = FormalPowerSeries.__init__
-        si(self, res_type, min_index=1, base_ring=base_ring)
+        si(self, FormalPowerSeriesRing(base_ring), min_index=1, base_ring=base_ring)
         self.a = a
         self.t = t
         self.is_pow = is_pow
