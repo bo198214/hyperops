@@ -45,7 +45,7 @@ from sage.structure.sage_object import SageObject
 from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
 from sage.categories.action import Action
-from operator import mul, truediv
+from operator import mul, truediv, pow
 
 HintType = PolynomialRing(QQ, 't')
 
@@ -154,6 +154,7 @@ class FormalPowerSeriesRing(Ring):
         sage: FormalPowerSeriesRing(QQ) 
         FormalPowerSeriesRing over Rational Field
         """
+        Ring.__init__(self,base=base_ring)
         if base_ring is None:
             return
         self.K = base_ring
@@ -245,28 +246,46 @@ class FormalPowerSeriesRing(Ring):
         return False
         #return sum([abs(self[k]) for k in range(100)]) == self.K0
 
-    class FPSAction(Action):
-        def __init__(self, G, S, is_left=True, op=None):
-            super().__init__(G, S, is_left=is_left, op=op)
-            self.S = S
-            # print("G",self.G,"is_left", self.is_left())
-
-        def _act_(self,g,x):
-            if self.op == mul:
-                if self.is_left():
-                    return g.rmul(x)
-                else:
-                    return g.lmul(x)
-            if self.op == truediv:
-                if self.is_left():
-                    return g.rmul(1/x)
-                else:
-                    return g.reciprocal().lmul(x)
-
-    def _get_action_(self, S, op, self_on_left):
-        # print(S,self_on_left,op)
-        if self.K.has_coerce_map_from(S):
-            return self.FPSAction(self, S, is_left=self_on_left, op=op)
+    # class FPSAction(Action):
+    #     def __init__(self, G, S, is_left=True, op=None):
+    #         super().__init__(G, S, is_left=is_left, op=op)
+    #         self.S = S
+    #         # print("G",self.G,"is_left", self.is_left())
+    #
+    #     def left_domain(self):
+    #         if self.is_left():
+    #             return self.S
+    #         else:
+    #             return self.G
+    #
+    #     def right_domain(self):
+    #         if self.is_left():
+    #             return self.G
+    #         else:
+    #             return self.S
+    #
+    #     def codomain(self):
+    #         return self.S
+    #
+    #     def _act_(self,g,x):
+    #         if self.op == mul:
+    #             if self.is_left():
+    #                 return g.rmul(x)
+    #             else:
+    #                 return g.lmul(x)
+    #         if self.op == truediv:
+    #             if self.is_left():
+    #                 return g.rmul(1/x)
+    #             else:
+    #                 return g.reciprocal().lmul(x)
+    #         if self.op == pow and not self.is_left():
+    #             return g.lmul(log(x)).exp()
+    #
+    # def _get_action_(self, S, op, self_on_left):
+    #     if self.K.has_coerce_map_from(S):
+    #         print(op,pow)
+    #         if op == mul or op == truediv or op is pow:
+    #             return self.FPSAction(S, self, is_left=self_on_left, op=op)
 
     def __call__(self, p1=None, p2=None, p3=None, **kwargs):
         """
@@ -582,31 +601,31 @@ class FormalPowerSeriesRing(Ring):
         """
         return "FormalPowerSeriesRing over " + repr(self.K)
 
-    def _coerce_map_from_(self, T):
-        """
-        Returns true if type T can be coerced to a FormalPowerSeries
-        with self as parent. This can be done always when
-        T can be coerced to self.base_ring().
-        This is used for operations like lmul and rmul.
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(RR)
-        sage: P._coerce_map_from_(QQ)
-        True
-        sage: P._coerce_map_from_(int)
-        True
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: P._coerce_map_from_(int)
-        True
-        sage: P._coerce_map_from_(RR)
-        False
-        """
-        # print self.K, T,not self.K.coerce_map_from(T) == None
-        if self.K.coerce_map_from(T) is not None:
-            return True
-        if isinstance(T, FormalPowerSeriesRing):
-            return self.K.coerce_map_from(T.K) is not None
-        return False
+    # def _coerce_map_from_(self, T):
+    #     """
+    #     Returns true if type T can be coerced to a FormalPowerSeries
+    #     with self as parent. This can be done always when
+    #     T can be coerced to self.base_ring().
+    #     This is used for operations like _lmul_ and _rmul_.
+    #
+    #     sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+    #     sage: P = FormalPowerSeriesRing(RR)
+    #     sage: P._coerce_map_from_(QQ)
+    #     True
+    #     sage: P._coerce_map_from_(int)
+    #     True
+    #     sage: P = FormalPowerSeriesRing(QQ)
+    #     sage: P._coerce_map_from_(int)
+    #     True
+    #     sage: P._coerce_map_from_(RR)
+    #     False
+    #     """
+    #     # print self.K, T,not self.K.coerce_map_from(T) == None
+    #     if self.K.coerce_map_from(T) is not None:
+    #         return True
+    #     if isinstance(T, FormalPowerSeriesRing):
+    #         return self.K.coerce_map_from(T.K) is not None
+    #     return False
 
     def base_ring(self):
         """
@@ -1212,37 +1231,34 @@ class FormalPowerSeries(RingElement):
         """
         return DecMethod(a)
 
-    def rmul(a, s):
+    def smul(a, s):
         """
-        Scalar multiplication from right with scalar s 
+        Scalar multiplication with scalar s
 
-        Alternative expression: a.rmul(s) == a * s 
+        Alternative expression: a.smul(s) == s * a
 
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
         sage: P = FormalPowerSeriesRing(QQ)
         sage: p = P([1,2,3])
-        sage: p.rmul(2)
+        sage: p.smul(2)
+        [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: (2/3) * p
+        [2/3, 4/3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+
+        Alternative expression: a.smul(s) == a * s
+
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: P = FormalPowerSeriesRing(QQ)
+        sage: p = P([1,2,3])
+        sage: p.smul(2)
         [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: p * (2/3)
         [2/3, 4/3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return RMul(a, s)
+        return SMul(a, s)
 
-    def lmul(a, s):
-        """
-        Scalar multiplication from left with scalar s 
-
-        Alternative expression: a.lmul(s) == s * a
-
-        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: P = FormalPowerSeriesRing(QQ)
-        sage: p = P([1,2,3])
-        sage: p.lmul(2)
-        [2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        sage: (2/3) * p
-        [2/3, 4/3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
-        """
-        return LMul(a, s)
+    _lmul_ = smul
+    _rmul_ = smul
 
     def add(a, b):
         """
@@ -1544,7 +1560,7 @@ class FormalPowerSeries(RingElement):
 
         P = a.parent()
 
-        divdec_a = (a.rmul(a.K1/a[0])).set_item(0, 0)
+        divdec_a = (a.smul(a.K1/a[0])).set_item(0, 0)
 
         #        if decidable0(a.K):
         #            assert a[0] == 1
@@ -1553,6 +1569,8 @@ class FormalPowerSeries(RingElement):
     def exp(a):
         """
         Exponential of Powerseries
+        sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
+        sage: PQ = FormalPowerSeriesRing(QQ)
         sage: PQ.Log_inc.exp()
         [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: PQ([2/3,5]).log().exp()
@@ -1562,7 +1580,7 @@ class FormalPowerSeries(RingElement):
         """
         P = a.parent()
 
-        return P.Exp(a.set_item(0,0)).lmul(exp(a[0]))
+        return P.Exp(a.set_item(0,0)).smul(exp(a[0]))
 
     #     def __xor__(a,t): # ^
     #         #Not recognized as it seems to be mapped to ** in sage
@@ -1581,7 +1599,7 @@ class FormalPowerSeries(RingElement):
         True
         """
         A = a
-        return (a.apply(div_factorial) ** k).apply(mul_factorial).rmul(Integer(1) / factorial(k))
+        return (a.apply(div_factorial) ** k).apply(mul_factorial).smul(Integer(1) / factorial(k))
 
     def bell_polynomial(a, n, k):
         """
@@ -2056,7 +2074,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         [0, sqrt(2), 0]
         """
         s = a.schroeder()
-        return s.inv()(s.rmul(a[1] ** t))
+        return s.inv()(s.smul(a[1] ** t))
 
     def inv(a):
         """
@@ -2283,7 +2301,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         This method returns [r,ps].
         """
-        return [1 / log(f[1]), f.abel().rmul(1 / log(f[1]))]
+        return [1 / log(f[1]), f.abel().smul(1 / log(f[1]))]
 
     def abel(f):
         """
@@ -2482,7 +2500,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         sage: a = p.abel_coeffs()
         sage: a
         [6, [-1/3, 1, -1; 0, -10, 11/2, 17/9, -169/12, 349/30, 13/18, -544/21, 1727/24, ...]]
-        sage: ((p << 1).log().rmul(a[0]) + (p | a[1]) - a[1]).reclass()
+        sage: ((p << 1).log().smul(a[0]) + (p | a[1]) - a[1]).reclass()
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
 
@@ -3268,7 +3286,7 @@ class DecMethod(FormalPowerSeries):
         return self.a[n]
 
 
-class RMul(FormalPowerSeries):
+class SMul(FormalPowerSeries):
     def __init__(self, a, s):
         """
         Description and tests at FormalPowerSeries.rmul
@@ -3281,21 +3299,6 @@ class RMul(FormalPowerSeries):
     def coeffs(self, n):
         """ sage: None   # indirect doctest """
         return self.a[n] * self.s
-
-
-class LMul(FormalPowerSeries):
-    def __init__(self, a, s):
-        """
-        Description and tests at FormalPowerSeries.lmul
-        sage: None   # indirect doctest
-        """
-        FormalPowerSeries.__init__(self, a.parent(), min_index=a.min_index)
-        self.a = a
-        self.s = s
-
-    def coeffs(self, n):
-        """ sage: None   # indirect doctest """
-        return self.s * self.a[n]
 
 
 class Add(FormalPowerSeries):
@@ -4010,3 +4013,79 @@ class Crush(FormalPowerSeries):
 
     def coeffs(self, n):
         return sum([self.a[k][n - k] for k in range(self.min_index, n + 1)], self.K0)
+
+from sage.rings.integer_ring import ZZ
+
+class LocalizationX(Ring):
+   def __init__(self, primes):
+       """
+       Localization of `\ZZ` away from primes.
+       """
+       Ring.__init__(self, base=ZZ)
+       self._primes = primes
+       #self._populate_coercion_lists_()
+
+   def _repr_(self):
+       """
+       How to print self.
+       """
+       return "%s localized at %s" % (self.base(), self._primes)
+
+   def __call__(self, x):
+       """
+       Make sure x is a valid member of self, and return the constructed element.
+       """
+       if isinstance(x, LocalizationXElement):
+           x = x._value
+       else:
+           x = QQ(x)
+       for p, e in x.denominator().factor():
+           if p not in self._primes:
+               raise ValueError("Not integral at %s" % p)
+       return LocalizationXElement(self, x)
+
+   # def _coerce_map_from_(self, S):
+   #     """
+   #     The only things that coerce into this ring are:
+   #
+   #     - the integer ring
+   #
+   #     - other localizations away from fewer primes
+   #     """
+   #     if S is ZZ:
+   #         return True
+   #     elif isinstance(S, LocalizationX):
+   #         return all(p in self._primes for p in S._primes)
+
+
+class LocalizationXElement(RingElement):
+
+   def __init__(self, parent, x):
+       RingElement.__init__(self, parent)
+       self._value = x
+
+
+   # We're just printing out this way to make it easy to see what's going on in the examples.
+
+   def _repr_(self):
+       return "LocalElt(%s)" % self._value
+
+   # Now define addition, subtraction, and multiplication of elements.
+   # Note that left and right always have the same parent.
+
+   def _add_(left, right):
+       return LocalizationXElement(left.parent(), left._value + right._value)
+
+   def _sub_(left, right):
+       return LocalizationXElement(left.parent(), left._value - right._value)
+
+   def _mul_(left, right):
+       return LocalizationXElement(left.parent(), left._value * right._value)
+
+   # The basering was set to ZZ, so c is guaranteed to be in ZZ
+
+   def _rmul_(self, c):
+       return LocalizationXElement(self.parent(), c * self._value)
+
+   def _lmul_(self, c):
+       return LocalizationXElement(self.parent(), self._value * c)
