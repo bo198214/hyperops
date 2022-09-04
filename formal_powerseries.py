@@ -1020,10 +1020,14 @@ class FormalPowerSeries(RingElement):
         [1, 42, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: P([1,2]).set_item(0,0).min_index
         1
+        sage: P([0,2]).set_item(0,3).min_index
+        0
         """
         min_index = a.min_index
         if min_index == index and value == 0:
             min_index += 1
+        if min_index == index+1 and value != 0:
+            min_index -= 1
         return a.new(lambda n: value if n == index else a[n], min_index)
 
     def __setitem__(a, item, value):
@@ -2130,14 +2134,6 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     #         return a.new(lambda n: h(b[n]))
 
-    def super(a):
-        """
-        The super function S of f, solves joS = S'
-        where j is the julia function/logit of f
-        """
-
-        return Super(a)
-
     def exp_abel(a):
         """
         The exponential of the Abel function of f
@@ -2158,6 +2154,8 @@ class FormalPowerSeries0(FormalPowerSeries):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: p = PQ.Dec_exp
         sage: p.logit().expit() - p
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: (p.logit()/2).expit() - p.it(1/2)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         return Expit(a)
@@ -2226,7 +2224,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         """
         return a.julia(scale=log(a[1]))
 
-    def julia(a, scale=1):
+    def julia(a, j1=0, scale=1):
         """
         The Julia function of a.
         
@@ -2244,10 +2242,10 @@ class FormalPowerSeries0(FormalPowerSeries):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
         if a[1] == a.K1:
-            return Logit01(a, scale)
+            return Logit01(a, j1=j1, scale=scale)
         if a[1] == -a.K1:
-            return a.K1 / 2 * Logit01(a * a, scale)
-        return Logit_hyp(a, scale)
+            return a.K1 / 2 * Logit01(a * a, j1=j1, scale=scale)
+        return Logit_hyp(a, j1=j1, scale=scale)
 
     #     def logit(a):
     #         """
@@ -3755,7 +3753,7 @@ class Logit_hyp(FormalPowerSeries0):
 
 
 class Logit01(FormalPowerSeries01):
-    def __init__(self, a, j1=None):
+    def __init__(self, a, j1=None, scale=1):
         """
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
@@ -3764,15 +3762,16 @@ class Logit01(FormalPowerSeries01):
 
         self.ap = a.diff()
 
-        min_index = a.valit() + 1
+        self.valit = a.valit()
+        if j1 is None:
+            min_index = a.valit() + 1
+            self.j1 = a.K0
+        else:
+            self.j1 = j1
+            min_index = 1
 
         si = FormalPowerSeries.__init__
         si(self, a.parent(), min_index=min_index)
-
-        if j1 is None:
-            self.j1 = log(a[1])
-        else:
-            self.j1 = j1
 
     def coeffs(self, n):
         """ sage: None #indirect doctest """
@@ -3785,10 +3784,15 @@ class Logit01(FormalPowerSeries01):
         # joh  = h'*j
         if n < self.min_index:
             return self.K0
-        if n == self.min_index:
-            return a[self.min_index]
+        if n == 1:
+            return self.j1
+        if 1 < n <= self.valit:
+            print(n,self.valit,self.K0)
+            return self.K0
+        if n == self.valit + 1:
+            return a[n]
 
-        valit = self.min_index - 1
+        valit = self.valit
         N = n + valit
 
         # sum(k=1..N) j_k a^k_N = sum(k=0..N) ap_(N-k) * j_k, ap_0 = a_1 != 0
@@ -3800,10 +3804,11 @@ class Logit01(FormalPowerSeries01):
         for k in range(1, n):
             r += self[k] * (ap[N - k] - a.npow(k)[N])
 
-        assert ap[valit] == (valit + 1) * a[valit + 1]
-        assert a.npow(n)[N] == a[valit + 1] * n, str(a.npow(n)[N]) + "!=" + str(a[N - n + 1] * n) + " n=" + str(
-            n) + " N=" + str(N) + str(a)
-        assert a.npow(n)[N] - ap[N - n] == a[valit + 1] * (n - valit - 1)
+        if self.min_index > 1:
+            assert ap[valit] == (valit + 1) * a[valit + 1]
+            assert a.npow(n)[N] == a[valit + 1] * n, str(a.npow(n)[N]) + "!=" + str(a[N - n + 1] * n) + " n=" + str(
+                n) + " N=" + str(N) + str(a)
+            assert a.npow(n)[N] - ap[N - n] == a[valit + 1] * (n - valit - 1)
         return r / (a[valit + 1] * (n - (valit + 1)))
         # return r/(a.npow(n)[N]-ap[valit])
 
