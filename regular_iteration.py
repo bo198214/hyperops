@@ -74,18 +74,18 @@ class RegularIterate:
         else:
             d = abs(yn - yp)
 
-        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+        if debug >=2: print(n,":","d:",d.n(20),"yn:",yn,"xn:",xn)
         
         if xp == xn:
             if debug>=0: 
-		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x
+            print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x)
             return NaN
         
           
         if d<err: 
             res = yn.n(prec)
 
-            if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
+            if debug>=1: print('res:',res,'n:',n,'d:',d.n(20),'err:',err )
             return res
         
         
@@ -233,7 +233,7 @@ class RegularSlog:
 
       xin = x
       err=2.0**(-prec)
-      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'a:',a,'err:',err
+      if debug>=1: print('N:',self.N,'iprec:',iprec,'prec:',prec,'b:',b,'z0:',z0,'a:',a,'err:',err)
       #lnb = b.log()
       n = 0
       xn = num(x,iprec)
@@ -255,11 +255,11 @@ class RegularSlog:
         else:
             d = abs(yn - (yp-1))
 
-        if debug >=2: print n,":","d:",d.n(20),"yn:",yn,"xn:",xn
+        if debug >=2: print(n,":","d:",d.n(20),"yn:",yn,"xn:",xn)
         
         if xp == xn or d == 1:
             if debug>=0: 
-		print "slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b
+            print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b)
             return NaN
         
           
@@ -271,5 +271,5 @@ class RegularSlog:
             else:
                 res += n
   
-            if debug>=1: print 'res:',res,'n:',n,'d:',d.n(20),'err:',err
+            if debug>=1: print('res:',res,'n:',n,'d:',d.n(20),'err:',err)
             return res
