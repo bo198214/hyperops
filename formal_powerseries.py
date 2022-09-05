@@ -1024,6 +1024,8 @@ class FormalPowerSeries(RingElement):
         min_index = a.min_index
         if min_index == index and value == 0:
             min_index += 1
+        if min_index == index + 1 and value != 0:
+            min_index -= 1
         return a.new(lambda n: value if n == index else a[n], min_index)
 
     def __setitem__(a, item, value):
@@ -1053,7 +1055,9 @@ class FormalPowerSeries(RingElement):
         sage: p[0:1] = [0]
         sage: p.min_index
         1
-        sage: P([0,2]).set_item(0,3).min_index
+        sage: p = P([0,2])
+        sage: p[0]=3
+        sage: p.min_index
         0
         """
 
@@ -1080,10 +1084,11 @@ class FormalPowerSeries(RingElement):
             a.coeffs = lambda n: seq[n - i] if i <= n < j else f(n)
         else:
             index = item
+            a.set_item(index,value)
             min_index = a.min_index
             if min_index == index and value == 0:
                 min_index += 1
-            if min_index == index+1 and value != 0:
+            if min_index == index + 1 and value != 0:
                 min_index -= 1
 
             a.min_index = min_index
@@ -2143,7 +2148,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         """
         return ExpAbel(a)
 
-    def expit(a):
+    def expit(a,a1=None):
         """
         The inverse Operator of logit. I.e. given a function j we want to retrieve the function f
         such that
@@ -2157,7 +2162,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: p.logit().expit() - p
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return Expit(a)
+        return Expit(a,a1=a1)
 
     def logit(a):
         """
@@ -2242,8 +2247,6 @@ class FormalPowerSeries0(FormalPowerSeries):
         """
         if a[1] == a.K1:
             return Logit01(a, scale)
-        if a[1] == -a.K1:
-            return a.K1 / 2 * Logit01(a * a, scale)
         return Logit_hyp(a, scale)
 
     #     def logit(a):
@@ -3761,15 +3764,17 @@ class Logit01(FormalPowerSeries01):
 
         self.ap = a.diff()
 
-        min_index = a.valit() + 1
+        self.v = a.valit()
+
+        if j1 is None or j1 == a.K0:
+            min_index = self.v + 1
+            self.j1 = a.K0  # log(a[1])
+        else:
+            min_index = 1
+            self.j1 = j1
 
         si = FormalPowerSeries.__init__
         si(self, a.parent(), min_index=min_index)
-
-        if j1 is None:
-            self.j1 = log(a[1])
-        else:
-            self.j1 = j1
 
     def coeffs(self, n):
         """ sage: None #indirect doctest """
@@ -3777,23 +3782,27 @@ class Logit01(FormalPowerSeries01):
         a = self.a
         ap = self.ap
 
-        r = self.K0
-
         # joh  = h'*j
-        if n < self.min_index:
+        if n == 0:
             return self.K0
-        if n == self.min_index:
-            return a[self.min_index]
+        if n == 1:
+            return self.j1
+        if n <= self.v:
+            return self.K0
+        if n == self.v + 1:
+            return a[self.v+1]
 
-        valit = self.min_index - 1
+        valit = self.v
         N = n + valit
 
-        # sum(k=1..N) j_k a^k_N = sum(k=0..N) ap_(N-k) * j_k, ap_0 = a_1 != 0
+        # sum(k=1..N) j_k a^k_N = sum(k=0..N) ap_(N-k) * j_k, ap_0 = a_1 = 1
         # a^k_N = 0 for n<=k<N; ap_m = 0 for 0 < m < valit
         # j_N * a_1^N + sum(k=1..n) j_k a^k_N = ap_0*j_N + sum(k=0..n) ap_(N-k) * j_k
         # so in case a_1 = 1 = ap_0, we have the recursion
         # j_n * a^n_N + sum(k=1..(n-1)) j_k a^k_N = ap_valit * j_n + sum(k=1..N-1) ap_(N-k) * j_k
         # a^n_N = a_{valit+1} * n
+
+        r = self.K0
         for k in range(1, n):
             r += self[k] * (ap[N - k] - a.npow(k)[N])
 
@@ -3828,12 +3837,13 @@ class ExpAbel(FormalPowerSeries01):
 
 
 class Expit(FormalPowerSeries0):
-    def __init__(self, j, j1=None, **kwargs):
+    def __init__(self, j, a1=None, **kwargs):
         """
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
         """
         self.j = j
+        self.a1 = a1
 
         si = FormalPowerSeries.__init__
         si(self, j.parent(), min_index=1)
@@ -3844,12 +3854,12 @@ class Expit(FormalPowerSeries0):
         v = j.min_index - 1
         N = n + v
 
-        r = a.K0
-
         # joh  = h'*j
         if n == 0:
             return a.K0
         if n == 1:
+            if a.a1 is not None:
+                return a.a1
             return a.K1
         if n < v + 1:
             return 0
@@ -3857,13 +3867,19 @@ class Expit(FormalPowerSeries0):
             return j[n]
 
         # sum(k=1..N) j_k a^k_N = sum(k=0..N) (k+1)a_{k+1} * j_{N-k}
-        # j_{v+1} a^(v+1)_N +...+ j_N a^N_N = a_1*j_N + (v+1)a_{v+1}*j_n +...+ n*a_n * j_{v+1}
+        # j_1*a_N + j_{v+1} a^(v+1)_N +...+ j_N a^N_N = a_1*j_N + (v+1)a_{v+1}*j_n +...+ n*a_n * j_{v+1} + N*a_N*j_1
         # a^(v+k+1)_{n+v} does not contain a_n for k > 0
         # a^(v+1)_{n+v}  = a_n*a^v_v +         a_{n-1}*a^v_{v+1}    +...+ a_{v+1}*a^v_{n-1}     + a_1*a^v_{n+v-1}
         # a^v_{n+v-1}    = a_n*a^(v-1)_{v-1} + a_{n-1}*a^{v-1}_v    +...+ a_{v+1}*a^(v-1)_{n-2} + a_1*a^(v-1)_{n+v-2}
         # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v_3}
         # ...
         # a^1_n          = a_n
+
+        r = a.K0
+        if not j[1] == j.K0:
+            ls = sum([j[k]*a.npow(k)[n] for k in range(2,n) if j[k] != a.K0],a.K0)
+            rs = sum([(k+1)*a[k+1]*j[n-k] for k in range(0,n-1)],a.K0)
+            return (ls - rs)/((N-1)*j[1])
 
         for k in range(v + 2, N + 1):
             r += j[k] * a.npow(k)[N]
