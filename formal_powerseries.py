@@ -1053,7 +1053,10 @@ class FormalPowerSeries(RingElement):
         sage: p[0:1] = [0]
         sage: p.min_index
         1
+        sage: P([0,2]).set_item(0,3).min_index
+        0
         """
+
         if isinstance(item, slice):
             i = item.start
             j = item.stop
@@ -1080,6 +1083,8 @@ class FormalPowerSeries(RingElement):
             min_index = a.min_index
             if min_index == index and value == 0:
                 min_index += 1
+            if min_index == index+1 and value != 0:
+                min_index -= 1
 
             a.min_index = min_index
             f = a.coeffs
@@ -2129,14 +2134,6 @@ class FormalPowerSeries0(FormalPowerSeries):
     #             return sum([p.coeffs()[n]*n for n in range(p.degree()+1)],a.K0)
 
     #         return a.new(lambda n: h(b[n]))
-
-    def super(a):
-        """
-        The super function S of f, solves joS = S'
-        where j is the julia function/logit of f
-        """
-
-        return Super(a)
 
     def exp_abel(a):
         """
