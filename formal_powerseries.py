@@ -46,6 +46,9 @@ from sage.symbolic.expression import Expression
 from sage.symbolic.ring import SymbolicRing
 from sage.categories.action import Action
 from operator import mul, truediv, pow
+from sage.symbolic.constants import pi
+from sage.rings.qqbar import QQbar
+
 
 HintType = PolynomialRing(QQ, 't')
 
@@ -2071,7 +2074,7 @@ class FormalPowerSeries0(FormalPowerSeries):
 
         a._assertp0()
 
-        return Regit(a, t, is_pow)
+        return Regit_hyp(a, t, is_pow)
 
     def regit_b(a, t):
         """
@@ -2140,14 +2143,6 @@ class FormalPowerSeries0(FormalPowerSeries):
 
     #         return a.new(lambda n: h(b[n]))
 
-    def exp_abel(a):
-        """
-        The exponential of the Abel function of f
-        solves h = j * h'
-        where j is the julia function/logit of f
-        """
-        return ExpAbel(a)
-
     def expit(a,a1=None):
         """
         The inverse Operator of logit. I.e. given a function j we want to retrieve the function f
@@ -2162,7 +2157,7 @@ class FormalPowerSeries0(FormalPowerSeries):
         sage: p.logit().expit() - p
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
-        return Expit(a,a1=a1)
+        return Expit01(a, a1=a1)
 
     def logit(a):
         """
@@ -3626,7 +3621,7 @@ class N(FormalPowerSeries):
         return num(self.a[k], *self.args, **self.kwargs)
 
 
-class Regit(FormalPowerSeries0):
+class Regit_hyp(FormalPowerSeries0):
     def __init__(self, a, t, is_pow=False):
         """
         Description and tests at FormalPowerSeries.regit
@@ -3754,6 +3749,68 @@ class Logit_hyp(FormalPowerSeries0):
         return r / (a[1] ** n - a[1])
 
 
+class Regit01(FormalPowerSeries01):
+    def __init__(self, f, t, k=0, a1=None):
+        """
+        Description and tests at FormalPowerSeries.regit
+        sage: None  # indirect doctest
+        """
+        self.f = f
+        self.v = f.valit()
+        self.t = t
+
+        si = FormalPowerSeries.__init__
+        si(self, f.parent(), min_index=1)
+
+        if a1 is not None:
+            self.a1 = a1
+        elif k != 0:
+            self.a1 = ((QQbar(-1)) ** (1 / self.v)) ** (2 * k)
+        else:
+            self.a1 = self.K1
+
+    def coeffs(self,n):
+        # hof = foh
+        # sum(k=1..n) h_k f^k_N + h_N * f_1^N = f_1*h_N + f_{v+1} h^(v+1)_N +...+ f_N h^N_N
+        # sum(k=1..n) h_k f^k_N = f_{v+1} h^(v+1)_N +...+ f_N h^N_N
+        # a^(v+k+1)_{n+v} on the left does not contain a_n for k > 0
+        # a^(v+1)_{n+v}  = a_n*a^v_v +         a_{n-1}*a^v_{v+1}    +...+ a_{v+1}*a^v_{n-1}     + a_1*a^v_{n+v-1}
+        # a^v_{n+v-1}    = a_n*a^(v-1)_{v-1} + a_{n-1}*a^{v-1}_v    +...+ a_{v+1}*a^(v-1)_{n-2} + a_1*a^(v-1)_{n+v-2}
+        # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v_3}
+        # ...
+        # a^1_n          = a_n
+
+        a = self
+        j = self.f
+        v = self.v
+        t = self.t
+        N = n+v
+
+        if n == 0:
+            return self.K0
+        if n == 1:
+            return self.a1
+        if n <= v:
+            return self.K0
+        if n == v+1:
+            return t*j[n]
+
+        rhs = self.K0
+        # right side except f_{v+1}*(v+1)*a_n
+        for k in range(v + 2, N + 1):
+            rhs += j[k] * a.npow(k)[N]
+        s = 0
+        for k in range(v + 1, n):
+            s += a[k] * sum([a[1]**(v-i)*a.npow(i)[n + i - k] for i in range(1, v + 1)],a.K0)
+        rhs += j[v + 1] * s
+        # left side except a_n * f^n_N = a_n * n * f_(v+1)
+        lhs = self.K0
+        for k in range(1,n):
+            lhs += a[k]*j.npow(k)[N]
+        res = (rhs-lhs)/j[v+1]/(n - v - 1)
+        #print(N,v,n,lhs,rhs,j[v+1]*n,j[v+1]*sum([a[1]**k for k in range(0,v+1)],a.K0),res)
+        return res
+
 class Logit01(FormalPowerSeries01):
     def __init__(self, a, j1=None):
         """
@@ -3814,36 +3871,17 @@ class Logit01(FormalPowerSeries01):
         # return r/(a.npow(n)[N]-ap[valit])
 
 
-class ExpAbel(FormalPowerSeries01):
-    """
-    Description and tests at FormalPower/series.exp_abel
-    sage: None  # indirect doctest
-    """
-
-    def __init__(self, a):
-        self.a = a
-        self.j = a.logit()
-
-    def coeffs(self, n):
-        """ sage: None #indirect doctest """
-
-        # h = j * h'
-        # h_n = sum(i+k=n) j_i*(k+1)*h_{k+1} #j_0 = 0, j_1=0
-        # h_n = sum(k=0,n-2) j_(n-k)*(k+1)*h_{k+1}
-        res = 1
-        for k in range(1, n):
-            res += self.j[n - k] * (k + 1) * self.a[k]
-        return res
-
-
-class Expit(FormalPowerSeries0):
+class Expit01(FormalPowerSeries01):
     def __init__(self, j, a1=None, **kwargs):
         """
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
         """
         self.j = j
-        self.a1 = a1
+        if a1 is not None:
+            self.a1 = a1
+        else:
+            self.a1 = self.K1
 
         si = FormalPowerSeries.__init__
         si(self, j.parent(), min_index=1)
@@ -3854,21 +3892,19 @@ class Expit(FormalPowerSeries0):
         v = j.min_index - 1
         N = n + v
 
-        # joh  = h'*j
         if n == 0:
             return a.K0
         if n == 1:
-            if a.a1 is not None:
-                return a.a1
-            return a.K1
+            return a.a1
         if n < v + 1:
-            return 0
-        if n == v + 1:
-            return j[n]
+            return a.K0
+        #if n == v + 1:
+        #       return j[n]
 
+        # joa  = a'*j
         # sum(k=1..N) j_k a^k_N = sum(k=0..N) (k+1)a_{k+1} * j_{N-k}
         # j_1*a_N + j_{v+1} a^(v+1)_N +...+ j_N a^N_N = a_1*j_N + (v+1)a_{v+1}*j_n +...+ n*a_n * j_{v+1} + N*a_N*j_1
-        # a^(v+k+1)_{n+v} does not contain a_n for k > 0
+        # a^(v+k+1)_{n+v} on the left does not contain a_n for k > 0
         # a^(v+1)_{n+v}  = a_n*a^v_v +         a_{n-1}*a^v_{v+1}    +...+ a_{v+1}*a^v_{n-1}     + a_1*a^v_{n+v-1}
         # a^v_{n+v-1}    = a_n*a^(v-1)_{v-1} + a_{n-1}*a^{v-1}_v    +...+ a_{v+1}*a^(v-1)_{n-2} + a_1*a^(v-1)_{n+v-2}
         # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v_3}
@@ -3891,10 +3927,10 @@ class Expit(FormalPowerSeries0):
             s += a[k] * sum([a.npow(i)[n + i - k] for i in range(1, v + 1)])
         r += j[v + 1] * s
 
-        return r / j[v + 1] / (n - v - 1)
+        return r / j[v + 1] / (n - sum([a[1]**k for k in range(0,v+1)],a.K0))
 
 
-class Schroeder(FormalPowerSeries01):
+class Schroeder(FormalPowerSeries0):
     def __init__(self, a):
         """
         Description and tests at FormalPowerSeries.schroeder
@@ -3921,7 +3957,7 @@ class Schroeder(FormalPowerSeries01):
         return sum([self[m] * a.npow(m)[n] for m in range(1, n)], self.K0) / (q - q ** n)
 
 
-class InvSchroeder(FormalPowerSeries01):
+class InvSchroeder(FormalPowerSeries0):
     def __init__(self, a):
         """
         Description and tests at FormalPowerSeries.inv_schroeder
@@ -3943,7 +3979,7 @@ class InvSchroeder(FormalPowerSeries01):
         return sum([a[m] * self.npow(m)[n] for m in range(2, n + 1)], self.K0) / (q ** n - q)
 
 
-class Regit01(FormalPowerSeries01):
+class Regit_Jabotinsky(FormalPowerSeries01):
     def __init__(self, a, t):
         """
         Description and tests at FormalPowerSeries01.regit
