@@ -3750,7 +3750,7 @@ class Logit_hyp(FormalPowerSeries0):
 
 
 class Regit01(FormalPowerSeries01):
-    def __init__(self, f, t, k=0, a1=None):
+    def __init__(self, f, t, k=0, a1=None, av=None, a0tov=None):
         """
         Description and tests at FormalPowerSeries.regit
         sage: None  # indirect doctest
@@ -3762,6 +3762,8 @@ class Regit01(FormalPowerSeries01):
         si = FormalPowerSeries.__init__
         si(self, f.parent(), min_index=1)
 
+        self.a0tov=a0tov
+
         if a1 is not None:
             self.a1 = a1
         elif k != 0:
@@ -3769,14 +3771,23 @@ class Regit01(FormalPowerSeries01):
         else:
             self.a1 = self.K1
 
+        if av is not None:
+            self.av = av
+        else:
+            v = self.v
+            a1 = self.a1
+            vv = a1 ** (v - 1) * sum([a1 ** (v * k) for k in range(v)])
+            self.av = t*v/vv*f[v+1]
+
     def coeffs(self,n):
-        # hof = foh
-        # sum(k=1..n) h_k f^k_N + h_N * f_1^N = f_1*h_N + f_{v+1} h^(v+1)_N +...+ f_N h^N_N
-        # sum(k=1..n) h_k f^k_N = f_{v+1} h^(v+1)_N +...+ f_N h^N_N
+        # aoj = joa
+        # sum(k=1..N) a_k j^k_N = sum(k=1..N) j_k a^k_N
+        # sum(k=1..n) a_k j^k_N + a_N * j_1^N = j_1*h_N + j_{v+1} a^(v+1)_N +...+ j_N a^N_N
+        # sum(k=1..n) a_k j^k_N = j_{v+1} a^(v+1)_N +...+ j_N a^N_N
         # a^(v+k+1)_{n+v} on the left does not contain a_n for k > 0
         # a^(v+1)_{n+v}  = a_n*a^v_v +         a_{n-1}*a^v_{v+1}    +...+ a_{v+1}*a^v_{n-1}     + a_1*a^v_{n+v-1}
         # a^v_{n+v-1}    = a_n*a^(v-1)_{v-1} + a_{n-1}*a^{v-1}_v    +...+ a_{v+1}*a^(v-1)_{n-2} + a_1*a^(v-1)_{n+v-2}
-        # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v_3}
+        # a^(v-1)_{n+v-2}= a_n*a^(v-2)_{v-2} + a_{n-1}*a^(v-2)_{v-1}+...+ a_{v+1}*a^(v-2)_{n-3} + a_1*a^(v-2)_{n+v-3}
         # ...
         # a^1_n          = a_n
 
@@ -3786,22 +3797,25 @@ class Regit01(FormalPowerSeries01):
         t = self.t
         N = n+v
 
+        if self.a0tov is not None and n <= v+1:
+            return self.a0tov[n]
+
         if n == 0:
             return self.K0
         if n == 1:
             return self.a1
-        if n <= v:
-            return self.K0
+#        if n <= v:
+#            return self.K0
         if n == v+1:
-            return t*j[n]
+            return self.av
 
         rhs = self.K0
         # right side except f_{v+1}*(v+1)*a_n
         for k in range(v + 2, N + 1):
             rhs += j[k] * a.npow(k)[N]
         s = 0
-        for k in range(v + 1, n):
-            s += a[k] * sum([a[1]**(v-i)*a.npow(i)[n + i - k] for i in range(1, v + 1)],a.K0)
+        for k in range(2, n):
+            s += a[k] * sum([a[1]**(v-i)*a.npow(i)[n + i - k] for i in range(1, v + 1)], a.K0)
         rhs += j[v + 1] * s
         # left side except a_n * f^n_N = a_n * n * f_(v+1)
         lhs = self.K0
@@ -3810,6 +3824,7 @@ class Regit01(FormalPowerSeries01):
         res = (rhs-lhs)/j[v+1]/(n - v - 1)
         #print(N,v,n,lhs,rhs,j[v+1]*n,j[v+1]*sum([a[1]**k for k in range(0,v+1)],a.K0),res)
         return res
+
 
 class Logit01(FormalPowerSeries01):
     def __init__(self, a, j1=None):
@@ -3830,7 +3845,7 @@ class Logit01(FormalPowerSeries01):
             min_index = 1
             self.j1 = j1
 
-        si = FormalPowerSeries.__init__
+        si = FormalPowerSeries01.__init__
         si(self, a.parent(), min_index=min_index)
 
     def coeffs(self, n):
