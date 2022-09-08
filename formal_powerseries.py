@@ -48,6 +48,8 @@ from sage.categories.action import Action
 from operator import mul, truediv, pow
 from sage.symbolic.constants import pi
 from sage.rings.qqbar import QQbar
+from sage.symbolic.relation import solve
+from sage.calculus.var import var
 
 
 HintType = PolynomialRing(QQ, 't')
@@ -1172,7 +1174,7 @@ class FormalPowerSeries(RingElement):
 
         
         sage: from sage.rings.formal_powerseries import FormalPowerSeriesRing
-        sage: FQ = FormalPowerSeriesRing(QQ)                 
+        sage: FQ = FormalPowerSeriesRing(QQ)
         sage: g = FQ.Dec_exp.regit(FQ.Exp)    
         sage: g.parent()
         FormalPowerSeriesRing over FormalPowerSeriesRing over Rational Field
@@ -2394,8 +2396,7 @@ class FormalPowerSeries01(FormalPowerSeries0):
         # TODO: assert
         self.min_index = 1
 
-
-    def regit(a, t):
+    def regit(a, t, k=0, a1=None, avp1=None, a0tovp1=None):
         """
         Regular iteration for powerseries with a[0]==0 and a[1]==1. 
         The iteration index t needs not to be an integer.
@@ -2408,9 +2409,25 @@ class FormalPowerSeries01(FormalPowerSeries0):
         sage: p = P.Dec_exp.regit(1/2)  
         sage: (p | p) - P.Dec_exp    
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: h = P([0,-1,0,0,1,1])
+        sage: f = h(h).reclass()
+        sage: f.valit()
+        4
+        sage: g0 = f.regit(1/4,a1=1)
+        sage: g1 = f.regit(1/4,a1=I)
+        sage: g2 = f.regit(1/4,a1=-1)
+        sage: g3 = f.regit(1/4,a1=-I)
+        sage: g0.nit(4) - f
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: g1.nit(4) - f
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: g2.nit(4) - f
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: g3.nit(4) - f
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
 
-        return Regit01(a, t)
+        return Regit01(a, t, k=k, a1=a1, avp1=avp1, a0tovp1=a0tovp1)
 
     def itop(a, ie):
         """
@@ -3750,7 +3767,7 @@ class Logit_hyp(FormalPowerSeries0):
 
 
 class Regit01(FormalPowerSeries01):
-    def __init__(self, f, t, k=0, a1=None, av=None, a0tov=None):
+    def __init__(self, f, t, k=0, a1=None, avp1=None, a0tovp1=None):
         """
         Description and tests at FormalPowerSeries.regit
         sage: None  # indirect doctest
@@ -3762,7 +3779,7 @@ class Regit01(FormalPowerSeries01):
         si = FormalPowerSeries.__init__
         si(self, f.parent(), min_index=1)
 
-        self.a0tov=a0tov
+        self.a0tovp1 = a0tovp1
 
         if a1 is not None:
             self.a1 = a1
@@ -3771,13 +3788,7 @@ class Regit01(FormalPowerSeries01):
         else:
             self.a1 = self.K1
 
-        if av is not None:
-            self.av = av
-        else:
-            v = self.v
-            a1 = self.a1
-            vv = a1 ** (v - 1) * sum([a1 ** (v * k) for k in range(v)])
-            self.av = t*v/vv*f[v+1]
+        self.avp1 = avp1
 
     def coeffs(self,n):
         # aoj = joa
@@ -3797,8 +3808,8 @@ class Regit01(FormalPowerSeries01):
         t = self.t
         N = n+v
 
-        if self.a0tov is not None and n <= v+1:
-            return self.a0tov[n]
+        if self.a0tovp1 is not None and n <= v+1:
+            return self.a0tovp1[n]
 
         if n == 0:
             return self.K0
@@ -3807,7 +3818,11 @@ class Regit01(FormalPowerSeries01):
 #        if n <= v:
 #            return self.K0
         if n == v+1:
-            return self.av
+            if self.avp1 is not None:
+                return self.avp1
+            x = var('x')
+            vp1 = self.parent([self[k] for k in range(v+1)] + [x] ).nit(v)[v+1]
+            return t*v*solve( vp1 == j[v+1], x)[0].right_hand_side()
 
         rhs = self.K0
         # right side except f_{v+1}*(v+1)*a_n
@@ -3845,7 +3860,7 @@ class Logit01(FormalPowerSeries01):
             min_index = 1
             self.j1 = j1
 
-        si = FormalPowerSeries01.__init__
+        si = FormalPowerSeries0.__init__
         si(self, a.parent(), min_index=min_index)
 
     def coeffs(self, n):
@@ -3892,29 +3907,27 @@ class Expit01(FormalPowerSeries01):
         Description and tests at FormalPowerSeries.julia_gen
         sage: None   # indirect doctest
         """
+        si = FormalPowerSeries.__init__
+        si(self, j.parent(), min_index=1)
         self.j = j
         if a1 is not None:
             self.a1 = a1
         else:
             self.a1 = self.K1
 
-        si = FormalPowerSeries.__init__
-        si(self, j.parent(), min_index=1)
-
     def coeffs(a, n):
         """ sage: None #indirect doctest """
         j = a.j
         v = j.min_index - 1
         N = n + v
-
         if n == 0:
             return a.K0
         if n == 1:
             return a.a1
         if n < v + 1:
             return a.K0
-        #if n == v + 1:
-        #       return j[n]
+        if n == v + 1:
+            return j[n]
 
         # joa  = a'*j
         # sum(k=1..N) j_k a^k_N = sum(k=0..N) (k+1)a_{k+1} * j_{N-k}
@@ -3942,7 +3955,7 @@ class Expit01(FormalPowerSeries01):
             s += a[k] * sum([a.npow(i)[n + i - k] for i in range(1, v + 1)])
         r += j[v + 1] * s
 
-        return r / j[v + 1] / (n - sum([a[1]**k for k in range(0,v+1)],a.K0))
+        return r / j[v + 1] / (n - v - 1)
 
 
 class Schroeder(FormalPowerSeries0):
