@@ -1,4 +1,4 @@
-from sage.functions.log import log
+from sage.functions.log import log, ln
 from sage.functions.other import sqrt,real,imag,ceil
 from sage.functions.trig import tan
 from sage.matrix.constructor import Matrix, identity_matrix
@@ -15,7 +15,7 @@ from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 
 class MatrixPowerSexp:
-    def __init__(self,b,N,iprec,x0=0):
+    def __init__(self,b,N,iprec,x0=ComplexField()(0)):
         self.bsym = b
         self.N = N
         self.iprec = iprec
@@ -45,42 +45,42 @@ class MatrixPowerSexp:
         self.x0 = x0
         if isinstance(x0,RealNumber):
             R = RealField(iprec)
-	else:
+        else:
             R = ComplexField(iprec)    
 
         #symbolic carleman matrix
         if x0 == 0:
             #C = Matrix([[ m**n*log(b)**n/factorial(n) for n in range(N)] for m in range(N)])
-            coeffs = [log(b)**n/factorial(n) for n in xrange(N)]
+            coeffs = [log(b)**n/factorial(n) for n in range(N)]
         else:
             #too slow
             #c = b**x0
             #C = Matrix([ [log(b)**n/factorial(n)*sum([binomial(m,k)*k**n*c**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
-            coeffs = [b**x0-x0]+[b**x0*log(b)**n/factorial(n) for n in xrange(1,N)]
+            coeffs = [b**x0-x0]+[b**x0*log(b)**n/factorial(n) for n in range(1,N)]
 
         def psmul(A,B):
             N = len(B)
-            return [sum([A[k]*B[n-k] for k in xrange(n+1)]) for n in xrange(N)]
+            return [sum([A[k]*B[n-k] for k in range(n+1)]) for n in range(N)]
         
         C = Matrix(R,N)
         row = vector(R,[1]+(N-1)*[0])
         C[0] = row
-        for m in xrange(1,N):
+        for m in range(1,N):
             row = psmul(row,coeffs)
             C[m] = row
-  
-        print "Carleman matrix created."
+
+        print("Carleman matrix created.")
 
         #numeric matrix and eigenvalues
         #self.CM = C.n(iprec) #n seems to reduce to a RealField
         self.CM = C
 
         self.eigenvalues = self.CM.eigenvalues()
-        print "Eigenvalues computed."
+        print("Eigenvalues computed.")
 
         self.IM = None
         self.calc_IM()
-        print "Iteration matrix computed."
+        print("Iteration matrix computed.")
         self.coeffs_1 = self.IM * vector([1]+[(1-x0)**n for n in range(1,N)])
         if x0 == 0:
             self.coeffs_0 = self.IM.column(0)
@@ -111,8 +111,8 @@ class MatrixPowerSexp:
         prodwo = n * [0]
         prod = identity_matrix(n)
 
-	#if we were to start here with prod = IdentityMatrix
-	#prodwo[k]/sprodwo[k] would be the component projector of ev[k]
+    #if we were to start here with prod = IdentityMatrix
+    #prodwo[k]/sprodwo[k] would be the component projector of ev[k]
         #component projector of ev[k] is a matrix Z such that
         #CM * Z = ev[k] * Z and Z*Z=Z
         #then f(CM)=sum_k f(ev[k])*Z[k]
@@ -155,10 +155,10 @@ class MatrixPowerSexp:
     
         #product till k-1
         prodwo = n * [0]
-        prod = vector([0,1]+(n-2)*[0]);
+        prod = vector([0,1]+(n-2)*[0])
 
-	#if we were to start here with prod = IdentityMatrix
-	#prodwo[k]/sprodwo[k] would be the component projector of ev[k]
+    #if we were to start here with prod = IdentityMatrix
+    #prodwo[k]/sprodwo[k] would be the component projector of ev[k]
         #component projector of ev[k] is a matrix Z such that
         #CM * Z = ev[k] * Z and Z*Z=Z
         #then f(CM)=sum_k f(ev[k])*Z[k]
@@ -205,11 +205,11 @@ class MatrixPowerSexp:
         class _SexpCoeffs1(FormalPowerSeries0):
             def coeffs(self,n):
                if n==0: return 0
-               return sum([a1[k]*log(ev[k])**n for k in xrange(N)])/factorial(n)
+               return sum([a1[k]*log(ev[k])**n for k in range(N)])/factorial(n)
         class _SexpCoeffs0(FormalPowerSeries0):
             def coeffs(self,n):
                if n==0: return 0
-               return sum([a0[k]*log(ev[k])**n for k in xrange(N)])/factorial(n) 
+               return sum([a0[k]*log(ev[k])**n for k in range(N)])/factorial(n)
 
         self.sexp_coeffs_1 = _SexpCoeffs1(RP,min_index=1)
         self.slog_coeffs_1 = self.sexp_coeffs_1.inv()
@@ -300,13 +300,13 @@ class MatrixPowerSexp:
         if real(t)<0:
             #sage bug, log(z,b) does not work for complex z
             return log(sexp(t+1))/log(b)
-	return self.sexp_1_raw(t)
+        return self.sexp_1_raw(t)
 
     def sexp_0_raw(self,t):
         x0 = self.x0
         b = self.b
         return b**(x0+vector([ v**t for v in self.eigenvalues ])*self.coeffs_0)
-	
+
 
     def sexp_0(self,t):
         #convergence radius 1
@@ -320,7 +320,7 @@ class MatrixPowerSexp:
         if real(t)<0:
             #sage bug, log(z,b) does not work for complex z
             return log(sexp(t+1))/log(b)
-	return self.sexp_0_raw(t)
+        return self.sexp_0_raw(t)
 
     def sexp(self,t):
         if self.prec != None:
@@ -335,7 +335,7 @@ class MatrixPowerSexp:
 
         sexp_precision=RR(1)*log(abs(self.sexp_1(0.5)-mp0.sexp_1(0.5)),2.0)
         self.prec = (-sexp_precision).floor()
-        print "sexp precision: " , self.prec
+        print("sexp precision: ", self.prec)
 
         cprec = self.prec+ceil(log(self.N)/log(2.0))
 
@@ -348,7 +348,7 @@ class MatrixPowerSexp:
         path = self.path
         prec = self.prec
 
-        print "Writing to '" + path + ".sobj'."
+        print("Writing to '" + path + ".sobj'.")
         save(self,path)
         if prec != None: save(prec,path+"_prec"+repr(prec))
         return self

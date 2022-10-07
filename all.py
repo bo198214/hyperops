@@ -64,5 +64,5 @@ from natural import (
     natural_Schroeder_function,
     natural_Abel_function)
 
-from powerseries import (
-    PowerSeriesI)
+from formal_powerseries import (
+    PowerSeriesRing)

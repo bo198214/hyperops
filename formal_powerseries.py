@@ -1669,7 +1669,12 @@ class FormalPowerSeries(RingElement):
     def powerseries(a, n, name='x', R=None):
         if R is None:
             R = a.K
-        return PowerSeriesRing(R, name=name, default_prec=n)(a[:n])
+        m = a.min_index
+        Q = PowerSeriesRing(R, name=name, default_prec=n)
+        if m >= 0:
+            return Q(a[:n])
+        xp = Q.gen()
+        return Q(a[m:n]) / Q(xp ** (-m))
 
     def polynomial(a, n, name='x', R=None):
         """
@@ -2424,6 +2429,8 @@ class FormalPowerSeries01(FormalPowerSeries0):
         sage: g2.nit(4) - f
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         sage: g3.nit(4) - f
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
+        sage: f.regit(1/2,a1=-1) - h
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...]
         """
 
@@ -3820,6 +3827,8 @@ class Regit01(FormalPowerSeries01):
         if n == v+1:
             if self.avp1 is not None:
                 return self.avp1
+            if self.a1 == self.K1:
+                return t*j[n]
             x = var('x')
             vp1 = self.parent([self[k] for k in range(v+1)] + [x] ).nit(v)[v+1]
             return t*v*solve( vp1 == j[v+1], x)[0].right_hand_side()
@@ -3956,6 +3965,30 @@ class Expit01(FormalPowerSeries01):
         r += j[v + 1] * s
 
         return r / j[v + 1] / (n - v - 1)
+
+
+class Super(FormalPowerSeries01):
+    def __init__(self, f, a0):
+        """
+        Description and tests at FormalPowerSeries01.super
+        sage: None   # indirect doctest
+        """
+        si = FormalPowerSeries.__init__
+        si(self, f.parent(), min_index=0)
+        self.j = f.logit()
+        self.a0 = a0
+
+    def coeffs(a, n):
+        """ sage: None #indirect doctest """
+
+        j = a.j
+
+        if n == 0:
+            return a.a0
+        # print([(k,n-1) for k in range(n)])
+        # return 1
+        return sum([j[k]*(a.npow(k))[n-1] for k in range(n)], a.K0)/n
+
 
 
 class Schroeder(FormalPowerSeries0):

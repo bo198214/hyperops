@@ -27,13 +27,13 @@ def Carleman_matrix(expr, x, x0=0, n_row=5, n_col=0, limit=False):
 
     # initialize data
     ser = 1
-    ret = [[1] + [0 for k in xrange(n_col)]]
-    for j in xrange(1, n_row + 1):
+    ret = [[1] + [0 for k in range(n_col)]]
+    for j in range(1, n_row + 1):
         
         # find Taylor series about x=x0
-    	ser = taylor(ser*expr, x, x0, n_col)
+        ser = taylor(ser*expr, x, x0, n_col)
         cof = get_coeff_list(ser, x, x0, n_col)
-    	ret.append(cof)
+        ret.append(cof)
 
     return matrix(ret)
 
@@ -70,8 +70,8 @@ def Abel_matrix(expr, x, x0=0, n_row=5, n_col=0):
 
     # subtract the identity matrix
     abel = [[bell[j][k] - (1 if j == k else 0)
-            for k in xrange(n_col + 1)] 
-           for j in xrange(n_row + 1)]
+            for k in range(n_col + 1)]
+           for j in range(n_row + 1)]
 
     # truncate the first column
     abel = map(lambda x: x[1:], abel)
@@ -107,7 +107,7 @@ def matrix_power(m, n):
     
     # make sure m is a matrix
     if not is_Matrix(m):
-        raise ValueError, "m must be a matrix"
+        raise ValueError("m must be a matrix")
     
     raise NotImplemented
 

@@ -35,15 +35,15 @@ def harmonic_number(n, k=1, r=1):
     http://mathworld.wolfram.com/HarmonicNumber.html (uses n, k, r)
     """
     if k < 0:
-        raise ValueError, "m must be positive"
+        raise ValueError("m must be positive")
     elif k == 0:
         ret = 1/(n**r)
     elif k == 1:
         # if QQ isn't used, then 1/n == 0 (integer division)
-        ls = [QQ(1)/(j**r) for j in xrange(1, n + 1)]
+        ls = [QQ(1)/(j**r) for j in range(1, n + 1)]
         ret = sum(ls)
     else:
-        ls = [harmonic_number(j, k - 1, r) for j in xrange(1, n + 1)]
+        ls = [harmonic_number(j, k - 1, r) for j in range(1, n + 1)]
         ret = sum(ls)
     return ret
 
@@ -107,11 +107,23 @@ def KnoebelH(x, k=0):
     #return -LambertW(-log(x), k)/log(x)
 
 
-# quote from Wikipediadef LambertW_by_desy(x):
+# quote from Wikipedia
+def LambertW_by_desy(x):
     if x <= 500.0:
-        lx1 = ln(x + 1.0)        return 0.665 * (1 + 0.0195 * lx1) * lx1 + 0.04    return ln(x - 4.0) - (1.0 - 1.0/ln(x)) * ln(ln(x))
+        lx1 = ln(x + 1.0)
+        return 0.665 * (1 + 0.0195 * lx1) * lx1 + 0.04
+    return ln(x - 4.0) - (1.0 - 1.0/ln(x)) * ln(ln(x))
 
-# quote from Wikipediadef LambertW_by_iteration(x, prec=1E-12, maxiters=100, guess=0):    w = guess    for i in xrange(maxiters):        we = w*e**w        w1e = (w + 1)*e**w        if prec > abs((x - we) / w1e):            return w        w -= (we - x) / (w1e - (w+2) * (we-x) / (2*w+2))    raise ValueError("W doesn't converge fast enough for abs(z) = %f" % abs(x))
+# quote from Wikipedia
+def LambertW_by_iteration(x, prec=1E-12, maxiters=100, guess=0):
+    w = guess
+    for i in range(maxiters):
+        we = w*e**w
+        w1e = (w + 1)*e**w
+        if prec > abs((x - we) / w1e):
+            return w
+        w -= (we - x) / (w1e - (w+2) * (we-x) / (2*w+2))
+    raise ValueError("W doesn't converge fast enough for abs(z) = %f" % abs(x))
 
 # The Lambert W function
 def LambertW(x, k=0):

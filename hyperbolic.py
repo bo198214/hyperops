@@ -19,24 +19,24 @@ def safe_factor(x):
     
 def get_diagonal_power(expr, t, x, x0=0, n=5):
     fixp = diff(expr, x).subs(x=x0)
-    ls = [fixp**(k*t) for k in xrange(n + 1)]
+    ls = [fixp**(k*t) for k in range(n + 1)]
     return diagonal_matrix(ls)
     
 # get_right_eigenvectors(h_poly(x), x)
 def get_right_eigenvectors(expr, x, x0=0, n=5):
     bell = Bell_matrix(expr, x, x0, n)
     fixp = map(list, list(bell))[1][1]
-    vars = vector([var('A'+str(k)) for k in xrange(n + 1)])
+    vars = vector([var('A'+str(k)) for k in range(n + 1)])
     ret = []
-    ret.append([1] + [0 for k in xrange(n)])
+    ret.append([1] + [0 for k in range(n)])
 
     # this gives Inverse[p]
     # find eigenvectors, the first eigenvector will be
     # [1, 0, 0, ...] so we don't need to find it.
-    for j in xrange(1, n + 1):
+    for j in range(1, n + 1):
         sub = {}
         vec = []
-        for k in xrange(0, j):
+        for k in range(0, j):
             sub['A'+str(k)] = 0
             vec.append(0)
         sub['A'+str(j)] = 1
@@ -44,7 +44,7 @@ def get_right_eigenvectors(expr, x, x0=0, n=5):
 
         # solve eigensystem equations
         eqns = (bell - (fixp**j)*identity_matrix(n + 1))*vars
-        for k in xrange(j + 1, n + 1):
+        for k in range(j + 1, n + 1):
             #print "Eigenvector", j, sub
             try:
                 eqn = eqns[k].subs(sub)
@@ -63,17 +63,17 @@ def get_right_eigenvectors(expr, x, x0=0, n=5):
 def get_left_eigenvectors(expr, x, x0=0, n=5):
     carl = Carleman_matrix(expr, x, x0, n)
     fixp = map(list, list(carl))[1][1]
-    vars = vector([var('A'+str(k)) for k in xrange(n + 1)])
+    vars = vector([var('A'+str(k)) for k in range(n + 1)])
     ret = []
-    ret.append([1] + [0 for k in xrange(n)])
+    ret.append([1] + [0 for k in range(n)])
 
     # this gives Inverse[p]
     # find eigenvectors, the first eigenvector will be
     # [1, 0, 0, ...] so we don't need to find it.
-    for j in xrange(1, n + 1):
+    for j in range(1, n + 1):
         sub = {}
         vec = []
-        for k in xrange(0, j):
+        for k in range(0, j):
             sub['A'+str(k)] = 0
             vec.append(0)
         sub['A'+str(j)] = 1
@@ -81,7 +81,7 @@ def get_left_eigenvectors(expr, x, x0=0, n=5):
 
         # solve eigensystem equations
         eqns = vars*(carl - (fixp**j)*identity_matrix(n + 1))
-        for k in xrange(j + 1, n + 1):
+        for k in range(j + 1, n + 1):
             #print "Eigenvector", j, sub
             try:
                 eqn = eqns[k].subs(sub)
@@ -113,7 +113,7 @@ def hyperbolic_flow_coeffs(expr, t, x, x0=0, n=5, factor=True, check=True):
     """
     # is it a hyperbolic function?
     if check and not is_hyperbolic(expr, x, x0):
-        raise ValueError, "x0 == f(x0) must be a hyperbolic fixed point (f'(x0) != 1)"
+        raise ValueError("x0 == f(x0) must be a hyperbolic fixed point (f'(x0) != 1)")
     # 'schr' is the Schroeder matrix, which is
     # actually the inverse of the standard 'P' in P*D*P^-1
     schr = get_left_eigenvectors(expr, x, x0, n)
@@ -141,4 +141,4 @@ def hyperbolic_flow(expr, t, x, x0=0, n=5):
     """
     # checks hyperbolic-ness
     coeffs = hyperbolic_flow_coeffs(expr, t, x, x0, n)
-    return sum([coeffs[k]*(x - x0)**k for k in xrange(n + 1)])
+    return sum([coeffs[k]*(x - x0)**k for k in range(n + 1)])

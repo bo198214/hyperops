@@ -5,9 +5,11 @@ from sage.rings.complex_field import ComplexField
 from sage.rings.formal_powerseries import FormalPowerSeriesRing
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.real_mpfr import RR, RealField
-from sage.symbolic.constants import e,NaN
-
-from sage.hyperops.exp_fixpoint import exp_fixpoint 
+from sage.symbolic.constants import e,NaN, pi, I
+from sage.functions.log import log
+from exp_fixpoint import exp_fixpoint
+from sage.rings.rational_field import QQ
+from sage.symbolic.ring import SR
 
 
 class RegularIterate:
@@ -45,7 +47,7 @@ class RegularIterate:
 
       xin = x
       err=2.0**(-prec)
-      if debug>=1: print 'N:',self.N,'iprec:',iprec,'prec:',prec,'z0:',z0,'err:',err
+      if debug>=1: print('N:', self.N, 'iprec:', iprec, 'prec:', prec, 'z0:', z0, 'err:', err)
       #lnb = b.log()
       n = 0
       xn = num(x,iprec)
@@ -78,7 +80,7 @@ class RegularIterate:
         
         if xp == xn:
             if debug>=0: 
-            print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x)
+                print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x)
             return NaN
         
           
@@ -91,7 +93,7 @@ class RegularIterate:
         
 
 class RegularSlog:
-    def __init__(self,f,fixpoint=0,z0=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
+    def __init__(self,f,fixpoint_number=0,z0=0,u=None,prec=53,iprec=None,N=5,direction=-1,debug=0):
         """
         for the numbering of fixed points see function exp_fixpoint
 
@@ -104,18 +106,18 @@ class RegularSlog:
         """
 
         if debug >= 1:
-            if b==sqrt(2): print 'b:',b
-            if fixpoint_number==0: print 'fixpoint_number:',fixpoint_number
-            if prec==53: print 'prec:',prec
-            if N==5: print 'N:',N
-            if direction==-1: print 'direction:',direction
+            if b==sqrt(2): print('b:', b)
+            if fixpoint_number==0: print('fixpoint_number:', fixpoint_number)
+            if prec==53: print('prec:', prec)
+            if N==5: print('N:', N)
+            if direction==-1: print('direction:', direction)
 
         bsym = b
         self.bsym = bsym
         self.N = N
         if iprec==None:
             iprec=prec+10
-            if debug>=1: print 'iprec:',iprec
+            if debug>=1: print('iprec:', iprec)
         self.iprec = iprec
         self.prec = prec
         self.fixpoint_number = fixpoint_number
@@ -181,16 +183,16 @@ class RegularSlog:
         if self.parabolic:
             fps=fps.set_item(1,1).reclass()
             
-        if debug>=1: print "fp:",fp
+        if debug>=1: print("fp:", fp)
 
         [rho,ps] = fps.abel_coeffs()
-        if debug>=2: print 'fps:',fps
-        if debug>=2: print 'rho:',rho
-        if debug>=2: print 'abel_ps:',ps
-            
+        if debug>=2: print('fps:', fps)
+        if debug>=2: print('rho:', rho)
+        if debug>=2: print('abel_ps:', ps)
+
         PR = PolynomialRing(R,'x')
         self.slogpoly = ps.polynomial(N)
-        if debug>=2: print self.slogpoly
+        if debug>=2: print(self.slogpoly)
 
         self.slog_raw0 = lambda z: rho*(direction*(z-self.fp)).log() + self.slogpoly(z-self.fp)
 
@@ -198,8 +200,8 @@ class RegularSlog:
         self.c = 0
         if self.attracting and direction==-1 and u==None:
             u=1
-            if debug>=1: print 'u:',u
-            
+            if debug>=1: print('u:', u)
+
         if not u==None:
             self.c = -self.slog(u)                   
             pass
@@ -218,9 +220,9 @@ class RegularSlog:
         if self.real_fp:
             res = z.log()
         elif k>=1:
-            res = (log(-z.conjugate())-num(i*(2*pi*k-pi),self.iprec)).conjugate()
+            res = (log(-z.conjugate())-num(I*(2*pi*k-pi),self.iprec)).conjugate()
         elif k<=-1:
-            res = log(-z)+num(i*(2*pi*k+pi),self.iprec)
+            res = log(-z)+num(I*(2*pi*k+pi),self.iprec)
 
         return res/self.lnb
 
@@ -259,7 +261,7 @@ class RegularSlog:
         
         if xp == xn or d == 1:
             if debug>=0: 
-            print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b)
+                print("slog: increase iprec(",iprec,") or decrease prec(",prec,") to get a result for x:",x,"b:",b)
             return NaN
         
           

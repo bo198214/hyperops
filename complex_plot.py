@@ -1,6 +1,5 @@
 import sys
 
-import sage
 from sage.plot.contour_plot import contour_plot
 from sage.plot.line import line
 from sage.plot.graphics import Graphics
@@ -86,6 +85,7 @@ def complex_parametric_plot(f, interval, coarseness=0.005, max_dist_ratio=50, **
     xwidth = xmax-xmin
     ywidth = ymax-ymin
     diag = sqrt(xwidth**2+ywidth**2)
+    print(xwidth,ywidth,diag)
     ends = []
 
     def iterating1():

@@ -17,18 +17,19 @@ from sage.rings.real_mpfr import RR, RealField
 from sage.symbolic.constants import e
 from sage.symbolic.ring import SR
 import sage.symbolic.expression
+from sage.rings.complex_mpfr import ComplexNumber
 
 
 def psmul_at(v,w,n):
-    return sum([v[k]*w[n-k] for k in xrange(n+1)])
+    return sum([v[k]*w[n-k] for k in range(n+1)])
 
 def psmul(v,w):
     N = v.degree()
     assert v.degree()==w.degree()
-    return [psmul_at(v,w,n) for n in xrange(N)]
+    return [psmul_at(v,w,n) for n in range(N)]
 
 class IntuitiveAbel:
-    def __init__(self,f,N,iprec=512,u=None,x0=0,fname=None,extendable=True):
+    def __init__(self,f,N,iprec=512,u=None,x0:ComplexNumber=0,fname=None,extendable=True):
         """
         x0 is the development point for the Carleman matrix for the abel function
         u is the initial value such that abel(u)=0 or equivalently super(0)=u
@@ -84,34 +85,34 @@ class IntuitiveAbel:
         self.x0 = x0
         self.R = R
 
-	#Carleman matrix
+    #Carleman matrix
         #too slow
         #C = Matrix([ [ln(b)**n/factorial(n)*sum([binomial(m,k)*k**n*(b**x0)**k*(-x0)**(m-k) for k in range(m+1)]) for n in range(N)] for m in range(N)])
 
         if self.fps == None:
             x = self.f.args()[0]
             coeffs = taylor(self.f.substitute({x:x+x0sym})-x0sym,x,0,N-1).polynomial(self.R)
-            coeffs = [coeffs[n] for n in xrange(N-1)]
+            coeffs = [coeffs[n] for n in range(N-1)]
         else:
-            coeffs = [ self.fps[n] for n in xrange(0,N) ]
-        print "taylor computed"
-        
+            coeffs = [ self.fps[n] for n in range(0,N) ]
+        print("taylor computed")
+
         C = self.fast_carleman_matrix(coeffs)
         self.A = C.submatrix(1,0,N-1,N-1) - identity_matrix(R,N).submatrix(1,0,N-1,N-1)
 
-        print "A computed."
+        print("A computed.")
         self._init_abel()
 
     def _init_abel(self):
         bvec = vector([1] + (self.N-2)*[0])
         if self.extendable:
             self.AI = ~self.A
-            row = bvec * self.AI 
-            print "A inverted."
+            row = bvec * self.AI
+            print("A inverted.")
         else:
             row = self.A.solve_left(bvec)
-            print "A solved."
-        
+            print("A solved.")
+
         self.abel0coeffs = [0]+[row[n] for n in range(self.N-1)]
         self.abel0poly = PolynomialRing(self.R,'x')(self.abel0coeffs[:int(self.N)/2])
         
@@ -164,7 +165,7 @@ class IntuitiveAbel:
 
     def abel(self,x):
         x = num(x,self.iprec)
-	res = self.abel_raw0(x)
+        res = self.abel_raw0(x)
         if self.prec == None:
             return res
         return res.n(self.prec)
@@ -174,7 +175,7 @@ class IntuitiveAbel:
     
     def extend(self,by=1,debug=0):
         "Increases the matrix size by `by'"
-        for k in xrange(by):
+        for k in range(by):
             self._extend1()
 
         self._init_abel()
@@ -196,7 +197,7 @@ class IntuitiveAbel:
         #assert AI*self.A == identity_matrix(N-1)
 
         if isinstance(self.f,FormalPowerSeries):
-            coeffs = [ self.f[n] for n in xrange(0,N) ]
+            coeffs = [ self.f[n] for n in range(0,N) ]
         else:
             x = self.f.args()[0]
             coeffs = taylor(self.f.substitute({x:x+self.x0sym})-self.x0sym,x,0,N).polynomial(self.R)
@@ -245,10 +246,10 @@ class IntuitiveAbel:
         a = find_root(lambda x: (self.f(x)+x)/2-self.x0,self.x0-100,self.f(self.x0))
         maximum = find_maximum_on_interval(d,self.x0-a,self.x0+self.f(a),maxfun=20)
         minimum = find_minimum_on_interval(d,self.x0-a,self.x0+self.f(a),maxfun=20)
-        if debug>=1: print "max:", maximum[0].n(20), 'at:', maximum[1]
-        if debug>=1: print "min:", minimum[0].n(20), 'at:', minimum[1]
+        if debug>=1: print("max:", maximum[0].n(20), 'at:', maximum[1])
+        if debug>=1: print("min:", minimum[0].n(20), 'at:', minimum[1])
         self.err = max( abs(maximum[0]), abs(minimum[0]))
-        print "err:", self.err.n(20)
+        print("err:", self.err.n(20))
         self.prec = floor(-self.err.log(2))
         
         
@@ -265,7 +266,7 @@ class IntuitiveAbel:
         return self
 
     def backup(self):
-        print "Writing to `" + self.path + ".sobj'."
+        print("Writing to `" + self.path + ".sobj'.")
         save(self,self.path)
         if self.prec != None: save(self.prec,self.path+"_prec"+repr(self.prec))
         return self
@@ -281,8 +282,7 @@ class IntuitiveSuper(IntuitiveAbel):
         self.super0coeffs = super0ps[:N]
         self.super0poly = PolynomialRing(R,'x')(self.super0coeffs[:int(N)/2])
 
-        print "abel powerseries reversed."
-
+        print("abel powerseries reversed.")
 
     def super_raw(self,x):
         x0 = self.x0
@@ -290,7 +290,7 @@ class IntuitiveSuper(IntuitiveAbel):
         N = self.N
         a = self.super0coeffs
 
-        return x0+sum([a[n]*(x-c)**n for n in range(1,int(N)/2)])
+        return x0+sum([a[n]*(x-c)**n for n in range(1,N//2)])
 
     def super(self,x):
         """
@@ -311,11 +311,11 @@ class IntuitiveSuper(IntuitiveAbel):
             return b**(super(x-1))
         return super_raw(x)
 
-    def calc_prec():
+    def calc_prec(self):
         if self.prec != None:
             return self.prec
         iv0 = IntuitiveAbel(self.bsym,self.N-1,iprec=self.iprec,x0=self.x0sym)
         self.iv0 = iv0
         self.err = abs(iv0.sexp(0.5) - self.sexp(0.5))
-        print "err:", self.err.n(20)
+        print("err:", self.err.n(20))
         self.prec = floor(-log(self.err)/log(2.0))
